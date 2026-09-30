@@ -11,6 +11,22 @@ version, as in `0.2.0 — State Bridge`.
 
 ## Unreleased: Java-driven architecture correction
 
+- Serve a temporary work-in-progress landing page at
+  `praxis.thehowlingwhispers.com`, replacing the dead link. The page is static,
+  `noindex, no follow`, and covers what Praxis is, the architecture, and the
+  build order. It is a placeholder, not the product.
+- Serve it from `/var/www/praxis` through a new nginx vhost
+  (`praxis.conf`) with `X-Content-Type-Options`, `X-Frame-Options`, and
+  `Referrer-Policy` headers, and an ACME challenge location kept reachable on
+  port 80 for future renewals.
+- Record the outstanding DNS record needed to finish the host: an `A` record for
+  `praxis` pointing at `62.83.35.87`. The domain's authoritative nameservers are
+  netcup's, so the record must be added in the netcup panel.
+- Keep the vhost HTTP-only until that record exists. Certificate issuance was
+  attempted and failed with `NXDOMAIN`, and HSTS is deliberately withheld
+  because a host with no certificate must not tell browsers to stop retrying
+  over HTTPS.
+
 - Establish that Praxis is **Java-driven**. The Java runtime / API owns
   authoritative reality; the web GUI is a presentation layer above it.
 - Record the architecture explicitly:

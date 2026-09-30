@@ -108,10 +108,53 @@ host: the GUI, the runtime API, and any generated absolute links, CORS origins, 
 `Location` redirects should all resolve against it rather than a bare hostname or
 a hard-coded alternative domain.
 
-The host is **not resolved yet** — `praxis.thehowlingwhispers.com` currently has
-no DNS record and no certificate. Nothing is deployed. The name is recorded here
-as the intended binding so later work is built against one origin instead of
-picking one later.
+The host currently serves a **temporary work-in-progress landing page** over
+plain HTTP. No application, no Java runtime, and no HTTPS are live yet. The name
+is recorded here as the intended binding so later work is built against one
+origin instead of picking one later.
+
+## Work-in-progress landing page
+
+`praxis.thehowlingwhispers.com` is currently a static placeholder page
+(`noindex`, `no follow`) that states what Praxis is, shows the architecture, and
+links here. It replaces the link; it is not the product.
+
+Served by nginx from `/var/www/praxis` via `/etc/nginx/sites-available/praxis.conf`.
+There is no proxy target and no backend yet.
+
+### Pending DNS
+
+The host has **no A record**, which is the single blocker on HTTPS.
+
+```
+dig +short praxis.thehowlingwhispers.com A
+# (empty — NXDOMAIN)
+```
+
+Authoritative nameservers for the domain are netcup's, so the record must be
+added in the netcup DNS panel:
+
+| Field | Value |
+| --- | --- |
+| Name | `praxis` |
+| Type | `A` |
+| Target | `62.83.35.87` |
+| TTL | 3600 |
+
+The same applies to `AAAA` if IPv6 is wanted — this host has an IPv6 address, but
+no AAAA record is published for the other subdomains, so `A` alone is consistent
+with existing practice.
+
+Once the record resolves, issue the certificate and switch the vhost to HTTPS:
+
+```bash
+certbot certonly --nginx -d praxis.thehowlingwhispers.com
+```
+
+Then add the `listen 443 ssl` server block, HSTS, and the HTTP to HTTPS redirect
+to `praxis.conf`, and reload nginx. Until then, the page is HTTP-only and the
+`Strict-Transport-Security` header is deliberately absent — sending HSTS over a
+host with no certificate would lock browsers out of retrying over HTTPS.
 
 ## Current version
 
