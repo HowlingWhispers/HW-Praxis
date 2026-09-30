@@ -8,6 +8,65 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.3.0 - AI Pipe - 2026-09-30
+
+### NovelAI bridge
+
+- Start the Java runtime side with a small HTTP service bound to
+  `127.0.0.1:8787` by default.
+- Add NovelAI as the first narration provider through the current
+  OpenAI-compatible text endpoint.
+- Add `GET /api/v1/health`, `GET /api/v1/ai/models`,
+  `POST /api/v1/ai/turn`, and `POST /api/v1/ai/director`.
+- Accept a user's NovelAI Persistent API token through the
+  `X-NovelAI-Token` request header. The browser keeps that token in memory only
+  and does not write it to localStorage.
+- Keep optional server-side `NOVELAI_TOKEN` support as a development fallback,
+  not a repository secret.
+- Add model discovery and a default `glm-4-6` model selection.
+- Keep every generation request tied to a human action in the prototype.
+
+### Narration boundary
+
+- Send only the active Praxis scene projection, story phase, player condition,
+  visible exits/items, runtime-approved objectives, short conversation history,
+  and already-resolved outcomes to the narrator.
+- Explicitly instruct the narrator not to invent persistent state, hidden scene
+  contents, inventory, successful rolls, movement, task completion or canon.
+- Return narration separately from authoritative state and always mark
+  `authoritativeStateChanged: false` on AI responses.
+
+### Story Director
+
+- Add a first Story Director pipe that turns one runtime-approved objective into
+  a natural task briefing.
+- Reject AI task responses that select an objective key outside the supplied
+  allowed set.
+- Keep the current allowed-objective set in the browser prototype for now, with
+  the production requirement documented: the Java runtime must own the rail and
+  objective set before Praxis can treat it as authoritative.
+
+### Hollowmere prototype
+
+- Upgrade `prototype/hollowmere-demo.html` to the v0.3.0 AI-pipe slice.
+- Add live free-text narration and scene-present NPC conversation when NovelAI is
+  connected.
+- Add an AI setup dialog with memory-only Persistent API token handling and model
+  selection.
+- Add **Ask for next task** to the Story panel.
+- Keep time, fatigue, movement, rolls and milestones in Praxis state rather than
+  handing them to the model.
+- Preserve a deterministic fallback mode when no AI token is connected.
+- Add `prototype/praxis-ai.js` as the browser-side bridge client.
+
+### Build and documentation
+
+- Add a Java 21 Maven build and shaded executable JAR target.
+- Add Jackson for JSON request/response handling.
+- Ignore Maven `target/` output.
+- Add `docs/AI_PIPELINE.md` with API contracts, provider boundary, token handling,
+  build steps and the nginx proxy shape for deployment.
+
 ## 0.2.0 - Hollowmere Story Slice - 2026-09-30
 
 ### Story model
