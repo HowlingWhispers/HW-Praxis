@@ -12,16 +12,17 @@ fatigue accumulates, resources change, schedules can move on, and risky actions
 may require a system roll.
 
 Players speak and act in ordinary language. Praxis decides what that language
-*means* for authoritative state. Narration can improvise texture and dialogue,
-but it cannot silently make inventory, movement, rolls, story progress or other
-persistent state true.
+*means* for authoritative state. AI narration can improvise atmosphere, dialogue
+and story delivery, but it cannot silently make inventory, movement, rolls,
+story progress or other persistent state true.
 
-Praxis is **Java-driven**. The planned Java runtime owns authoritative reality.
-The web GUI is a presentation layer above it, not a game engine.
+Praxis is **Java-driven**. The Java runtime/API owns the provider boundary and is
+being grown into the authoritative story runtime. The web GUI remains a
+presentation layer above it, not the game engine.
 
 ## Architecture
 
-```
+```text
 Praxis Web GUI
     |
     v
@@ -39,19 +40,20 @@ Java Runtime / API
     +-- dice and checks
     +-- persistence
     |
-    +--> NovelAI narration / dialogue layer
+    +--> NovelAI narration / dialogue / task delivery
 ```
 
-The browser talks to the Java runtime over a network API. The Java runtime talks
-to the narration provider. The browser never owns authoritative rules, and the
-narrator never writes directly to state.
+The browser talks to the Praxis Java service. The service talks to the narration
+provider. The browser must not become the long-term owner of rules, and the AI
+provider never writes directly to state.
 
 ## The rules that define Praxis
 
 1. **Java owns authoritative reality.** Story state, world/session state, rules,
-   time, fatigue, rolls and persistence live in the runtime.
+   time, fatigue, rolls and persistence belong in the runtime.
 2. **The browser GUI presents state and sends actions.** It renders what the
-   runtime reports and submits player intents. It does not resolve game rules.
+   runtime reports and submits player intents. It does not resolve production
+   game rules.
 3. **Narration is free inside the active scene.** Players can speak, investigate
    and explore naturally without turning the experience into a menu-only RPG.
 4. **Narration does not decide persistent outcomes.** If prose says a locked door
@@ -61,20 +63,20 @@ narrator never writes directly to state.
    through the runtime.
 6. **Freedom has cost.** Talking, exploring, waiting, travel, exertion and rest
    can advance time or fatigue. The story can react to what the player spends.
-7. **Scene presence gates context.** The runtime knows the current location,
-   present characters, present items/interactables, current story phase and
-   player condition. Only approved active-scene context is sent to narration.
+7. **Scene presence gates context.** The active location, present characters,
+   local items/interactables, story phase and player condition determine what is
+   sent to narration.
 8. **Story rails guide rather than puppet.** Rails define authored milestones,
    constraints, branches and consequences. They do not prescribe every line of
    dialogue or every moment-to-moment action.
 9. **Keep Praxis separate from Speculus and Fabula for now.** Praxis does not
-   import from, vendor, fork, or modify sibling repositories while the
-   interaction model is still being proven.
+   import from, vendor, fork or modify sibling runtimes while this interaction
+   model is being proven.
 
 ## Scene presence
 
-Praxis treats every active scene as a context boundary. The runtime should be
-able to build a compact scene-state block such as:
+Praxis treats every active scene as a context boundary. A narration request is
+built from a compact projection such as:
 
 ```text
 Story: A Morning in Hollowmere
@@ -83,20 +85,17 @@ Location: Hollowmere
 Time: 08:35
 Fatigue: 2/10
 Present: approved scene-present characters
-Available local interactions: approved scene-present actions
-Story milestones: current authoritative progress
+Visible exits/items: approved local state
+Allowed story objectives: runtime-approved keys
+Resolved outcome: optional already-decided mechanic
 ```
 
-The narration layer receives that active slice plus the relevant lore/context.
 Inactive or inaccessible scenes are not automatically exposed just because the
 story knows they exist.
 
 ## Hollowmere starter slice
 
-Hollowmere is the first Praxis test area.
-
-The first slice is intentionally small. It exists to prove the interaction model
-before Praxis grows into larger authored stories. The current prototype tests:
+Hollowmere is the first Praxis test area. The prototype currently proves:
 
 - Hollowmere as the story anchor
 - semi-hard story milestones rather than a fully open simulation
@@ -104,81 +103,96 @@ before Praxis grows into larger authored stories. The current prototype tests:
 - scene-presence context gating
 - time advancement
 - fatigue and recovery
-- movement validated by runtime state
-- a system check when exhaustion makes movement uncertain
+- movement validated by Praxis state
+- an Endurance check when exhaustion makes movement uncertain
 - mobile-friendly HUD/navigation
-- visible authoritative state for debugging
+- visible runtime state for debugging
+- live NovelAI prose/dialogue through the Java AI bridge
+- AI-delivered task briefings selected only from currently allowed story goals
 
-The prototype currently uses lightweight **test fixtures** for a Hollowmere
-market scene and bakery scene. Those labels are there to exercise scene presence,
-time, fatigue and story flow. They are not a replacement for canonical Orbis data
-or a claim that the prototype defines the final Bitterroot map structure.
+The Market and Bakery remain lightweight **test fixtures**. They exist to test
+story flow, time, fatigue, scene presence and AI piping. They are not a claim
+about final Bitterroot/Orbis map structure.
 
-The source lives at:
+Frontend sources:
 
 ```text
 prototype/hollowmere-demo.html
+prototype/praxis-ai.js
 ```
 
-It is still a UX and interaction-model prototype. Its JavaScript state engine is
-not the intended production architecture and must not be mistaken for the future
-Java runtime.
+The browser still owns more prototype state than the production architecture
+allows. That is temporary. The next runtime step is to move the rail, time,
+fatigue, rolls and scene presence into Java.
 
-## The web GUI
+## AI pipe
 
-The GUI is deliberately **loosely coupled** to the runtime:
+Praxis v0.3.0 introduces the first live provider bridge.
 
-- It consumes a versioned API contract and knows nothing about Java internals.
-- Rules-adjacent UI such as availability, disabled actions, costs and capacity
-  should be reported by the runtime rather than re-implemented in the client.
-- It carries no authoritative state of its own in the production design.
-- It must remain redesignable later, especially for mobile, without rewriting
-  the game rules.
+Endpoints:
 
-The GUI is a view. If the GUI would need to be rewritten to change how the game
-works, the boundary is wrong.
+```text
+GET  /api/v1/health
+GET  /api/v1/ai/models
+POST /api/v1/ai/turn
+POST /api/v1/ai/director
+```
+
+NovelAI is the first provider, using its current OpenAI-compatible text API. The
+prototype accepts the user's Persistent API token in `X-NovelAI-Token`. The
+browser holds it in memory only for the page lifetime and does not save it to
+localStorage.
+
+`/api/v1/ai/turn` returns narration/dialogue and never authoritative mutations.
+`/api/v1/ai/director` turns one currently allowed objective into a natural task
+briefing. Invalid objective keys are rejected.
+
+See [`docs/AI_PIPELINE.md`](docs/AI_PIPELINE.md) for the provider contract,
+security notes, build steps and nginx proxy shape.
+
+## Build the Java bridge
+
+Requires Java 21 and Maven:
+
+```bash
+mvn clean package
+java -jar target/praxis-server.jar
+```
+
+Default bind:
+
+```text
+127.0.0.1:8787
+```
+
+The live nginx vhost should proxy `/api/` to that local service while serving the
+frontend as static files.
 
 ## Development order
 
-1. Prove the Hollowmere story interaction model in the browser prototype.
-2. Lock down the story/session API contract.
-3. Move authoritative state, time, fatigue, rolls, scene presence and story rails
-   into the Java runtime.
-4. Replace mock narration with the provider adapter.
-5. Add persistence.
-6. Only then decide how Praxis should consume canonical world data from Orbis.
-
-This keeps Hollowmere useful as the test bed without hard-coding Praxis itself to
-Bitterroot.
+1. Prove live narration, dialogue and Story Director task delivery in Hollowmere.
+2. Move the allowed story rail and objective set into Java so the browser cannot
+   define authoritative tasks.
+3. Move time, fatigue, rolls and scene presence into Java.
+4. Add save/resume and conversation-window persistence.
+5. Expand Hollowmere into a real short authored story with branches and timed
+   consequences.
+6. Decide the later Orbis integration boundary only after the runtime contract is
+   stable.
 
 ## Deployment
 
-Praxis is intended to be served at:
+Canonical origin:
 
 ```text
 https://praxis.thehowlingwhispers.com
 ```
 
-That is the canonical public origin for Praxis. Treat it as the single production
-host: the GUI, runtime API, generated absolute links, CORS origins and redirects
-should all resolve against it.
-
-The host currently serves a **temporary work-in-progress landing page**. The
-Hollowmere prototype is now stored in the repository, but it is not yet the live
-Praxis application.
-
-## Work-in-progress landing page
-
-`praxis.thehowlingwhispers.com` currently serves a static placeholder page with
-`noindex, no follow`. It describes the project and architecture. It is a
-placeholder, not the product.
-
-Served by nginx from `/var/www/praxis` via `/etc/nginx/sites-available/praxis.conf`.
-There is no application proxy target or production Java backend yet.
+The existing nginx/TLS setup remains the deployment target. The Java service is
+intended to stay bound to localhost behind nginx rather than being exposed on a
+public port.
 
 ### TLS
-
-The host is live over HTTPS with a Let's Encrypt certificate.
 
 | | |
 | --- | --- |
@@ -189,28 +203,16 @@ The host is live over HTTPS with a Let's Encrypt certificate.
 | Valid until | 2026-12-29 |
 | Renewal | Automatic via `certbot.timer` |
 
-The ACME HTTP-01 challenge location is kept on the port 80 vhost so renewals keep
-working without the redirect getting in the way. Renewal has been verified with
-`certbot renew --dry-run`.
-
-Response headers served: `Strict-Transport-Security: max-age=31536000;
-includeSubDomains`, `X-Content-Type-Options: nosniff`, `X-Frame-Options:
-SAMEORIGIN`, `Referrer-Policy: no-referrer`. Plain HTTP 301-redirects to HTTPS.
-
-To renew manually:
-
-```bash
-certbot renew --cert-name praxis.thehowlingwhispers.com
-nginx -t && systemctl reload nginx
-```
+The port 80 vhost keeps the ACME HTTP-01 challenge reachable and otherwise
+redirects to HTTPS.
 
 ## Current version
 
-`0.2.0` - Hollowmere Story Slice. See [CHANGELOG.md](CHANGELOG.md).
+`0.3.0` - AI Pipe. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Branch model
 
-- `main` is the only branch. No feature branches, no release branches.
+- `main` is the only branch.
 - `main` is the single source of truth for Praxis.
 
 ## License
