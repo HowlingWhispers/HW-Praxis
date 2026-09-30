@@ -19,13 +19,16 @@ version, as in `0.2.0 — State Bridge`.
   (`praxis.conf`) with `X-Content-Type-Options`, `X-Frame-Options`, and
   `Referrer-Policy` headers, and an ACME challenge location kept reachable on
   port 80 for future renewals.
-- Record the outstanding DNS record needed to finish the host: an `A` record for
-  `praxis` pointing at `62.83.35.87`. The domain's authoritative nameservers are
-  netcup's, so the record must be added in the netcup panel.
-- Keep the vhost HTTP-only until that record exists. Certificate issuance was
-  attempted and failed with `NXDOMAIN`, and HSTS is deliberately withheld
-  because a host with no certificate must not tell browsers to stop retrying
-  over HTTPS.
+- Activate the origin. The `praxis` A record now resolves to `62.83.35.87` and a
+  Let's Encrypt certificate was issued, so the host is live over HTTPS.
+- Add the `listen 443 ssl` vhost with the Let's Encrypt certificate, TLS
+  hardening, and the security headers, and turn the port 80 vhost into a 301
+  redirect to HTTPS while keeping the ACME challenge location reachable for
+  renewals.
+- Serve `Strict-Transport-Security: max-age=31536000; includeSubDomains` now that
+  a valid certificate exists.
+- Confirm automatic renewal with a passing `certbot renew --dry-run`. Renewal is
+  handled by the existing `certbot.timer`.
 
 - Establish that Praxis is **Java-driven**. The Java runtime / API owns
   authoritative reality; the web GUI is a presentation layer above it.

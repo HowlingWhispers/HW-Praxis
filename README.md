@@ -108,10 +108,10 @@ host: the GUI, the runtime API, and any generated absolute links, CORS origins, 
 `Location` redirects should all resolve against it rather than a bare hostname or
 a hard-coded alternative domain.
 
-The host currently serves a **temporary work-in-progress landing page** over
-plain HTTP. No application, no Java runtime, and no HTTPS are live yet. The name
-is recorded here as the intended binding so later work is built against one
-origin instead of picking one later.
+The host currently serves a **temporary work-in-progress landing page**. No
+application and no Java runtime are live yet. The name is recorded here as the
+intended binding so later work is built against one origin instead of picking one
+later.
 
 ## Work-in-progress landing page
 
@@ -122,39 +122,37 @@ links here. It replaces the link; it is not the product.
 Served by nginx from `/var/www/praxis` via `/etc/nginx/sites-available/praxis.conf`.
 There is no proxy target and no backend yet.
 
-### Pending DNS
+### TLS
 
-The host has **no A record**, which is the single blocker on HTTPS.
+The host is live over HTTPS with a Let's Encrypt certificate.
 
-```
-dig +short praxis.thehowlingwhispers.com A
-# (empty — NXDOMAIN)
-```
-
-Authoritative nameservers for the domain are netcup's, so the record must be
-added in the netcup DNS panel:
-
-| Field | Value |
+| | |
 | --- | --- |
-| Name | `praxis` |
-| Type | `A` |
-| Target | `62.83.35.87` |
-| TTL | 3600 |
+| Origin | `https://praxis.thehowlingwhispers.com` |
+| DNS | `A praxis -> 62.83.35.87` |
+| Certificate | `/etc/letsencrypt/live/praxis.thehowlingwhispers.com/` |
+| Issued by | Let's Encrypt (`YE1`) |
+| Valid until | 2026-12-29 |
+| Renewal | Automatic via `certbot.timer` |
 
-The same applies to `AAAA` if IPv6 is wanted — this host has an IPv6 address, but
-no AAAA record is published for the other subdomains, so `A` alone is consistent
-with existing practice.
+The ACME HTTP-01 challenge location is kept on the port 80 vhost so renewals keep
+working without the redirect getting in the way. Renewal has been verified with
+`certbot renew --dry-run`.
 
-Once the record resolves, issue the certificate and switch the vhost to HTTPS:
+Response headers served: `Strict-Transport-Security: max-age=31536000;
+includeSubDomains`, `X-Content-Type-Options: nosniff`, `X-Frame-Options:
+SAMEORIGIN`, `Referrer-Policy: no-referrer`. Plain HTTP 301-redirects to HTTPS.
+
+Note that the certificate is issued for the `praxis` hostname only. The
+`includeSubDomains` HSTS directive is inherited from the main domain's
+configuration and matches the sibling hosts' treatment.
+
+To renew manually:
 
 ```bash
-certbot certonly --nginx -d praxis.thehowlingwhispers.com
+certbot renew --cert-name praxis.thehowlingwhispers.com
+nginx -t && systemctl reload nginx
 ```
-
-Then add the `listen 443 ssl` server block, HSTS, and the HTTP to HTTPS redirect
-to `praxis.conf`, and reload nginx. Until then, the page is HTTP-only and the
-`Strict-Transport-Security` header is deliberately absent — sending HSTS over a
-host with no certificate would lock browsers out of retrying over HTTPS.
 
 ## Current version
 
