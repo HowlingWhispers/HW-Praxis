@@ -8,51 +8,92 @@ Players speak and act in ordinary language. Praxis decides what that language
 *means* for the world, and the world answers with state that is real, inspectable
 and consistent — not re-rolled prose.
 
-## What Praxis is
+Praxis is **Java-driven**. The Java runtime owns authoritative reality. The web
+GUI is a presentation layer above it, not a game engine.
 
-- **Freeform in, authoritative out.** A player types or says anything. Praxis
-  resolves it against the world and updates the canonical state that actually
-  governs play.
-- **Prose is presentation, not truth.** Generated text describes what happened.
-  The state ledger decides what happened. If the two disagree, the ledger wins.
-- **Experimental by design.** Praxis exists to prove the interaction model before
-  it is bound to a production runtime.
+## Architecture
 
-## Relationship to other projects
+```
+Praxis Web GUI
+    |
+    v
+Java Runtime / API
+    |
+    +-- authoritative world/session state
+    +-- action validation
+    +-- movement and access constraints
+    +-- doors, locks and interactables
+    +-- inventory
+    +-- stamina / health
+    +-- dice and checks
+    +-- context gating
+    +-- persistence
+    |
+    +--> NovelAI narration layer
+```
 
-Praxis is deliberately **completely separate** from Speculus and Fabula while the
-interaction model is proven.
+The browser talks to the Java runtime over a network API. The Java runtime talks
+to NovelAI. The browser never talks to NovelAI directly, and NovelAI never writes
+to state.
 
-- **Speculus** owns the freeform simulation prose and its proven generation
-  foundation.
-- **Fabula** owns persistent authoritative world state: travel, time, inventory,
-  encounters, player state and long-running worlds.
-- **Praxis** is the experimental layer that tests whether freeform AI interaction
-  can drive authoritative state without corrupting either side.
+## The rules that define Praxis
 
-Praxis does not import from, vendor, fork, or modify Speculus, Fabula, Orbis or
-any other sibling repository. Any integration must be a deliberate, separate
-decision, and none has been made yet.
+1. **Java owns authoritative reality.** World and session state, rules, and
+   persistence live in the Java runtime. Nothing else is authoritative.
+2. **The browser GUI presents state and sends actions.** It renders what the
+   runtime reports and submits player intents. It does not own game rules, does
+   not resolve actions, and is not a source of truth that survives a reload.
+3. **NovelAI generates narration and NPC dialogue, but does not decide
+   authoritative outcomes.** It describes the world. It does not change it.
+4. **A generated statement does not automatically become world state.** If the
+   narration says the player opened a locked door, the door is still locked
+   unless a validated action opened it.
+5. **Only runtime-validated actions may change persistent state.** Every state
+   transition is a Java-side validation that can refuse the action.
+6. **Context from inaccessible rooms/places must not be sent to NovelAI.** The
+   Java runtime builds the context payload and gates it. Gating is an access
+   rule, not a prompt suggestion, and it happens before generation.
+7. **Keep Praxis separate from Speculus and Fabula** for now. Praxis does not
+   import from, vendor, fork, or modify Speculus, Fabula, Orbis or any other
+   sibling repository. Any integration must be a deliberate, separate decision,
+   and none has been made yet.
 
-## Starting point: the three-room demo
+## The web GUI
 
-Development starts from a working three-room demo concept. Three rooms, one
-player, and enough authoritative state to make freeform interaction meaningful:
-you should be able to walk into a room, talk to something there, take or leave
-something, and see the world state actually change as a result.
+The GUI is deliberately **loosely coupled** to the runtime:
 
-The demo exists to answer one question: **does freeform player input feel
-natural while still producing trustworthy state?** It is a question about the
-interaction model, not about graphics, scale or features.
+- It consumes a versioned API contract and knows nothing about Java internals.
+- All rules, rules-adjacent UI (availability, disabled actions, capacity) are
+  reported by the runtime, not re-implemented in the client.
+- It carries no authoritative state of its own and can be **redesigned later,
+  especially for mobile**, without touching the Java runtime.
 
-## Build order
+The GUI is a view. If the GUI would need to be rewritten to change how the game
+works, the boundary is wrong.
 
-1. Prove the interaction model in the three-room demo.
-2. Prove the state/text boundary and its failure modes.
-3. Only then decide on a Java runtime or any production backend.
+## The three-room demo
 
-No Java runtime, backend service or production architecture is committed to yet.
-The demo is the deliverable for now.
+Praxis starts from the three-room demo concept: three rooms, one player, and
+enough authoritative state to make freeform interaction meaningful — walk into a
+room, talk to something there, take or leave something, and see the world state
+actually change as a result.
+
+**The three-room demo is the first vertical slice for proving the Java
+runtime/state boundary.** It is a UX and interaction-model prototype. The
+prototype's JavaScript state engine is *not* the intended production
+architecture and must not be mistaken for it.
+
+The prototype exists to answer two questions:
+
+1. Does freeform player input feel natural while still producing trustworthy
+   state?
+2. Does the GUI/runtime boundary hold — with the runtime owning the rules, the
+   GUI only presenting them, and narration never becoming state?
+
+What the prototype proves is the interaction model. What the Java runtime
+implements is the authoritative reality. The Java implementation has not
+started; it begins when the demo source is handed over and implementation is
+explicitly authorised.
 
 ## Current version
 
