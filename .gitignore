@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+vendor/
+.target/
+build/
+dist/
+dist-server/
+out/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Tooling caches
+.cache/
+.gradle/
+.vite/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Local experiment data
+tmp/
+scratch/
