@@ -1,0 +1,30 @@
+[Unit]
+Description=Howling Whispers Praxis AI Bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/howling-whispers/praxis
+ExecStart=/usr/bin/java -jar /srv/howling-whispers/praxis/target/praxis-server.jar
+Restart=on-failure
+RestartSec=3
+Environment=PRAXIS_PORT=8787
+Environment=PRAXIS_ALLOWED_ORIGIN=https://praxis.thehowlingwhispers.com
+Environment=NOVELAI_MODEL=glm-4-6
+Environment=NOVELAI_BASE_URL=https://text.novelai.net
+
+# Do not put a shared NovelAI token here for production unless that is an
+# explicit deployment decision. The prototype is designed to accept a user's
+# Persistent API token per request and keep it out of repository files.
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/howling-whispers/praxis
+
+[Install]
+WantedBy=multi-user.target
