@@ -54,6 +54,11 @@ version, as in `0.2.0 — State Bridge`.
   not the intended production architecture.
 - No Java implementation begins yet. It starts when the demo source is handed
   over and implementation is explicitly authorised.
+- Record the intended production origin, `https://praxis.thehowlingwhispers.com`,
+  as the canonical public host for Praxis, with the GUI, runtime API, absolute
+  links, CORS origins and redirects all built against that single origin.
+- Note that the host has no DNS record or certificate yet and nothing is
+  deployed. The name is recorded so later work targets one origin.
 - No sibling repository was modified.
 
 ## 0.1.0 — Praxis Pre-Alpha

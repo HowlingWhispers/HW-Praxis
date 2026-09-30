@@ -95,6 +95,24 @@ implements is the authoritative reality. The Java implementation has not
 started; it begins when the demo source is handed over and implementation is
 explicitly authorised.
 
+## Deployment
+
+Praxis is intended to be served at:
+
+```
+https://praxis.thehowlingwhispers.com
+```
+
+That is the canonical public origin for Praxis. Treat it as the single production
+host: the GUI, the runtime API, and any generated absolute links, CORS origins, and
+`Location` redirects should all resolve against it rather than a bare hostname or
+a hard-coded alternative domain.
+
+The host is **not resolved yet** — `praxis.thehowlingwhispers.com` currently has
+no DNS record and no certificate. Nothing is deployed. The name is recorded here
+as the intended binding so later work is built against one origin instead of
+picking one later.
+
 ## Current version
 
 `0.1.0` — Praxis Pre-Alpha. See [CHANGELOG.md](CHANGELOG.md).
