@@ -1,29 +1,246 @@
 <!doctype html>
-<!-- Praxis v0.2.0: Hollowmere story-slice prototype -->
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Praxis - Hollowmere Story Slice</title>
+<!-- Praxis v0.3.0: Hollowmere AI-pipe prototype -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Praxis - Hollowmere AI Story Slice</title>
 <style>
-:root{--bg:#07090d;--panel:#0d1118;--line:#273244;--ink:#eef4fb;--muted:#8fa0b4;--teal:#73d6da;--amber:#e5bb6a;--good:#78d6a8;--bad:#e48178;--serif:Georgia,"Times New Roman",serif;--mono:ui-monospace,SFMono-Regular,Consolas,monospace}*{box-sizing:border-box}html,body{height:100%}body{margin:0;background:#07090d;color:var(--ink);font-family:var(--mono)}button,input{font:inherit;color:inherit}.app{height:100%;max-width:1100px;margin:auto;display:grid;grid-template-rows:auto 1fr auto}.top,.composer,.bottom{background:#0a0e14;border-color:var(--line)}.top{display:flex;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}.brand{flex:1}.brand b{display:block;letter-spacing:.16em}.brand span,.small{font-size:11px;color:var(--muted)}.pill{font-size:11px;padding:5px 8px;border:1px solid #355;border-radius:3px;color:var(--good)}.main{min-height:0;display:grid;grid-template-columns:1.5fr .85fr}.chat{min-height:0;display:grid;grid-template-rows:auto 1fr auto;border-right:1px solid var(--line)}.room{padding:14px 18px;border-bottom:1px solid var(--line)}.room h1{font:700 24px var(--serif);margin:0 0 4px}.room p{margin:0;color:var(--muted);font-size:12px}.log{overflow:auto;padding:18px}.turn{margin-bottom:16px}.who{font-size:10px;color:var(--teal);text-transform:uppercase}.turn p{font:16px/1.6 var(--serif);margin:4px 0 0}.player{border-left:2px solid #385b64;padding-left:10px}.runtime{padding:9px 11px;border:1px dashed #344156;color:var(--muted);font-size:12px}.runtime.good{color:var(--good);border-color:#355}.runtime.bad{color:var(--bad);border-color:#633}.narr{padding:12px;background:#0d131c;border:1px solid #1b2634}.composer{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px;border-top:1px solid var(--line)}input{min-width:0;background:#070b10;border:1px solid #263244;padding:11px}.btn{background:#111824;border:1px solid #334157;padding:9px 11px;cursor:pointer}.primary{background:var(--teal);color:#061013;font-weight:700}.side{min-height:0;display:grid;grid-template-rows:auto 1fr}.tabs{display:grid;grid-template-columns:repeat(5,1fr)}.tab{border:0;border-bottom:1px solid var(--line);background:#0d121a;padding:10px 4px;font-size:11px}.tab.active{color:var(--teal);box-shadow:inset 0 2px var(--teal)}.panels{overflow:auto;padding:14px}.panel{display:none}.panel.active{display:block}.section{margin-bottom:18px}.section h3{font-size:11px;color:var(--teal);text-transform:uppercase;letter-spacing:.08em}.card{background:var(--panel);border:1px solid var(--line);padding:11px;margin-bottom:8px}.row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #1b2532;font-size:12px}.row:first-child{border-top:0}.row span:last-child{color:var(--muted)}.actions{display:grid;gap:7px}.meter{height:7px;border:1px solid #243043;background:#070a0f;margin-top:5px}.meter i{display:block;height:100%;background:var(--teal)}pre{white-space:pre-wrap;font-size:10px;line-height:1.5;color:#9eb0c4;background:#05080c;border:1px solid #1e2938;padding:10px;overflow:auto}.banner{padding:8px 14px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}.banner b{color:var(--amber)}.bottom{display:none}.modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:18px}.modal.open{display:flex}.modalbox{max-width:480px;width:100%;background:#0d131b;border:1px solid #34445a;padding:18px}.dice{font:700 28px var(--serif);color:var(--amber)}
-@media(max-width:760px){.main{display:block}.side{position:fixed;inset:49px 0 58px;background:var(--bg);display:none;z-index:5}.side.open{display:grid}.chat{height:calc(100vh - 49px - 58px);border:0}.bottom{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line)}.bottom button{border:0;background:#0b1017;padding:9px 3px;font-size:10px;color:var(--muted)}.bottom button.active{color:var(--teal)}.banner{display:none}.pill{display:none}.room h1{font-size:20px}.log{padding:14px}}
-</style></head><body><div class="app">
-<header class="top"><div class="brand"><b>PRAXIS</b><span>Hollowmere story slice · v0.2.0</span></div><span class="pill">● runtime authoritative</span></header>
-<div class="main"><section class="chat"><header class="room"><h1 id="title"></h1><p id="subtitle"></p></header><main class="log" id="log"></main><div class="composer"><input id="input" placeholder='Try: "I talk to someone nearby"'><button id="send" class="btn primary">Send</button></div></section>
-<aside class="side" id="side"><nav class="tabs"><button class="tab active" data-panel="scene">Scene</button><button class="tab" data-panel="story">Story</button><button class="tab" data-panel="you">You</button><button class="tab" data-panel="pack">Pack</button><button class="tab" data-panel="state">Runtime</button></nav><div class="panels"><section class="panel active" id="p-scene"></section><section class="panel" id="p-story"></section><section class="panel" id="p-you"></section><section class="panel" id="p-pack"></section><section class="panel" id="p-state"></section></div></aside></div>
-<nav class="bottom"><button data-mobile="chat" class="active">Chat</button><button data-mobile="scene">Scene</button><button data-mobile="story">Story</button><button data-mobile="you">You</button><button data-mobile="state">Runtime</button></nav><div class="banner"><b>Praxis:</b> authored story rails, free local roleplay, runtime-owned time, fatigue, rolls and recorded outcomes.</div></div>
-<div class="modal" id="roll"><div class="modalbox"><h2>Push on while exhausted</h2><p class="small">Endurance check vs DC 12. Failure costs 5 minutes and keeps you in the current scene.</p><div class="row"><span>Modifier</span><span>+2</span></div><div class="row"><span>Roll</span><span class="dice" id="die">?</span></div><p><button class="btn" id="cancel">Cancel</button> <button class="btn primary" id="rollBtn">Roll</button></p></div></div>
+:root{--bg:#07090d;--panel:#0d1118;--line:#273244;--ink:#eef4fb;--muted:#8fa0b4;--teal:#73d6da;--amber:#e5bb6a;--good:#78d6a8;--bad:#e48178;--serif:Georgia,"Times New Roman",serif;--mono:ui-monospace,SFMono-Regular,Consolas,monospace}*{box-sizing:border-box}html,body{height:100%}body{margin:0;background:#07090d;color:var(--ink);font-family:var(--mono)}button,input,select{font:inherit;color:inherit}.app{height:100%;max-width:1100px;margin:auto;display:grid;grid-template-rows:auto 1fr auto}.top,.composer,.bottom{background:#0a0e14;border-color:var(--line)}.top{display:flex;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}.brand{flex:1}.brand b{display:block;letter-spacing:.16em}.brand span,.small{font-size:11px;color:var(--muted)}.pill,.topbtn{font-size:11px;padding:5px 8px;border:1px solid #355;border-radius:3px;background:#101722}.pill{color:var(--good)}.pill.off{color:var(--amber);border-color:#654}.topbtn{cursor:pointer}.main{min-height:0;display:grid;grid-template-columns:1.5fr .85fr}.chat{min-height:0;display:grid;grid-template-rows:auto 1fr auto;border-right:1px solid var(--line)}.room{padding:14px 18px;border-bottom:1px solid var(--line)}.room h1{font:700 24px var(--serif);margin:0 0 4px}.room p{margin:0;color:var(--muted);font-size:12px}.log{overflow:auto;padding:18px}.turn{margin-bottom:16px}.who{font-size:10px;color:var(--teal);text-transform:uppercase}.turn p{font:16px/1.6 var(--serif);margin:4px 0 0}.player{border-left:2px solid #385b64;padding-left:10px}.runtime{padding:9px 11px;border:1px dashed #344156;color:var(--muted);font-size:12px}.runtime.good{color:var(--good);border-color:#355}.runtime.bad{color:var(--bad);border-color:#633}.runtime.ai{color:var(--amber);border-color:#654}.narr{padding:12px;background:#0d131c;border:1px solid #1b2634}.composer{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px;border-top:1px solid var(--line)}input,select{min-width:0;background:#070b10;border:1px solid #263244;padding:11px}.btn{background:#111824;border:1px solid #334157;padding:9px 11px;cursor:pointer}.btn:disabled{opacity:.5;cursor:not-allowed}.primary{background:var(--teal);color:#061013;font-weight:700}.side{min-height:0;display:grid;grid-template-rows:auto 1fr}.tabs{display:grid;grid-template-columns:repeat(5,1fr)}.tab{border:0;border-bottom:1px solid var(--line);background:#0d121a;padding:10px 4px;font-size:11px}.tab.active{color:var(--teal);box-shadow:inset 0 2px var(--teal)}.panels{overflow:auto;padding:14px}.panel{display:none}.panel.active{display:block}.section{margin-bottom:18px}.section h3{font-size:11px;color:var(--teal);text-transform:uppercase;letter-spacing:.08em}.card{background:var(--panel);border:1px solid var(--line);padding:11px;margin-bottom:8px}.task{border-color:#5c5638}.task b{color:var(--amber)}.row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #1b2532;font-size:12px}.row:first-child{border-top:0}.row span:last-child{color:var(--muted)}.actions{display:grid;gap:7px}.meter{height:7px;border:1px solid #243043;background:#070a0f;margin-top:5px}.meter i{display:block;height:100%;background:var(--teal)}pre{white-space:pre-wrap;font-size:10px;line-height:1.5;color:#9eb0c4;background:#05080c;border:1px solid #1e2938;padding:10px;overflow:auto}.banner{padding:8px 14px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}.banner b{color:var(--amber)}.bottom{display:none}.modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:18px;z-index:20}.modal.open{display:flex}.modalbox{max-width:520px;width:100%;background:#0d131b;border:1px solid #34445a;padding:18px}.modalbox h2{font:700 22px var(--serif);margin:0 0 8px}.modalbox p{font:14px/1.5 var(--serif);color:#c9d4df}.modalactions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.dice{font:700 28px var(--serif);color:var(--amber)}.error{color:var(--bad);font-size:11px;min-height:1.4em;margin-top:7px}
+@media(max-width:760px){.main{display:block}.side{position:fixed;inset:49px 0 58px;background:var(--bg);display:none;z-index:5}.side.open{display:grid}.chat{height:calc(100vh - 49px - 58px);border:0}.bottom{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line)}.bottom button{border:0;background:#0b1017;padding:9px 3px;font-size:10px;color:var(--muted)}.bottom button.active{color:var(--teal)}.banner{display:none}.room h1{font-size:20px}.log{padding:14px}.pill{display:none}.topbtn{font-size:10px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top"><div class="brand"><b>PRAXIS</b><span>Hollowmere AI story slice · v0.3.0</span></div><span class="pill off" id="aiStatus">AI disconnected</span><button class="topbtn" id="aiSetup">AI setup</button></header>
+<div class="main">
+<section class="chat"><header class="room"><h1 id="title"></h1><p id="subtitle"></p></header><main class="log" id="log"></main><div class="composer"><input id="input" placeholder='Speak naturally: "I ask what happened here"'><button id="send" class="btn primary">Send</button></div></section>
+<aside class="side" id="side"><nav class="tabs"><button class="tab active" data-panel="scene">Scene</button><button class="tab" data-panel="story">Story</button><button class="tab" data-panel="you">You</button><button class="tab" data-panel="pack">Pack</button><button class="tab" data-panel="state">Runtime</button></nav><div class="panels"><section class="panel active" id="p-scene"></section><section class="panel" id="p-story"></section><section class="panel" id="p-you"></section><section class="panel" id="p-pack"></section><section class="panel" id="p-state"></section></div></aside>
+</div>
+<nav class="bottom"><button data-mobile="chat" class="active">Chat</button><button data-mobile="scene">Scene</button><button data-mobile="story">Story</button><button data-mobile="you">You</button><button data-mobile="state">Runtime</button></nav>
+<div class="banner"><b>Praxis:</b> AI supplies prose, dialogue and runtime-approved task briefings. Praxis still owns time, fatigue, movement, rolls and persistent state.</div>
+</div>
+
+<div class="modal" id="roll"><div class="modalbox"><h2>Push on while exhausted</h2><p>Endurance check vs DC 12. Failure costs 5 minutes and keeps you in the current scene.</p><div class="row"><span>Modifier</span><span>+2</span></div><div class="row"><span>Roll</span><span class="dice" id="die">?</span></div><div class="modalactions"><button class="btn" id="cancelRoll">Cancel</button><button class="btn primary" id="rollBtn">Roll</button></div></div></div>
+
+<div class="modal" id="aiModal"><div class="modalbox"><h2>Connect NovelAI</h2><p>Use a NovelAI Persistent API token. Praxis keeps it in memory only for this page and does not save it to localStorage.</p><label class="small" for="token">Persistent API token</label><input id="token" type="password" autocomplete="off" placeholder="Paste token" style="width:100%;margin-top:5px"><label class="small" for="model" style="display:block;margin-top:10px">Model</label><select id="model" style="width:100%;margin-top:5px"><option value="glm-4-6">glm-4-6</option></select><div class="error" id="aiError"></div><div class="modalactions"><button class="btn" id="disconnectAI">Disconnect</button><button class="btn" id="closeAI">Close</button><button class="btn primary" id="connectAI">Connect</button></div></div></div>
+
+<script src="./praxis-ai.js"></script>
 <script>
-(()=>{const scenes={center:{name:"Hollowmere",sub:"Bitterroot starter test area · morning",text:"Hollowmere is awake around you. Praxis is using this as the first story sandbox rather than loading an entire world at once.",present:["Townsfolk"],exits:[{label:"Market",to:"market"},{label:"Bakery",to:"bakery"}]},market:{name:"Hollowmere · Market",sub:"Scene-presence test fixture",text:"The market scene is active. Only this scene's local presence is available to the narrator and interaction layer.",present:["Market traders","Townsfolk"],exits:[{label:"Return to Hollowmere",to:"center"}]},bakery:{name:"Hollowmere · Bakery",sub:"Scene-presence test fixture",text:"Warmth and the smell of baking bread define the active scene. This remains a prototype fixture, not final Orbis map structure.",present:["Bakery staff","Patrons"],exits:[{label:"Return to Hollowmere",to:"center"}]}};
-const $=s=>document.querySelector(s),side=$("#side"),log=$("#log"),input=$("#input");let pending=null;function fresh(){return{location:"center",minutes:480,fatigue:0,maxFatigue:10,health:10,maxHealth:10,inventory:[],visited:["center"],story:{title:"A Morning in Hollowmere",phase:"arrival",status:"active",goals:{market:false,bakery:false,return:false}},lastRoll:null,turn:1}}let state=fresh();const transcript=[{k:"narr",t:"Morning settles over Hollowmere. You are free to talk, look around, wander and spend time as you choose."},{k:"runtime",t:"Praxis anchored the story at Hollowmere. The rail guides milestones; it does not script every action.",kind:"good"}];
-const scene=()=>scenes[state.location],esc=s=>String(s).replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;"}[c])),clock=()=>`${String(Math.floor(state.minutes/60)%24).padStart(2,"0")}:${String(state.minutes%60).padStart(2,"0")}`;function narr(t){transcript.push({k:"narr",t})}function rt(t,kind=""){transcript.push({k:"runtime",t,kind})}function player(t){transcript.push({k:"player",t})}function advance(m,f=0,why="activity"){state.minutes+=m;state.fatigue=Math.max(0,Math.min(10,state.fatigue+f));rt(`TIME +${m} min · fatigue ${f>=0?"+":""}${f} · ${why}.`)}
-function story(){if(state.location==="market")state.story.goals.market=true;if(state.location==="bakery")state.story.goals.bakery=true;if(state.location==="center"&&state.story.goals.market&&state.story.goals.bakery)state.story.goals.return=true;const g=state.story.goals;if(g.market&&g.bakery&&g.return&&state.story.status!=="complete"){state.story.phase="complete";state.story.status="complete";rt("STORY BEAT complete: both test scenes visited and the anchor regained.","good");narr("You return to Hollowmere with the morning shaped by the choices you made along the way.")}else if(g.market||g.bakery)state.story.phase="exploration";if(state.minutes>=720&&state.story.status==="active")state.story.phase="late-morning"}
-function context(){const s=scene(),g=state.story.goals;return[`PRAXIS SCENE STATE`,`Story: ${state.story.title}`,`Phase: ${state.story.phase}`,`Location: ${s.name}`,`Time: ${clock()}`,`Fatigue: ${state.fatigue}/10`,`Present: ${s.present.join(", ")}`,`Goals: market=${g.market}, bakery=${g.bakery}, return=${g.return}`,``,`Only the active scene and approved story state belong in narrator context.`].join("\n")}
-function renderLog(){log.innerHTML=transcript.map(x=>x.k==="player"?`<div class="turn player"><div class="who">You</div><p>${esc(x.t)}</p></div>`:x.k==="runtime"?`<div class="turn runtime ${x.kind}">⚙ ${esc(x.t)}</div>`:`<div class="turn narr"><div class="who">Narrator</div><p>${esc(x.t)}</p></div>`).join("");log.scrollTop=log.scrollHeight}
-function scenePanel(){const s=scene();return`<div class="section"><h3>Current scene</h3><div class="card"><b>${esc(s.name)}</b><div class="small">${esc(s.text)}</div></div></div><div class="section"><h3>Scene presence</h3>${s.present.map(x=>`<div class="row"><span>${esc(x)}</span><span>present</span></div>`).join("")}</div><div class="section"><h3>Free local actions</h3><div class="actions"><button class="btn" data-act="look">Look · 2 min</button><button class="btn" data-act="talk">Talk · 5 min</button><button class="btn" data-act="explore">Explore · 15 min · +1 fatigue</button><button class="btn" data-act="rest">Rest · 30 min · -3 fatigue</button></div></div><div class="section"><h3>Movement</h3>${s.exits.map(e=>`<div class="card"><b>${esc(e.label)}</b><div class="small">10 min · +1 fatigue${state.fatigue>=8?" · Endurance roll":""}</div><button class="btn primary" data-act="move" data-to="${e.to}">${state.fatigue>=8?"🎲 Attempt move":"Move"}</button></div>`).join("")}</div>`}
-function storyPanel(){const g=state.story.goals,f=(v,t)=>`<div class="row"><span>${v?"✓":"○"} ${t}</span><span>${v?"done":"open"}</span></div>`;return`<div class="section"><h3>Story rail</h3><div class="card"><b>${state.story.title}</b><div class="small">The rail defines milestones and consequences, not your dialogue.</div></div>${f(g.market,"Visit the market scene")}${f(g.bakery,"Visit the bakery scene")}${f(g.return,"Return after both")}</div><div class="row"><span>Phase</span><span>${state.story.phase}</span></div><div class="row"><span>Clock</span><span>${clock()}</span></div>`}
-function youPanel(){return`<div class="section"><h3>Player state</h3><div class="card"><b>Fatigue ${state.fatigue}/10</b><div class="meter"><i style="width:${state.fatigue*10}%"></i></div></div><div class="card"><b>Health ${state.health}/10</b><div class="meter"><i style="width:${state.health*10}%"></i></div></div><div class="row"><span>Time</span><span>${clock()}</span></div><div class="row"><span>Turn</span><span>${state.turn}</span></div>${state.lastRoll?`<div class="row"><span>Last roll</span><span>${state.lastRoll.total} vs ${state.lastRoll.dc}</span></div>`:""}</div>`}
-function render(){story();renderLog();$("#title").textContent=scene().name;$("#subtitle").textContent=`${scene().sub} · ${clock()} · fatigue ${state.fatigue}/10`;$("#p-scene").innerHTML=scenePanel();$("#p-story").innerHTML=storyPanel();$("#p-you").innerHTML=youPanel();$("#p-pack").innerHTML='<div class="card small">Inventory/economy is intentionally empty in this slice. Add it after story flow, scene presence, time and fatigue behave correctly.</div>';$("#p-state").innerHTML=`<div class="section"><h3>Scene-state preview</h3><pre>${esc(context())}</pre></div><div class="section"><h3>Authoritative state</h3><pre>${esc(JSON.stringify(state,null,2))}</pre></div><button class="btn" data-act="reset">Reset slice</button>`;document.querySelectorAll("[data-act]").forEach(b=>b.onclick=act)}
-function local(kind){state.turn++;if(kind==="look"){advance(2,0,"look");narr(scene().text)}if(kind==="talk"){advance(5,0,"conversation");narr("You can speak freely to someone who is actually present. The narration layer will handle dialogue; Praxis only records validated consequences.")}if(kind==="explore"){advance(15,1,"exploration");narr("You spend time exploring the active scene while the story rail remains in place.")}if(kind==="rest"){advance(30,-3,"rest");narr("You recover some energy while the clock keeps moving.")}render()}
-function move(to){if(!scenes[to]){rt("MOVE rejected: scene is not authored.","bad");return render()}if(state.fatigue>=8){pending=to;$("#roll").classList.add("open");return}commit(to)}function commit(to){const from=scene().name;state.location=to;if(!state.visited.includes(to))state.visited.push(to);state.turn++;advance(10,1,`move from ${from}`);rt(`MOVE validated. ${scenes[to].name} is now scene-present.`,"good");narr(scenes[to].text);render()}
-function act(e){const a=e.currentTarget.dataset.act;if(a==="move")return move(e.currentTarget.dataset.to);if(["look","talk","explore","rest"].includes(a))return local(a);if(a==="reset"){state=fresh();transcript.splice(0,transcript.length,{k:"narr",t:"Morning settles over Hollowmere."},{k:"runtime",t:"Praxis reset the Hollowmere slice.",kind:"good"});render()}}
-function free(text){player(text);const q=text.toLowerCase();if(/\b(rest|sit|relax)\b/.test(q))return local("rest");if(/\b(look|inspect|observe)\b/.test(q))return local("look");if(/\b(talk|ask|say|speak|greet)\b/.test(q))return local("talk");if(/\b(explore|search|wander)\b/.test(q))return local("explore");if(/market/.test(q)&&state.location==="center")return move("market");if(/bakery/.test(q)&&state.location==="center")return move("bakery");if(/\b(back|return|center|hollowmere)\b/.test(q)&&state.location!=="center")return move("center");state.turn++;advance(5,0,"freeform scene action");narr(`The scene receives your action: “${text}” Narration may elaborate inside the active scene, but no other persistent mutation was inferred.`);render()}
-$("#send").onclick=()=>{const v=input.value.trim();if(v){input.value="";free(v)}};input.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();$("#send").click()}};document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===t));document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id==="p-"+t.dataset.panel))});$("#cancel").onclick=()=>{pending=null;$("#roll").classList.remove("open")};$("#rollBtn").onclick=()=>{if(!pending)return;const d20=Math.floor(Math.random()*20)+1,total=d20+2,dc=12,to=pending;pending=null;state.lastRoll={d20,total,dc,success:total>=dc};$("#die").textContent=d20;setTimeout(()=>{$("#roll").classList.remove("open");if(total>=dc){rt(`Endurance SUCCESS: d20 ${d20} + 2 = ${total}.`,"good");commit(to)}else{state.turn++;advance(5,0,"failed exhausted movement");rt(`Endurance FAILED: ${total} vs ${dc}. Movement rejected.`,"bad");narr("You stop and gather yourself instead of forcing the next step.");render()}},200)};document.querySelectorAll("[data-mobile]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-mobile]").forEach(x=>x.classList.toggle("active",x===b));if(b.dataset.mobile==="chat")side.classList.remove("open");else{side.classList.add("open");document.querySelector(`[data-panel="${b.dataset.mobile}"]`)?.click()}});render()})();
-</script></body></html>
+(() => {
+  const scenes = {
+    center: {name:'Hollowmere',sub:'Bitterroot starter test area · morning',text:'Hollowmere is awake around you. Praxis is using this as the first story sandbox rather than loading an entire world at once.',present:['Townsfolk'],items:[],exits:[{label:'Market',to:'market'},{label:'Bakery',to:'bakery'}]},
+    market: {name:'Hollowmere · Market',sub:'Scene-presence test fixture',text:"The market scene is active. Only this scene's local presence is available to the narrator and interaction layer.",present:['Market traders','Townsfolk'],items:[],exits:[{label:'Return to Hollowmere',to:'center'}]},
+    bakery: {name:'Hollowmere · Bakery',sub:'Scene-presence test fixture',text:'Warmth and the smell of baking bread define the active scene. This remains a prototype fixture, not final Orbis map structure.',present:['Bakery staff','Patrons'],items:[],exits:[{label:'Return to Hollowmere',to:'center'}]}
+  };
+
+  const $ = selector => document.querySelector(selector);
+  const side = $('#side'), log = $('#log'), input = $('#input');
+  let pendingMove = null;
+  let aiBusy = false;
+
+  function freshState(){return{location:'center',minutes:480,fatigue:0,maxFatigue:10,health:10,maxHealth:10,inventory:[],visited:['center'],story:{title:'A Morning in Hollowmere',phase:'arrival',status:'active',goals:{market:false,bakery:false,return:false}},aiTask:null,lastRoll:null,turn:1}}
+  let state = freshState();
+  const transcript = [
+    {k:'narr',t:'Morning settles over Hollowmere. You are free to talk, look around, wander and spend time as you choose.'},
+    {k:'runtime',t:'Praxis anchored the story at Hollowmere. Connect NovelAI to replace mock prose with live narration and dialogue.',kind:'ai'}
+  ];
+
+  const scene = () => scenes[state.location];
+  const esc = value => String(value).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
+  const clock = () => `${String(Math.floor(state.minutes/60)%24).padStart(2,'0')}:${String(state.minutes%60).padStart(2,'0')}`;
+  const narr = text => transcript.push({k:'narr',t:text});
+  const rt = (text,kind='') => transcript.push({k:'runtime',t:text,kind});
+  const player = text => transcript.push({k:'player',t:text});
+
+  function advance(minutes,fatigue=0,reason='activity'){
+    state.minutes += minutes;
+    state.fatigue = Math.max(0,Math.min(10,state.fatigue + fatigue));
+    rt(`TIME +${minutes} min · fatigue ${fatigue>=0?'+':''}${fatigue} · ${reason}.`);
+  }
+
+  function updateStory(){
+    if(state.location==='market') state.story.goals.market=true;
+    if(state.location==='bakery') state.story.goals.bakery=true;
+    if(state.location==='center'&&state.story.goals.market&&state.story.goals.bakery) state.story.goals.return=true;
+    const g=state.story.goals;
+    if(g.market&&g.bakery&&g.return&&state.story.status!=='complete'){
+      state.story.phase='complete';state.story.status='complete';state.aiTask=null;
+      rt('STORY BEAT complete: both test scenes visited and the anchor regained.','good');
+      narr('You return to Hollowmere with the morning shaped by the choices you made along the way.');
+    } else if(g.market||g.bakery) state.story.phase='exploration';
+    if(state.minutes>=720&&state.story.status==='active') state.story.phase='late-morning';
+  }
+
+  function allowedObjectives(){
+    const g=state.story.goals, out=[];
+    if(!g.market) out.push({key:'visit-market',label:'Visit the market scene'});
+    if(!g.bakery) out.push({key:'visit-bakery',label:'Visit the bakery scene'});
+    if(g.market&&g.bakery&&!g.return) out.push({key:'return-center',label:'Return to Hollowmere after both scenes'});
+    return out;
+  }
+
+  function aiPayload(inputText='',resolvedOutcome=null){
+    const s=scene();
+    return {
+      input:inputText,
+      scene:{location:s.name,description:s.text,time:clock(),fatigue:`${state.fatigue}/${state.maxFatigue}`,health:`${state.health}/${state.maxHealth}`,present:s.present,exits:s.exits.map(x=>x.label),items:s.items},
+      story:{title:state.story.title,phase:state.story.phase,status:state.story.status,goals:state.story.goals},
+      allowedObjectives:allowedObjectives(),
+      resolvedOutcome,
+      history:transcript.filter(x=>x.k==='player'||x.k==='narr').slice(-12).map(x=>({role:x.k==='player'?'user':'assistant',content:x.t}))
+    };
+  }
+
+  async function liveNarrate(text, resolvedOutcome=null){
+    if(!window.PraxisAI?.hasToken()) return false;
+    aiBusy=true;render();
+    try{
+      const result=await window.PraxisAI.turn(aiPayload(text,resolvedOutcome));
+      narr(result.narration);
+      rt(`NovelAI narration accepted · ${result.model}. No authoritative state was changed by the model.`,'ai');
+      return true;
+    }catch(error){
+      rt(`AI pipe failed: ${error.message}`,'bad');
+      return false;
+    }finally{aiBusy=false;render()}
+  }
+
+  async function askDirector(){
+    const allowed=allowedObjectives();
+    if(!allowed.length){rt('Story Director has no open runtime-approved objectives.','good');return render()}
+    if(!window.PraxisAI?.hasToken()){openAiSetup('Connect NovelAI before asking the Story Director.');return}
+    aiBusy=true;render();
+    try{
+      const result=await window.PraxisAI.director({...aiPayload(),allowedObjectives:allowed});
+      if(!result.accepted||!result.task){rt(`AI task rejected by Praxis: ${result.rejection||'invalid task proposal'}.`,'bad');return}
+      if(!allowed.some(x=>x.key===result.task.objectiveKey)){rt('AI task rejected: objective is no longer valid.','bad');return}
+      state.aiTask=result.task;
+      rt(`Story Director selected runtime-approved objective ${result.task.objectiveKey}.`,'good');
+      narr(`${result.task.title}: ${result.task.briefing}`);
+    }catch(error){rt(`Story Director failed: ${error.message}`,'bad')}
+    finally{aiBusy=false;render()}
+  }
+
+  function renderLog(){
+    log.innerHTML=transcript.map(x=>x.k==='player'?`<div class="turn player"><div class="who">You</div><p>${esc(x.t)}</p></div>`:x.k==='runtime'?`<div class="turn runtime ${x.kind||''}">⚙ ${esc(x.t)}</div>`:`<div class="turn narr"><div class="who">Narrator</div><p>${esc(x.t)}</p></div>`).join('');
+    log.scrollTop=log.scrollHeight;
+  }
+
+  function scenePanel(){
+    const s=scene();
+    return `<div class="section"><h3>Current scene</h3><div class="card"><b>${esc(s.name)}</b><div class="small">${esc(s.text)}</div></div></div><div class="section"><h3>Scene presence</h3>${s.present.map(x=>`<div class="row"><span>${esc(x)}</span><span>present</span></div>`).join('')}</div><div class="section"><h3>Free local actions</h3><div class="actions"><button class="btn" data-act="look">Look · 2 min</button><button class="btn" data-act="talk">Talk · 5 min</button><button class="btn" data-act="explore">Explore · 15 min · +1 fatigue</button><button class="btn" data-act="rest">Rest · 30 min · -3 fatigue</button></div></div><div class="section"><h3>Movement</h3>${s.exits.map(e=>`<div class="card"><b>${esc(e.label)}</b><div class="small">10 min · +1 fatigue${state.fatigue>=8?' · Endurance roll':''}</div><button class="btn primary" data-act="move" data-to="${e.to}">${state.fatigue>=8?'🎲 Attempt move':'Move'}</button></div>`).join('')}</div>`;
+  }
+
+  function storyPanel(){
+    const g=state.story.goals, mark=(v,t)=>`<div class="row"><span>${v?'✓':'○'} ${t}</span><span>${v?'done':'open'}</span></div>`;
+    const task=state.aiTask?`<div class="card task"><b>${esc(state.aiTask.title)}</b><div class="small">${esc(state.aiTask.briefing)}</div><div class="row"><span>Objective</span><span>${esc(state.aiTask.objectiveKey)}</span></div></div>`:'<div class="card small">No AI-delivered task yet. The director may only choose from objectives that the Praxis rail currently allows.</div>';
+    return `<div class="section"><h3>Story rail</h3><div class="card"><b>${esc(state.story.title)}</b><div class="small">The rail defines milestones and consequences, not your dialogue.</div></div>${mark(g.market,'Visit the market scene')}${mark(g.bakery,'Visit the bakery scene')}${mark(g.return,'Return after both')}</div><div class="section"><h3>Story Director</h3>${task}<button class="btn primary" data-act="director" ${aiBusy?'disabled':''}>${aiBusy?'AI working...':'Ask for next task'}</button></div><div class="row"><span>Phase</span><span>${state.story.phase}</span></div><div class="row"><span>Clock</span><span>${clock()}</span></div>`;
+  }
+
+  function youPanel(){return `<div class="section"><h3>Player state</h3><div class="card"><b>Fatigue ${state.fatigue}/10</b><div class="meter"><i style="width:${state.fatigue*10}%"></i></div></div><div class="card"><b>Health ${state.health}/10</b><div class="meter"><i style="width:${state.health*10}%"></i></div></div><div class="row"><span>Time</span><span>${clock()}</span></div><div class="row"><span>Turn</span><span>${state.turn}</span></div>${state.lastRoll?`<div class="row"><span>Last roll</span><span>${state.lastRoll.total} vs ${state.lastRoll.dc}</span></div>`:''}</div>`}
+
+  function runtimePreview(){const s=scene();return [`PRAXIS SCENE STATE`,`Story: ${state.story.title}`,`Phase: ${state.story.phase}`,`Location: ${s.name}`,`Time: ${clock()}`,`Fatigue: ${state.fatigue}/10`,`Present: ${s.present.join(', ')}`,`Allowed objectives: ${allowedObjectives().map(x=>x.key).join(', ')||'none'}`,``,`Only this active slice is sent to the narrator.`].join('\n')}
+
+  function render(){
+    updateStory();renderLog();
+    $('#title').textContent=scene().name;$('#subtitle').textContent=`${scene().sub} · ${clock()} · fatigue ${state.fatigue}/10`;
+    $('#p-scene').innerHTML=scenePanel();$('#p-story').innerHTML=storyPanel();$('#p-you').innerHTML=youPanel();
+    $('#p-pack').innerHTML='<div class="card small">Inventory/economy remains intentionally empty in this slice. AI is not allowed to invent possessions.</div>';
+    $('#p-state').innerHTML=`<div class="section"><h3>Narrator context preview</h3><pre>${esc(runtimePreview())}</pre></div><div class="section"><h3>Authoritative state</h3><pre>${esc(JSON.stringify(state,null,2))}</pre></div><button class="btn" data-act="reset">Reset slice</button>`;
+    $('#send').disabled=aiBusy;
+    $('#aiStatus').textContent=window.PraxisAI?.hasToken()?`AI connected · ${window.PraxisAI.getModel()}`:'AI disconnected';
+    $('#aiStatus').classList.toggle('off',!window.PraxisAI?.hasToken());
+    document.querySelectorAll('[data-act]').forEach(button=>button.onclick=handleAction);
+  }
+
+  async function localAction(kind){
+    state.turn++;
+    let prompt='';
+    if(kind==='look'){advance(2,0,'look');prompt='I look around carefully and take in the current scene.'}
+    if(kind==='talk'){advance(5,0,'conversation');prompt='I start a conversation with someone who is present here.'}
+    if(kind==='explore'){advance(15,1,'exploration');prompt='I explore the current scene, paying attention to what is actually accessible.'}
+    if(kind==='rest'){advance(30,-3,'rest');prompt='I rest here for a while.'}
+    player(prompt);
+    const usedAi=await liveNarrate(prompt);
+    if(!usedAi){
+      if(kind==='look') narr(scene().text);
+      else if(kind==='talk') narr('Someone nearby acknowledges you. Connect NovelAI for an actual conversation.');
+      else if(kind==='explore') narr('You spend time exploring the active scene while the story rail remains in place.');
+      else narr('You recover some energy while the clock keeps moving.');
+    }
+    render();
+  }
+
+  function move(to){
+    if(!scenes[to]){rt('MOVE rejected: scene is not authored.','bad');return render()}
+    if(state.fatigue>=8){pendingMove=to;$('#roll').classList.add('open');return}
+    commitMove(to);
+  }
+
+  async function commitMove(to){
+    const from=scene().name;
+    state.location=to;if(!state.visited.includes(to))state.visited.push(to);state.turn++;advance(10,1,`move from ${from}`);
+    const outcome=`MOVE validated from ${from} to ${scenes[to].name}. The destination is now scene-present.`;
+    rt(outcome,'good');updateStory();
+    const usedAi=await liveNarrate(`I move from ${from} to ${scenes[to].name}.`,outcome);
+    if(!usedAi) narr(scenes[to].text);
+    render();
+  }
+
+  async function freeText(text){
+    player(text);
+    const q=text.toLowerCase();
+    if(/\b(rest|sit|relax)\b/.test(q)) return localAction('rest');
+    if(/\b(look|inspect|observe)\b/.test(q)) return localAction('look');
+    if(/\b(explore|search|wander)\b/.test(q)) return localAction('explore');
+    if(/market/.test(q)&&state.location==='center') return move('market');
+    if(/bakery/.test(q)&&state.location==='center') return move('bakery');
+    if(/\b(back|return|center|hollowmere)\b/.test(q)&&state.location!=='center') return move('center');
+    state.turn++;advance(5,0,'freeform scene action');
+    const usedAi=await liveNarrate(text);
+    if(!usedAi) narr(`The scene receives your action: “${text}” Connect NovelAI for live prose and NPC dialogue.`);
+    render();
+  }
+
+  function handleAction(event){
+    const action=event.currentTarget.dataset.act;
+    if(action==='move') return move(event.currentTarget.dataset.to);
+    if(action==='director') return askDirector();
+    if(['look','talk','explore','rest'].includes(action)) return localAction(action);
+    if(action==='reset'){state=freshState();transcript.splice(0,transcript.length,{k:'narr',t:'Morning settles over Hollowmere.'},{k:'runtime',t:'Praxis reset the Hollowmere slice.',kind:'good'});render()}
+  }
+
+  function openAiSetup(message=''){$('#aiError').textContent=message;$('#token').value='';$('#aiModal').classList.add('open')}
+
+  async function connectAI(){
+    const token=$('#token').value.trim();$('#aiError').textContent='';
+    if(!token){$('#aiError').textContent='Paste a Persistent API token first.';return}
+    window.PraxisAI.setToken(token);
+    try{
+      const response=await window.PraxisAI.models();
+      const select=$('#model');select.innerHTML='';
+      const models=Array.isArray(response?.data)?response.data:[];
+      if(!models.length){select.innerHTML='<option value="glm-4-6">glm-4-6</option>'}
+      else models.forEach(item=>{const id=item?.id||item?.name;if(id){const option=document.createElement('option');option.value=id;option.textContent=id;select.appendChild(option)}});
+      if([...select.options].some(x=>x.value==='glm-4-6')) select.value='glm-4-6';
+      window.PraxisAI.setModel(select.value||'glm-4-6');
+      rt(`NovelAI connected. Available models: ${models.length||'default model only'}.`,'good');
+      $('#aiModal').classList.remove('open');render();
+    }catch(error){window.PraxisAI.clearToken();$('#aiError').textContent=error.message;render()}
+  }
+
+  $('#send').onclick=()=>{const value=input.value.trim();if(!value||aiBusy)return;input.value='';freeText(value)};
+  input.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();$('#send').click()}};
+  document.querySelectorAll('.tab').forEach(tab=>tab.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===tab));document.querySelectorAll('.panel').forEach(panel=>panel.classList.toggle('active',panel.id==='p-'+tab.dataset.panel))});
+  $('#cancelRoll').onclick=()=>{pendingMove=null;$('#roll').classList.remove('open')};
+  $('#rollBtn').onclick=()=>{if(!pendingMove)return;const d20=Math.floor(Math.random()*20)+1,total=d20+2,dc=12,to=pendingMove;pendingMove=null;state.lastRoll={d20,total,dc,success:total>=dc};$('#die').textContent=d20;setTimeout(()=>{$('#roll').classList.remove('open');if(total>=dc){rt(`Endurance SUCCESS: d20 ${d20} + 2 = ${total}.`,'good');commitMove(to)}else{state.turn++;advance(5,0,'failed exhausted movement');rt(`Endurance FAILED: ${total} vs ${dc}. Movement rejected.`,'bad');liveNarrate('I try to push onward despite my exhaustion.',`Endurance FAILED: ${total} vs ${dc}. Movement does not occur.`).then(ok=>{if(!ok)narr('You stop and gather yourself instead of forcing the next step.');render()})}},200)};
+  $('#aiSetup').onclick=()=>openAiSetup();$('#closeAI').onclick=()=>$('#aiModal').classList.remove('open');$('#connectAI').onclick=connectAI;
+  $('#disconnectAI').onclick=()=>{window.PraxisAI.clearToken();rt('NovelAI disconnected. The token was discarded from page memory.','ai');$('#aiModal').classList.remove('open');render()};
+  $('#model').onchange=event=>window.PraxisAI.setModel(event.target.value);
+  document.querySelectorAll('[data-mobile]').forEach(button=>button.onclick=()=>{document.querySelectorAll('[data-mobile]').forEach(x=>x.classList.toggle('active',x===button));if(button.dataset.mobile==='chat')side.classList.remove('open');else{side.classList.add('open');document.querySelector(`[data-panel="${button.dataset.mobile}"]`)?.click()}});
+  render();
+})();
+</script>
+</body>
+</html>
