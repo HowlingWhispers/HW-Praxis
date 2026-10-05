@@ -1,6 +1,6 @@
 # Praxis AI Pipeline
 
-Status: pre-alpha, v0.3.0 bridge
+Status: pre-alpha, v0.4.0 bridge
 
 Praxis now has the first real AI pipe for the Hollowmere prototype. The pipe is deliberately narrow: AI can narrate, speak as scene-present NPCs, and turn runtime-approved objectives into natural task briefings. It still cannot write authoritative world state.
 
@@ -102,6 +102,8 @@ Example body:
 ```json
 {
   "model": "glm-4-6",
+  "controlMode": "manual",
+  "goal": "",
   "input": "I ask the trader what happened last night.",
   "scene": {
     "location": "Hollowmere · Market",
@@ -162,9 +164,40 @@ Example accepted response:
 
 The current browser prototype still owns the story rail, so this validation is only a prototype boundary. In the production Java runtime, the server must own the allowed objective set rather than trusting a browser-supplied list.
 
+### `POST /api/v1/ai/action`
+
+Requires `controlMode: "full"`, a nonempty `goal`, the active scene projection,
+and a bounded `allowedActions` list. Each choice has a unique `key`, a `kind`
+(`look`, `talk`, `explore`, `rest` or `move`) and a description.
+
+The provider returns only `{"actionKey":"look"}`. The bridge rejects malformed
+JSON and unknown keys. The response reports `accepted`, `actionKey` on success,
+and `authoritativeStateChanged: false`. The browser rechecks the key against its
+current choices, resolves the existing mechanics and requests narration with
+that resolved outcome. Model-supplied state fields are never applied.
+
+The browser still owns available actions and mechanics in this prototype. These
+checks prevent the model from choosing an unavailable action; they are not a
+server-authoritative session boundary. Move choices, time, rolls and persistence
+into Java before using this as a shared world runtime.
+
+### Control modes on narration requests
+
+`/ai/turn` accepts `controlMode` (`manual`, `assisted`, `full`) and optional
+`goal`. Omitted mode defaults to Manual for compatibility; unknown modes fail
+before generation. Manual forbids writing the player's character. Assisted
+allows routine detail within the stated intention and resolved outcome. Full
+narrates one selected action toward the goal. All modes retain the same rules
+against inventing persistent outcomes.
+
 ## Human-triggered generation
 
-NovelAI generation must remain tied to an explicit player action. Praxis currently generates only after the player sends text, presses a scene action that requests narration, or presses **Ask for next task**. Do not add unattended generation loops.
+NovelAI generation must remain tied to an explicit player action. Praxis currently generates only after the player sends text, presses a scene action that requests narration, presses **Ask for next task**, or presses **Let AI act** for one Full AI step. Do not add unattended generation loops.
+
+The browser can abort its pending fetch and discard a late response. This does
+not roll back an action already resolved, and does not guarantee that an
+upstream provider stops generating. Mode changes and additional actions are
+blocked during generation or an unresolved movement roll.
 
 ## Build
 

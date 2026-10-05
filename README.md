@@ -4,12 +4,23 @@ Praxis is the experimental player-facing story layer for The Howling Whispers.
 It is the narrative/state bridge where freeform AI roleplay meets authoritative
 game state.
 
-Praxis is built for **authored stories on semi-hard rails**. A story provides a
-shape, milestones, time pressure, access rules, consequences and possible
-branches, while the player remains free to talk, investigate, explore, wait,
-rest and approach scenes in their own way. Freedom has systemic cost: time moves,
-fatigue accumulates, resources change, schedules can move on, and risky actions
-may require a system roll.
+Praxis is now being developed as a **free-roam text RPG** in one world at a time.
+Story milestones offer direction when wanted. Players can talk, investigate,
+explore, travel and rest in their own way, while time, fatigue and checks still
+constrain recorded outcomes.
+
+The reading window sits above a multiline action prompt. Choose how much of the
+character's writing to control:
+
+| Mode | Player input | AI responsibility |
+| --- | --- | --- |
+| Manual | Actions and dialogue, in as much detail as desired | Surroundings and NPC reactions; preserve player control |
+| Assisted AI | A short intention, such as “Go to the market and look around” | Fill in routine details; pause before important new decisions |
+| Full AI | A character goal, then **Let AI act** | Propose one available action, let Praxis resolve it, then narrate it |
+
+Full AI runs one step per click. **Pause AI** discards an unfinished response;
+already resolved time, fatigue or travel remain recorded. Switch modes between
+actions to take over. Enter adds a line; Ctrl/Cmd + Enter sends.
 
 Players speak and act in ordinary language. Praxis decides what that language
 *means* for authoritative state. AI narration can improvise atmosphere, dialogue
@@ -98,7 +109,10 @@ story knows they exist.
 Hollowmere is the first Praxis test area. The prototype currently proves:
 
 - Hollowmere as the story anchor
-- semi-hard story milestones rather than a fully open simulation
+- optional story milestones within the current scene sandbox
+- Manual, Assisted AI and Full AI control modes
+- multiline writing with a reading window above the prompt
+- local save/resume of state, mode, goals, draft and transcript
 - free text conversation and exploration inside the current scene
 - scene-presence context gating
 - time advancement
@@ -119,6 +133,8 @@ Frontend sources:
 ```text
 prototype/hollowmere-demo.html
 prototype/praxis-ai.js
+prototype/praxis-session.js
+prototype/praxis-app.js
 ```
 
 The browser still owns more prototype state than the production architecture
@@ -127,7 +143,7 @@ fatigue, rolls and scene presence into Java.
 
 ## AI pipe
 
-Praxis v0.3.0 introduces the first live provider bridge.
+Praxis v0.4.0 extends the provider bridge with control modes and bounded action selection.
 
 Endpoints:
 
@@ -136,6 +152,7 @@ GET  /api/v1/health
 GET  /api/v1/ai/models
 POST /api/v1/ai/turn
 POST /api/v1/ai/director
+POST /api/v1/ai/action
 ```
 
 NovelAI is the first provider, using its current OpenAI-compatible text API. The
@@ -146,9 +163,19 @@ localStorage.
 `/api/v1/ai/turn` returns narration/dialogue and never authoritative mutations.
 `/api/v1/ai/director` turns one currently allowed objective into a natural task
 briefing. Invalid objective keys are rejected.
+`/api/v1/ai/action` proposes one supplied action key for Full AI; unknown keys are
+rejected again by the browser before any rule is resolved.
 
 See [`docs/AI_PIPELINE.md`](docs/AI_PIPELINE.md) for the provider contract,
 security notes, build steps and nginx proxy shape.
+
+Local saves are specific to this browser and origin. They contain writing and
+prototype state, never the API token. Refresh requires reconnecting NovelAI.
+Reset asks before replacing a save. An unreadable save is preserved until an
+explicit reset. Saves are not yet multiplayer or server-authoritative. Health
+and inventory remain placeholders; searching for food cannot create items yet.
+Unknown travel directions are rejected instead of silently converted to a look
+action. This slice currently maps Hollowmere, the Market and the Bakery only.
 
 ## Build the Java bridge
 
@@ -156,6 +183,7 @@ Requires Java 21 and Maven:
 
 ```bash
 mvn clean package
+node --test tests/session.test.cjs
 java -jar target/praxis-server.jar
 ```
 
@@ -174,9 +202,8 @@ frontend as static files.
 2. Move the allowed story rail and objective set into Java so the browser cannot
    define authoritative tasks.
 3. Move time, fatigue, rolls and scene presence into Java.
-4. Add save/resume and conversation-window persistence.
-5. Expand Hollowmere into a real short authored story with branches and timed
-   consequences.
+4. Move the local save/resume prototype to server-owned sessions.
+5. Add health, inventory and richer actions to the free-roam foundation.
 6. Decide the later Orbis integration boundary only after the runtime contract is
    stable.
 
@@ -208,7 +235,7 @@ redirects to HTTPS.
 
 ## Current version
 
-`0.3.0` - AI Pipe. See [CHANGELOG.md](CHANGELOG.md).
+`0.4.0` - Free-roam Controls. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Branch model
 

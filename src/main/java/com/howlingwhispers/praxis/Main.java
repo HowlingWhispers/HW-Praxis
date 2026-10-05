@@ -31,7 +31,7 @@ public final class Main {
             ObjectNode body = JSON.createObjectNode();
             body.put("ok", true);
             body.put("service", "praxis-ai");
-            body.put("version", "0.3.0");
+            body.put("version", "0.4.0");
             body.put("provider", "novelai");
             body.put("time", Instant.now().toString());
             sendJson(exchange, 200, body);
@@ -52,6 +52,12 @@ public final class Main {
             String token = token(exchange);
             JsonNode request = readJson(exchange);
             sendJson(exchange, 200, ai.direct(token, request));
+        }));
+
+        server.createContext("/api/v1/ai/action", guarded("POST", exchange -> {
+            String token = token(exchange);
+            JsonNode request = readJson(exchange);
+            sendJson(exchange, 200, ai.chooseAction(token, request));
         }));
 
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());

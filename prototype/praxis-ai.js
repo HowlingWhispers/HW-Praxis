@@ -32,16 +32,25 @@
     getModel() { return selectedModel; },
     health() { return request('/api/v1/health'); },
     models() { return request('/api/v1/ai/models'); },
-    turn(payload) {
+    turn(payload, signal) {
       return request('/api/v1/ai/turn', {
         method: 'POST',
         body: JSON.stringify({ model: selectedModel, ...payload }),
+        signal,
       });
     },
-    director(payload) {
+    action(payload, signal) {
+      return request('/api/v1/ai/action', {
+        method: 'POST',
+        body: JSON.stringify({ model: selectedModel, ...payload }),
+        signal,
+      });
+    },
+    director(payload, signal) {
       return request('/api/v1/ai/director', {
         method: 'POST',
         body: JSON.stringify({ model: selectedModel, ...payload }),
+        signal,
       });
     },
   };

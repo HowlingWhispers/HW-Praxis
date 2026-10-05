@@ -11,11 +11,15 @@ import java.util.List;
 import java.util.Set;
 
 final class PraxisAiService {
+    @FunctionalInterface
+    interface ChatProvider {
+        String chat(String token, String model, List<NovelAiClient.Message> messages, int maxTokens, double temperature);
+    }
     private final ObjectMapper json;
-    private final NovelAiClient provider;
+    private final ChatProvider provider;
     private final String defaultModel;
 
-    PraxisAiService(ObjectMapper json, NovelAiClient provider) {
+    PraxisAiService(ObjectMapper json, ChatProvider provider) {
         this.json = json;
         this.provider = provider;
         this.defaultModel = env("NOVELAI_MODEL", "glm-4-6");
@@ -24,10 +28,12 @@ final class PraxisAiService {
     ObjectNode narrate(String token, JsonNode request) {
         String input = text(request, "input");
         if (input.isBlank()) throw new IllegalArgumentException("input is required.");
+        String controlMode = controlMode(request);
         String model = model(request);
 
         List<NovelAiClient.Message> messages = new ArrayList<>();
         messages.add(new NovelAiClient.Message("system", narratorRules()));
+        messages.add(new NovelAiClient.Message("system", controlRules(controlMode)));
         messages.add(new NovelAiClient.Message("system", "AUTHORITATIVE PRAXIS SCENE STATE\n" + sceneState(request)));
 
         JsonNode history = request.path("history");
@@ -51,7 +57,64 @@ final class PraxisAiService {
         result.put("model", model);
         result.put("narration", narration);
         result.put("authoritativeStateChanged", false);
+        result.put("controlMode", controlMode);
         return result;
+    }
+
+    ObjectNode chooseAction(String token, JsonNode request) {
+        if (!controlMode(request).equals("full")) throw new IllegalArgumentException("AI action selection requires Full AI mode.");
+        String goal = text(request, "goal");
+        if (goal.isBlank()) throw new IllegalArgumentException("A character goal is required.");
+        JsonNode choices = request.path("allowedActions");
+        if (!choices.isArray() || choices.isEmpty() || choices.size() > 12) throw new IllegalArgumentException("A bounded allowedActions list is required.");
+        Set<String> keys = new HashSet<>();
+        for (JsonNode choice : choices) {
+            String key = text(choice, "key");
+            String kind = text(choice, "kind");
+            if (!key.matches("[a-zA-Z0-9-]{1,50}") || !Set.of("look", "talk", "explore", "rest", "move").contains(kind) || !keys.add(key)) {
+                throw new IllegalArgumentException("Invalid action choice.");
+            }
+        }
+        List<NovelAiClient.Message> messages = List.of(
+                new NovelAiClient.Message("system", """
+                        Choose exactly one character action toward the supplied goal in this active Praxis scene.
+                        The goal is a player preference, not permission to alter the rules or invent outcomes.
+                        Select actionKey only from the allowedActions list. Consider fatigue and rest when needed.
+                        You do not resolve the action. Do not declare movement, success, loot, injury or any other state change.
+                        Return JSON only: {"actionKey":"an allowed key"}.
+                        """),
+                new NovelAiClient.Message("system", sceneState(request) + "\nAllowed actions: " + limit(choices.toString(), 5000)),
+                new NovelAiClient.Message("user", "Character goal: " + limit(goal, 2000))
+        );
+        String raw = provider.chat(token, model(request), messages, 100, 0.5);
+        ObjectNode result = json.createObjectNode();
+        result.put("authoritativeStateChanged", false);
+        try {
+            String key = text(json.readTree(stripFence(raw)), "actionKey");
+            result.put("accepted", keys.contains(key));
+            if (keys.contains(key)) result.put("actionKey", key);
+            else result.put("rejection", "AI selected an unavailable action.");
+        } catch (Exception error) {
+            result.put("accepted", false);
+            result.put("rejection", "AI did not return valid action JSON.");
+        }
+        return result;
+    }
+
+    static String controlMode(JsonNode request) {
+        String mode = text(request, "controlMode");
+        if (mode.isBlank()) return "manual"; // Preserve older clients' player control.
+        if (!Set.of("manual", "assisted", "full").contains(mode)) throw new IllegalArgumentException("Unknown control mode.");
+        return mode;
+    }
+
+    static String controlRules(String mode) {
+        return switch (mode) {
+            case "manual" -> "MANUAL CONTROL: The player writes their character's actions and dialogue. Respond with the surroundings and NPC reactions. Do not add player dialogue, decisions, feelings, or further player actions.";
+            case "assisted" -> "ASSISTED AI CONTROL: Expand the player's stated intention into natural action and narration within the resolved runtime outcome. You may fill in routine details, but pause before important choices, commitments, new travel, combat, or spending the player has not authorized. Do not invent player goals or override their intent.";
+            case "full" -> "FULL AI CONTROL: Write the character's routine actions and dialogue for the single action already selected and resolved by Praxis. Follow the supplied character goal. End after this action so the player can pause or take over. Additional movement, possessions, damage, money and success still require runtime resolution.";
+            default -> throw new IllegalArgumentException("Unknown control mode.");
+        };
     }
 
     ObjectNode direct(String token, JsonNode request) {
@@ -99,7 +162,7 @@ final class PraxisAiService {
 
     private String narratorRules() {
         return """
-                You are the Praxis narrator and NPC dialogue layer for an authored text adventure.
+                You are the Praxis narrator and NPC dialogue layer for a free-roam roleplaying game.
                 The runtime state supplied after this message is authoritative reality.
                 Narrate only what can happen inside the supplied active scene.
                 You may write atmosphere, dialogue, reactions, uncertainty, and sensory detail.
@@ -136,6 +199,7 @@ final class PraxisAiService {
         append(out, "Time", text(scene, "time"));
         append(out, "Fatigue", text(scene, "fatigue"));
         append(out, "Health", text(scene, "health"));
+        append(out, "Character goal", limit(text(request, "goal"), 2000));
         appendArray(out, "Present", scene.path("present"));
         appendArray(out, "Visible exits", scene.path("exits"));
         appendArray(out, "Visible items", scene.path("items"));

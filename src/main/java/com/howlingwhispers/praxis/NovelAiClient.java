@@ -13,7 +13,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 
-final class NovelAiClient {
+final class NovelAiClient implements PraxisAiService.ChatProvider {
     record Message(String role, String content) {}
 
     static final class ProviderException extends RuntimeException {
@@ -48,7 +48,7 @@ final class NovelAiClient {
         return sendJson(request);
     }
 
-    String chat(String token, String model, List<Message> messages, int maxTokens, double temperature) {
+    public String chat(String token, String model, List<Message> messages, int maxTokens, double temperature) {
         ObjectNode body = json.createObjectNode();
         body.put("model", model);
         body.put("max_tokens", maxTokens);

@@ -8,6 +8,25 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.4.0 - Free-roam Controls - 2026-10-05
+
+- Continue the existing Praxis slice with a reading window above a multiline
+  action prompt and switchable Manual, Assisted AI and Full AI control modes.
+- Keep optional Hollowmere milestones, travel, fatigue, Endurance rolls and
+  character panels. Market and Bakery remain test fixtures.
+- Add mode-specific narration instructions and `/api/v1/ai/action` for one
+  player-triggered Full AI action selected from the current available choices.
+- Reject unavailable action keys before resolving prototype mechanics. AI
+  responses never apply model-supplied health, inventory or other state fields.
+- Add Pause AI, discard stale responses, and prevent overlapping actions.
+- Save/resume local state, transcript, goal, mode and draft without API tokens.
+  Preserve unreadable saves and confirm before resetting.
+- Route travel before incidental “look” verbs, reject unmapped destinations,
+  preserve the exact submitted text and avoid duplicate history entries.
+- Extract browser session/application code and add Java boundary tests and
+  Node tests for intent routing, action choices, saves and history.
+- Health and inventory mechanics and server-owned sessions remain future work.
+
 ## 0.3.0 - AI Pipe - 2026-09-30
 
 ### NovelAI bridge
