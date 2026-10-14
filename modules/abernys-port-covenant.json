@@ -3,8 +3,10 @@
   "id": "abernys-port-covenant",
   "name": "Abernys: Port Covenant",
   "version": "0.1.0",
-  "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own.",
-  "source": { "kind": "local" },
+  "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and their Four Approaches tiers (the Arbiter a rival, the guard a minion), and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own.",
+  "source": {
+    "kind": "local"
+  },
   "world": {
     "id": "world-abernys",
     "name": "Abernys",
@@ -89,11 +91,11 @@
       },
       {
         "id": "pc-outside-walls",
-        "name": "Outside the walls",
+        "name": "The outer lanes",
         "kind": "district",
         "parentLocationId": "nospier-point",
         "canonStatus": "draft",
-        "description": "Where most of the colony's mixed families live, between the wall and the open headland."
+        "description": "Where most of the colony's mixed families live, in the lanes between the wall and the open headland."
       },
       {
         "id": "fenmire",
@@ -196,22 +198,86 @@
       }
     ],
     "species": [
-      { "id": "humans", "name": "Humans", "description": "The latest arrivals: colonizers at Port Covenant, thralls on the wreck coast, mudflat dwellers in Caerwyn." },
-      { "id": "harefolk", "name": "Harefolk", "description": "First peoples." },
-      { "id": "badgerfolk", "name": "Badgerfolk", "description": "First peoples." },
-      { "id": "salamanders", "name": "Salamanders", "description": "First peoples of the fens. None appear among Bitterroot's peoples." },
-      { "id": "cervidfolk", "name": "Cervidfolk", "description": "First peoples; Clan Hart of Cairn Maw." },
-      { "id": "caprinefolk", "name": "Caprinefolk", "description": "First peoples; Clan Crag of Cairn Maw." },
-      { "id": "bovinefolk", "name": "Bovinefolk", "description": "First peoples; Clan Aurochs of Cairn Maw." },
-      { "id": "foxfolk", "name": "Foxfolk", "description": "Earlier migration from Bitterroot, by a route nobody remembers." },
-      { "id": "boarfolk", "name": "Boarfolk", "description": "Earlier migration from Bitterroot." },
-      { "id": "bearfolk", "name": "Bearfolk", "description": "Earlier migration from Bitterroot." },
-      { "id": "wolves", "name": "Wolves", "description": "Sea raiders turned rulers of the fjord jarldoms, and muscle among the pirates." },
-      { "id": "ferrets", "name": "Ferrets", "description": "Pirates, island-born, escaped or outcast." },
-      { "id": "rats", "name": "Rats", "description": "Pirates, island-born, escaped or outcast." },
-      { "id": "otters", "name": "Otters", "description": "Pirates, island-born, escaped or outcast." },
-      { "id": "stoats", "name": "Stoats", "description": "Pirates, island-born, escaped or outcast." },
-      { "id": "weasels", "name": "Weasels", "description": "Pirates, island-born, escaped or outcast." }
+      {
+        "id": "humans",
+        "name": "Humans",
+        "description": "The latest arrivals: colonizers at Port Covenant, thralls on the wreck coast, mudflat dwellers in Caerwyn."
+      },
+      {
+        "id": "harefolk",
+        "name": "Harefolk",
+        "description": "First peoples."
+      },
+      {
+        "id": "badgerfolk",
+        "name": "Badgerfolk",
+        "description": "First peoples."
+      },
+      {
+        "id": "salamanders",
+        "name": "Salamanders",
+        "description": "First peoples of the fens. None appear among Bitterroot's peoples."
+      },
+      {
+        "id": "cervidfolk",
+        "name": "Cervidfolk",
+        "description": "First peoples; Clan Hart of Cairn Maw."
+      },
+      {
+        "id": "caprinefolk",
+        "name": "Caprinefolk",
+        "description": "First peoples; Clan Crag of Cairn Maw."
+      },
+      {
+        "id": "bovinefolk",
+        "name": "Bovinefolk",
+        "description": "First peoples; Clan Aurochs of Cairn Maw."
+      },
+      {
+        "id": "foxfolk",
+        "name": "Foxfolk",
+        "description": "Earlier migration from Bitterroot, by a route nobody remembers."
+      },
+      {
+        "id": "boarfolk",
+        "name": "Boarfolk",
+        "description": "Earlier migration from Bitterroot."
+      },
+      {
+        "id": "bearfolk",
+        "name": "Bearfolk",
+        "description": "Earlier migration from Bitterroot."
+      },
+      {
+        "id": "wolves",
+        "name": "Wolves",
+        "description": "Sea raiders turned rulers of the fjord jarldoms, and muscle among the pirates."
+      },
+      {
+        "id": "ferrets",
+        "name": "Ferrets",
+        "description": "Pirates, island-born, escaped or outcast."
+      },
+      {
+        "id": "rats",
+        "name": "Rats",
+        "description": "Pirates, island-born, escaped or outcast."
+      },
+      {
+        "id": "otters",
+        "name": "Otters",
+        "description": "Pirates, island-born, escaped or outcast."
+      },
+      {
+        "id": "stoats",
+        "name": "Stoats",
+        "description": "Pirates, island-born, escaped or outcast."
+      },
+      {
+        "id": "weasels",
+        "name": "Weasels",
+        "description": "Pirates, island-born, escaped or outcast."
+      }
     ],
     "factions": [
       {
@@ -232,7 +298,9 @@
         "id": "the-arrival",
         "title": "The arrival",
         "kind": "event",
-        "locationIds": ["port-covenant"],
+        "locationIds": [
+          "port-covenant"
+        ],
         "description": "Humans driven from the homeland by a disaster that stays unwritten settled the city the Wailing had emptied. How many generations ago is never stated."
       }
     ]
@@ -242,18 +310,29 @@
       "id": "traveller",
       "name": "The traveller",
       "canonStatus": "draft",
-      "description": "A placeholder player character until an Orbis persona is chosen.",
-      "states": { "force": 2, "finesse": 2, "focus": 1, "flair": 3 }
+      "description": "A traveller come up the headland road to Port Covenant, with no paper and no signature to their name.",
+      "draftNote": "Placeholder player character until an Orbis persona is chosen.",
+      "states": {
+        "force": 2,
+        "finesse": 2,
+        "focus": 1,
+        "flair": 3
+      }
     },
     {
       "id": "gate-arbiter",
       "name": "The gate Arbiter",
       "speciesId": "humans",
-      "factionIds": ["the-arbiters"],
+      "factionIds": [
+        "the-arbiters"
+      ],
       "homeLocationId": "pc-landward-gate",
       "canonStatus": "draft",
       "description": "An Arbiter on duty at the landward gate, with the Covenant's terms, ink, and a ledger of everyone who has signed.",
-      "states": { "health": 5, "strain": 4 }
+      "maxima": {
+        "health": 5,
+        "strain": 4
+      }
     },
     {
       "id": "gate-guard",
@@ -262,7 +341,10 @@
       "homeLocationId": "pc-landward-gate",
       "canonStatus": "draft",
       "description": "One of the garrison's soldiers, posted at the gate.",
-      "states": { "health": 2, "strain": 1 }
+      "maxima": {
+        "health": 2,
+        "strain": 1
+      }
     },
     {
       "id": "ottavio-marrane",
@@ -277,7 +359,9 @@
       "id": "lucan-abreu",
       "name": "Lucan Abreu",
       "speciesId": "humans",
-      "factionIds": ["the-arbiters"],
+      "factionIds": [
+        "the-arbiters"
+      ],
       "homeLocationId": "pc-registry",
       "canonStatus": "draft",
       "role": "The High Arbiter",
@@ -313,13 +397,50 @@
   "ruleset": {
     "travel": {
       "walkKph": 4,
-      "tiers": [{ "tier": 3, "minutes": 10 }]
+      "tiers": [
+        {
+          "tier": 3,
+          "minutes": 10
+        }
+      ]
     },
     "states": [
-      { "id": "force", "name": "Force", "scope": "char", "min": 1, "max": 4, "start": 1, "category": "Approaches" },
-      { "id": "finesse", "name": "Finesse", "scope": "char", "min": 1, "max": 4, "start": 1, "category": "Approaches" },
-      { "id": "focus", "name": "Focus", "scope": "char", "min": 1, "max": 4, "start": 1, "category": "Approaches" },
-      { "id": "flair", "name": "Flair", "scope": "char", "min": 1, "max": 4, "start": 1, "category": "Approaches" },
+      {
+        "id": "force",
+        "name": "Force",
+        "scope": "char",
+        "min": 1,
+        "max": 4,
+        "start": 1,
+        "category": "Approaches"
+      },
+      {
+        "id": "finesse",
+        "name": "Finesse",
+        "scope": "char",
+        "min": 1,
+        "max": 4,
+        "start": 1,
+        "category": "Approaches"
+      },
+      {
+        "id": "focus",
+        "name": "Focus",
+        "scope": "char",
+        "min": 1,
+        "max": 4,
+        "start": 1,
+        "category": "Approaches"
+      },
+      {
+        "id": "flair",
+        "name": "Flair",
+        "scope": "char",
+        "min": 1,
+        "max": 4,
+        "start": 1,
+        "category": "Approaches"
+      },
       {
         "id": "health",
         "name": "Health",
@@ -330,15 +451,39 @@
         "category": "Condition",
         "display": "band",
         "bands": [
-          { "at": 0, "label": "is down" },
-          { "at": 1, "label": "is badly hurt" },
-          { "at": 3, "label": "is hurt" },
-          { "at": 5, "label": "is bruised" },
-          { "at": 7, "label": "is unhurt" }
+          {
+            "at": 0,
+            "label": "is down"
+          },
+          {
+            "at": 1,
+            "label": "is badly hurt"
+          },
+          {
+            "at": 34,
+            "label": "is hurt"
+          },
+          {
+            "at": 60,
+            "label": "is bruised"
+          },
+          {
+            "at": 85,
+            "label": "is unhurt"
+          }
         ],
         "restBand": 4,
-        "terminals": [{ "at": "min", "note": "They go down with an injury and take no further part in this scene." }],
-        "approach": { "owner": "force", "secondary": [] }
+        "terminals": [
+          {
+            "at": "min",
+            "note": "They go down with an injury and take no further part in this scene."
+          }
+        ],
+        "approach": {
+          "owner": "force",
+          "secondary": []
+        },
+        "bandBasis": "share"
       },
       {
         "id": "strain",
@@ -350,18 +495,66 @@
         "category": "Condition",
         "display": "band",
         "bands": [
-          { "at": 0, "label": "is spent" },
-          { "at": 1, "label": "is badly strained" },
-          { "at": 3, "label": "is strained" },
-          { "at": 5, "label": "is steady" }
+          {
+            "at": 0,
+            "label": "is spent"
+          },
+          {
+            "at": 1,
+            "label": "is badly strained"
+          },
+          {
+            "at": 34,
+            "label": "is strained"
+          },
+          {
+            "at": 75,
+            "label": "is steady"
+          }
         ],
         "restBand": 3,
-        "terminals": [{ "at": "min", "note": "They are spent: they give way, or can push no further." }],
-        "approach": { "owner": "flair", "secondary": ["force"] }
+        "terminals": [
+          {
+            "at": "min",
+            "note": "They are spent: they give way, or can push no further."
+          }
+        ],
+        "approach": {
+          "owner": "flair",
+          "secondary": [
+            "force"
+          ]
+        },
+        "bandBasis": "share"
       },
-      { "id": "edge", "name": "Edge", "scope": "protagonist", "min": 0, "max": 1, "start": 0, "category": "Momentum" },
-      { "id": "story-points", "name": "Story Points", "scope": "protagonist", "min": 0, "max": 2, "start": 1, "category": "Momentum" },
-      { "id": "momentum", "name": "Momentum", "scope": "protagonist", "min": -3, "max": 3, "start": 0, "category": "Momentum", "display": "hidden" },
+      {
+        "id": "edge",
+        "name": "Edge",
+        "scope": "protagonist",
+        "min": 0,
+        "max": 1,
+        "start": 0,
+        "category": "Momentum"
+      },
+      {
+        "id": "story-points",
+        "name": "Story Points",
+        "scope": "protagonist",
+        "min": 0,
+        "max": 2,
+        "start": 1,
+        "category": "Momentum"
+      },
+      {
+        "id": "momentum",
+        "name": "Momentum",
+        "scope": "protagonist",
+        "min": -3,
+        "max": 3,
+        "start": 0,
+        "category": "Momentum",
+        "display": "hidden"
+      },
       {
         "id": "signed-covenant",
         "name": "Signed the Covenant",
@@ -372,8 +565,14 @@
         "category": "Standing",
         "display": "band",
         "bands": [
-          { "at": 0, "label": "has not signed the Covenant" },
-          { "at": 1, "label": "has signed the Covenant" }
+          {
+            "at": 0,
+            "label": "has not signed the Covenant"
+          },
+          {
+            "at": 1,
+            "label": "has signed the Covenant"
+          }
         ],
         "restBand": 0
       },
@@ -387,14 +586,34 @@
         "category": "Scene",
         "display": "band",
         "bands": [
-          { "at": 0, "label": "is quiet" },
-          { "at": 1, "label": "is uneasy" },
-          { "at": 2, "label": "is watchful" },
-          { "at": 3, "label": "is roused" }
+          {
+            "at": 0,
+            "label": "is quiet"
+          },
+          {
+            "at": 1,
+            "label": "is uneasy"
+          },
+          {
+            "at": 2,
+            "label": "is watchful"
+          },
+          {
+            "at": 3,
+            "label": "is roused"
+          }
         ],
         "restBand": 0,
-        "terminals": [{ "at": "max", "note": "The scene is roused: everyone present is alert and looking for trouble." }],
-        "approach": { "owner": "finesse", "secondary": [] }
+        "terminals": [
+          {
+            "at": "max",
+            "note": "The scene is roused: everyone present is alert and looking for trouble."
+          }
+        ],
+        "approach": {
+          "owner": "finesse",
+          "secondary": []
+        }
       }
     ]
   },
@@ -403,7 +622,10 @@
     "startPlaceId": "pc-landward-gate",
     "startAt": 460,
     "playerCharacterId": "traveller",
-    "presentCharacterIds": ["gate-arbiter", "gate-guard"],
+    "presentCharacterIds": [
+      "gate-arbiter",
+      "gate-guard"
+    ],
     "opening": "*Fog lies over Nospier Point. The headland road ends at a wall of dressed stone and a gate standing half open, a garrison guard leaning in its shadow. Under the arch an Arbiter has laid out ink, a pen and a ledger on a narrow table, and doesn't look up.*\n\n\"Name,\" she says, \"and whether you can write it. No one goes through without signing.\""
   }
 }

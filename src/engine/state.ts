@@ -63,6 +63,9 @@ export const stateDefSchema = z.object({
   max: z.number().int(),
   start: z.number().int(),
   bands: z.array(stateBandSchema).max(24).default([]),
+  // 'value': a band's `at` is a value. 'share': it is a percentage of the way from min to the
+  // owner's max, so one set of bands reads right for a player with 8 Health and a minion with 2.
+  bandBasis: z.enum(['value', 'share']).default('value'),
   // An index into bands, not a value, so moving a threshold does not change which band rests.
   restBand: z.number().int().nonnegative().default(0),
   // The standing-fact template. Macros: |name| |defName| |bandLabel| |value|
@@ -129,6 +132,14 @@ export function startOf(def: StateDef): number {
   return clamp(def, def.start);
 }
 
+// The definition as it applies to one owner: their own maximum, if they have one, replaces the
+// catalog's, and the start is clamped under it. Every read and write for that owner goes
+// through this, so a tier's limits hold everywhere.
+export function forOwner(def: StateDef, maximum: number | undefined): StateDef {
+  if (maximum === undefined || maximum === def.max) return def;
+  return { ...def, max: maximum };
+}
+
 export function appliesTo(def: StateDef, kind: OwnerKind, isProtagonist = false): boolean {
   switch (def.scope) {
     case 'world': return kind === 'world';
@@ -159,8 +170,10 @@ export interface BandReading {
 export function band(def: StateDef, value: number): BandReading {
   if (!def.bands.length) return { index: -1, label: '', atRest: true, banded: false };
   const v = clamp(def, value);
+  const { lo, hi } = bounds(def);
+  const measure = def.bandBasis === 'share' ? (hi === lo ? 100 : ((v - lo) / (hi - lo)) * 100) : v;
   let index = 0;
-  def.bands.forEach((b, i) => { if (i === 0 || v >= b.at) index = i; });
+  def.bands.forEach((b, i) => { if (i === 0 || measure >= b.at) index = i; });
   const rest = Math.max(0, Math.min(def.bands.length - 1, def.restBand));
   return { index, label: def.bands[index]?.label ?? '', atRest: index === rest, banded: true };
 }

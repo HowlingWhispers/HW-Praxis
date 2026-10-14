@@ -13,7 +13,7 @@
 
 import { z } from 'zod';
 import { calendarSchema } from './clock';
-import { appliesTo, stateDefSchema, type StateDef } from './state';
+import { appliesTo, forOwner, stateDefSchema, type StateDef } from './state';
 
 export const MODULE_FORMAT = 'praxis-module/1';
 
@@ -86,8 +86,11 @@ export const characterSchema = z.object({
   speciesId: id.optional(),
   factionIds: z.array(id).max(50).default([]),
   homeLocationId: id.optional(),
-  // Starting values that differ from a state's own start, such as an NPC tier's Health.
+  // Starting values that differ from a state's own start.
   states: z.record(z.string(), z.number().int()).default({}),
+  // This character's own maximum for a state, such as a minion's 2 Health. Bands with a
+  // 'share' basis read against it.
+  maxima: z.record(z.string(), z.number().int()).default({}),
 }).passthrough();
 
 export const itemSchema = z.object({
@@ -236,6 +239,11 @@ export const moduleSchema = z.object({
     for (const stateId of Object.keys(character.states)) {
       if (!characterState(states.get(stateId))) issue(['characters', index, 'states', stateId], `"${stateId}" is not a state a character holds.`);
     }
+    for (const [stateId, maximum] of Object.entries(character.maxima)) {
+      const state = states.get(stateId);
+      if (!characterState(state)) issue(['characters', index, 'maxima', stateId], `"${stateId}" is not a state a character holds.`);
+      else if (state && maximum <= Math.min(state.min, state.max)) issue(['characters', index, 'maxima', stateId], `A maximum of ${maximum} leaves no room above the minimum.`);
+    }
   });
 
   const { scenario } = module;
@@ -252,6 +260,14 @@ export type PraxisModule = z.infer<typeof moduleSchema>;
 export type Place = z.infer<typeof placeSchema>;
 export type Route = z.infer<typeof routeSchema>;
 export type Character = z.infer<typeof characterSchema>;
+
+// A state's definition as it applies to one owner, with that character's own maximum.
+export function stateDefFor(module: PraxisModule, defId: string, ownerId: string): StateDef | undefined {
+  const def = module.ruleset.states.find((state) => state.id === defId);
+  if (!def) return undefined;
+  const maximum = module.characters.find((character) => character.id === ownerId)?.maxima[defId];
+  return forOwner(def, maximum);
+}
 
 export type ModuleLoadResult =
   | { ok: true; module: PraxisModule }
