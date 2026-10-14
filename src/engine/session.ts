@@ -9,7 +9,7 @@
 
 import { calendarOf, findPath, isArea, atlasOf, exitsFrom, type Exit } from './world';
 import { stamp, timeBandOf, safeMinutes, datePhrase } from './clock';
-import type { Character, Place, PraxisModule } from './module';
+import { stateDefFor, type Character, type Place, type PraxisModule } from './module';
 import { appliesTo, clamp, write, type ChangeSource, type StateTerminal, type StateValues, WORLD_OWNER } from './state';
 
 export const SAVE_FORMAT = 'praxis-save/1';
@@ -19,15 +19,35 @@ export type LedgerEntry =
   | { kind: 'clock'; at: number; from: number; to: number; source: ChangeSource; reason: string }
   | { kind: 'move'; at: number; characterId: string; from: string | null; to: string | null; minutes: number; source: ChangeSource };
 
-export interface Save {
-  format: typeof SAVE_FORMAT;
-  module: { id: string; version: string };
-  // Minutes since story zero.
+// The mutable world, without the transcript or the ledger. A turn keeps the one from before
+// it so undo can put it back exactly.
+export interface WorldState {
   clock: number;
-  // Where each character is. A character with no entry is nowhere the story is looking.
   positions: Readonly<Record<string, string>>;
   values: StateValues;
+}
+
+// One exchange: what the player did, what the rules decided, and what the narrator wrote.
+export interface Turn {
+  id: string;
+  // 'say' is the player's own words; 'action' is something the rules resolved, such as travel.
+  kind: 'say' | 'action';
+  // What the player wrote, or the action in the player's voice.
+  input: string;
+  // The outcome the narrator must render, used for this turn only. null for plain speech.
+  directive: string | null;
+  // The narration, once there is one. A reroll replaces it; the outcome stays resolved.
+  reply: string | null;
+  before: WorldState;
+  // The ledger's length when the turn began; everything after belongs to this turn or later.
+  ledgerStart: number;
+}
+
+export interface Save extends WorldState {
+  format: typeof SAVE_FORMAT;
+  module: { id: string; version: string };
   ledger: readonly LedgerEntry[];
+  turns: readonly Turn[];
 }
 
 export type ActionResult =
@@ -64,7 +84,7 @@ export function startSave(module: PraxisModule): Save {
   const values: Record<string, Record<string, number>> = {};
   for (const character of module.characters) {
     const entries = Object.entries(character.states).flatMap(([defId, value]) => {
-      const def = module.ruleset.states.find((state) => state.id === defId);
+      const def = stateDefFor(module, defId, character.id);
       return def ? [[defId, clamp(def, value)] as const] : [];
     });
     if (entries.length) values[character.id] = Object.fromEntries(entries);
@@ -77,6 +97,7 @@ export function startSave(module: PraxisModule): Save {
     positions,
     values,
     ledger: [],
+    turns: [],
   };
 }
 
@@ -146,7 +167,7 @@ function ownerKindFor(module: PraxisModule, owner: string): 'world' | 'character
 }
 
 export function setState(module: PraxisModule, save: Save, defId: string, owner: string, value: number): ActionResult {
-  const def = module.ruleset.states.find((state) => state.id === defId);
+  const def = stateDefFor(module, defId, owner);
   if (!def) return reject(`There is no state "${defId}".`);
   const kind = ownerKindFor(module, owner);
   if (!kind) return reject(`There is no "${owner}" to hold ${def.name}.`);

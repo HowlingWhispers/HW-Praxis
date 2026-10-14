@@ -8,6 +8,27 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.7.0 - First Narration - 2026-10-14
+
+- Add turns. Speaking or acting opens a turn; an action is resolved by the rules
+  first and carries its outcome to the narrator for that turn only. A reroll replaces
+  the narration without resolving the action again. Undo restores the world as it was
+  before the turn and drops everything recorded since.
+- Add the context compiler. The narrator's rules and the world's canon come first,
+  then the transcript, then the moment: the scene, who is present, standing facts,
+  the ways out (closed ones with their reasons), the outcome and the player's words.
+  The clock reaches the narrator only as its time band.
+- Add per-character maximums and bands read as a share of them, so the Four
+  Approaches NPC tiers (a minion's 2 Health, a rival's 5) read correctly. The gate
+  staff in the Abernys module now use them.
+- Add a NovelAI relay to the server: the player's key travels with each request and
+  is never stored, logged or echoed; only the models and chat paths are forwarded,
+  and every body is validated first.
+- Add browser saves. Every change is saved in this browser with its module beside it;
+  saves can be continued, deleted, exported to a file and imported on any device.
+- The shell now narrates: connect NovelAI, write, narrate, reroll, undo, and inspect
+  exactly what the narrator was sent.
+
 ## 0.6.0 - Clock and Travel - 2026-10-14
 
 - Add the story clock, ported from Character Engine: one stored number of minutes,

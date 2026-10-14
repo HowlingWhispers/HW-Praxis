@@ -10,7 +10,7 @@
 // intermediate places are never visited, so nothing happens in rooms nobody was watching.
 
 import { DEFAULT_CALENDAR, type Calendar } from './clock';
-import { AREA_KINDS, type Place, type PraxisModule } from './module';
+import { AREA_KINDS, stateDefFor, type Place, type PraxisModule } from './module';
 import { read, type StateDef, type StateValues } from './state';
 
 export interface Requirement {
@@ -96,7 +96,7 @@ export function atlasOf(module: PraxisModule): Atlas {
 export function blockedBy(module: PraxisModule, values: StateValues, playerId: string, edge: Edge): string | null {
   for (const requirement of edge.requires) {
     if (requirement.toward !== undefined && requirement.toward !== edge.to) continue;
-    const def: StateDef | undefined = module.ruleset.states.find((state) => state.id === requirement.stateId);
+    const def: StateDef | undefined = stateDefFor(module, requirement.stateId, playerId);
     if (!def) return requirement.reason;
     if (read(values, def, playerId) < requirement.atLeast) return requirement.reason;
   }

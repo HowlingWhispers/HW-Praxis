@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placeCharacter, read, sceneOf, setClock, setState, startSave, travel, wait, type Save } from '../src/engine';
+import { band, placeCharacter, read, sceneOf, setClock, setState, startSave, stateDefFor, travel, wait, type Save } from '../src/engine';
 import { abernys } from './abernys';
 
 const module = abernys();
@@ -27,9 +27,17 @@ describe('a fresh save', () => {
   });
 
   it('stores only starting values that differ from a state\'s own start', () => {
-    expect(read(save.values, health, 'gate-guard')).toBe(2);
+    expect(read(save.values, stateDefFor(module, 'force', 'traveller')!, 'traveller')).toBe(2);
     expect(read(save.values, health, 'traveller')).toBe(8);
     expect(save.values.traveller?.health).toBeUndefined();
+  });
+
+  it('gives a tiered character their own maximum, read as a share for bands', () => {
+    const guardHealth = stateDefFor(module, 'health', 'gate-guard')!;
+    expect(read(save.values, guardHealth, 'gate-guard')).toBe(2);
+    expect(band(guardHealth, 2).label).toBe('is unhurt');
+    expect(band(guardHealth, 1).label).toBe('is hurt');
+    expect(band(health, 1).label).toBe('is badly hurt');
   });
 });
 
@@ -70,6 +78,13 @@ describe('overrides', () => {
     if (!result.ok) return;
     expect(result.entries[0]).toMatchObject({ kind: 'state', defId: 'health', from: 8, to: 0, source: 'player' });
     expect(result.terminals[0]?.note).toMatch(/go down/);
+  });
+
+  it('hold to the owner\'s own maximum', () => {
+    const result = setState(module, startSave(module), 'health', 'gate-guard', 9);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.entries).toEqual([]);
   });
 
   it('refuse a state that does not apply to its owner', () => {
