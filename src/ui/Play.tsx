@@ -7,7 +7,7 @@ import {
   setReply, setState, stateDefFor, undoLastTurn, inSentence,
   type Action, type ChatMessage, type LedgerEntry, type PraxisModule, type Save, type StateDef,
 } from '../engine';
-import { Connect, type Connection } from './Connect';
+import type { Connection } from './Connect';
 import { RichText } from './RichText';
 import { StateRows } from './StateRows';
 import { downloadJson, fileSafe } from './files';
@@ -17,12 +17,12 @@ function newId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `t${Date.now()}${Math.random().toString(16).slice(2)}`;
 }
 
-export function Play({ module, initial, name, connection, onConnection, onChange, onClose }: {
+export function Play({ module, initial, name, connection, onConnect, onChange, onClose }: {
   module: PraxisModule;
   initial: Save;
   name: string;
   connection: Connection;
-  onConnection: (next: Connection) => void;
+  onConnect: () => void;
   onChange: (save: Save) => void;
   onClose: () => void;
 }) {
@@ -47,7 +47,7 @@ export function Play({ module, initial, name, connection, onConnection, onChange
   async function runNarration(target: Save) {
     const turn = lastTurn(target);
     if (!turn) return;
-    if (!connection.connected) { setNotice('Recorded. Connect NovelAI to have it narrated.'); return; }
+    if (!connection.connected) { setNotice('Recorded. Connect NovelAI (top right) to have it narrated.'); return; }
     const messages = compileContext(module, target);
     setLastSent(messages);
     pending.current?.abort();
@@ -149,10 +149,12 @@ export function Play({ module, initial, name, connection, onConnection, onChange
         </div>
       </section>
 
-      <details className="card" open={!connection.connected}>
-        <summary>NovelAI {connection.connected ? `· ${connection.model}` : '· not connected'}</summary>
-        <Connect connection={connection} onChange={onConnection} />
-      </details>
+      {!connection.connected && (
+        <section className="card">
+          <p>Narration is off. Connect your NovelAI account to have turns narrated.</p>
+          <button type="button" className="primary" onClick={onConnect}>Connect NovelAI</button>
+        </section>
+      )}
 
       <details className="card" open>
         <summary>Here and ways out</summary>

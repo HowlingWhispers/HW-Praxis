@@ -89,3 +89,9 @@ details.card[open] > summary { margin-bottom: 8px; }
 .saves li { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
 .saves li:first-child { border-top: 0; padding-top: 0; }
 .saves .inline { margin-top: 0; }
+
+.shell-head { align-items: center; }
+.status { min-height: 40px; padding: 6px 12px; font-size: 14px; border-color: var(--accent); color: var(--accent); }
+.status.on { border-color: var(--line); color: var(--muted); }
+.connect-panel { margin-top: 12px; }
+.version { text-align: center; margin-top: 24px; }

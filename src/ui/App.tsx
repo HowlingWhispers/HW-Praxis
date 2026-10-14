@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import abernysRaw from '../../modules/abernys-port-covenant.json';
 import { loadModule, readSaveFile, sceneOf, startSave, type PraxisModule, type Save } from '../engine';
-import type { Connection } from './Connect';
+import { Connect, type Connection } from './Connect';
 import { Play } from './Play';
 import { readJsonFile } from './files';
 import { savedModel } from './novelai';
@@ -23,6 +23,7 @@ export function App() {
   const [errors, setErrors] = useState<string[]>([]);
   const [storageNote, setStorageNote] = useState('');
   const [connection, setConnection] = useState<Connection>({ connected: false, model: savedModel() });
+  const [showConnect, setShowConnect] = useState(false);
 
   const refresh = useCallback(async () => {
     try { setSaves(await listSaves()); } catch (error) { setStorageNote(error instanceof Error ? error.message : 'Saved games are unavailable.'); }
@@ -98,8 +99,15 @@ export function App() {
     <div className="shell">
       <header className="shell-head">
         <h1>Praxis</h1>
-        <span className="muted">{__PRAXIS_VERSION__}</span>
+        <button type="button" className={connection.connected ? 'status on' : 'status'} aria-expanded={showConnect} onClick={() => setShowConnect((open) => !open)}>
+          {connection.connected ? `NovelAI · ${connection.model}` : 'Connect NovelAI'}
+        </button>
       </header>
+      {showConnect && (
+        <section className="card connect-panel">
+          <Connect connection={connection} onChange={(next) => { setConnection(next); if (next.connected) setShowConnect(false); }} />
+        </section>
+      )}
       {storageNote && <p className="notice">{storageNote}</p>}
       {playing ? (
         <Play
@@ -108,7 +116,7 @@ export function App() {
           initial={playing.save}
           name={playing.name}
           connection={connection}
-          onConnection={setConnection}
+          onConnect={() => { setShowConnect(true); window.scrollTo({ top: 0 }); }}
           onChange={persist}
           onClose={() => { setScreen({ kind: 'home' }); void refresh(); }}
         />
@@ -157,6 +165,7 @@ export function App() {
           )}
         </main>
       )}
+      <p className="muted version">{__PRAXIS_VERSION__}</p>
     </div>
   );
 }
