@@ -42,7 +42,13 @@ The interface sends narration requests to `/api/novelai/models` and `/api/novela
 
 ## Deploy
 
-`npm run build`, then run `node dist-server/server/index.js` with `NODE_ENV=production` and `PORT=8791`. The server binds to localhost; `deploy/nginx-api-location.conf.example` shows the proxy block for praxis.thehowlingwhispers.com.
+Requires Node 22.
+
+1. `npm ci && npm run build`. The interface lands in `dist/`, the server in `dist-server/`.
+2. Run `node dist-server/server/index.js` with `NODE_ENV=production` and `PORT=8791`; `deploy/praxis.service.example` is a systemd unit for it. The server binds to localhost and, in production, also serves `dist/`.
+3. Proxy `/api/` to it (`deploy/nginx-api-location.conf.example`), and either serve `dist/` as static files or proxy everything to the server.
+
+The Java bridge this replaces ran as `praxis-ai` on port 8787 and can be stopped.
 
 ## License
 

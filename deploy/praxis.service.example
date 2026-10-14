@@ -1,0 +1,26 @@
+[Unit]
+Description=Howling Whispers Praxis
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/howling-whispers/praxis
+ExecStart=/usr/bin/node dist-server/server/index.js
+Restart=on-failure
+RestartSec=3
+Environment=NODE_ENV=production
+Environment=PORT=8791
+
+# No provider key belongs here. Players send their own NovelAI token with each request,
+# and the server never stores it.
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
