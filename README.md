@@ -6,13 +6,14 @@ The scope, architecture and release plan are in *Praxis — Charter* in the Howl
 
 ## Status
 
-`0.5.0`, the rebuild. The engine has its state primitive and the module format; the interface is a development shell that loads and validates a module file. The Java prototype that preceded this is in the history at `d3b13ee`.
+`0.6.0`. The engine has the state primitive, the clock and calendar, places and travel, scene presence and the save with its ledger. The first module, *Abernys: Port Covenant*, is in `modules/`. The interface is a development shell that plays a module without a model. The Java prototype that preceded this is in the history at `d3b13ee`.
 
 ## Layout
 
 ```text
 src/engine   rules: pure TypeScript, no DOM or network
 src/ui       the interface
+modules      playable modules (praxis-module/1)
 server       thin API: health now; Orbis launch and generation relay later
 tests        Vitest
 ```

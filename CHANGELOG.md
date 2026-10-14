@@ -8,6 +8,25 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.6.0 - Clock and Travel - 2026-10-14
+
+- Add the story clock, ported from Character Engine: one stored number of minutes,
+  an authored calendar (the real one by default), and time bands as the only time
+  words the model will be given.
+- Add places and travel. A hop into or out of a place is priced by its depth tier;
+  authored routes are priced by distance at the module's walking pace. Journeys take
+  the quickest open way and resolve in one step. Routes can require a state of the
+  player's character, in one direction or both, with the reason shown when closed.
+- Add the save: clock, positions, state values and a ledger. Travel and waiting are
+  actions; setting a state, the clock or anyone's position by hand are overrides,
+  recorded as the player's.
+- Add scene presence: the place, who else is there, the ways out and the time.
+- Add the first module, *Abernys: Port Covenant*, built from the Abernys docs.
+  Invented details (distances, district names, the gate staff, the player character)
+  are marked `canonStatus: "draft"`.
+- The development shell now plays the module without a model: travel, wait, set any
+  value, read the ledger.
+
 ## 0.5.0 - Rebuild - 2026-10-14
 
 - Replace the Java bridge and browser prototype with a TypeScript rebuild on the
