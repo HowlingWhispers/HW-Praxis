@@ -1,35 +1,19 @@
-# Dependencies
 node_modules/
-vendor/
-.target/
-target/
-build/
 dist/
 dist-server/
-out/
-
-# Environment and secrets
 .env
 .env.*
 !.env.example
-
-# Tooling caches
-.cache/
-.gradle/
-.vite/
-*.tsbuildinfo
-
-# Logs
 *.log
-npm-debug.log*
-
-# Editor and OS
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+vitest.config.js
+vitest.config.d.ts
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
 *.swp
-
-# Local experiment data
 tmp/
 scratch/
