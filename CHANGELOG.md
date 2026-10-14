@@ -8,6 +8,21 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.5.0 - Rebuild - 2026-10-14
+
+- Replace the Java bridge and browser prototype with a TypeScript rebuild on the
+  Orbis and Speculus stack: React and Vite, a thin Express server, zod and Vitest.
+  The previous prototype remains in the history at `d3b13ee`.
+- Add the engine's state primitive, ported from Character Engine: scoped bounded
+  values, clamping at the write, bands with a resting band, standing-fact lines,
+  terminals that fire on crossing, and a ledger entry for every change that names
+  whether a rule or the player made it.
+- Add the `praxis-module/1` format: Orbis-shaped world records, characters, items,
+  a state catalog and a scenario, with reference and cycle checks.
+- Add a development shell that loads and validates a module file.
+- Add a CI workflow running tests, type checks and the build.
+- `package.json` is now the only version source.
+
 ## 0.4.0 - Free-roam Controls - 2026-10-05
 
 - Continue the existing Praxis slice with a reading window above a multiline
