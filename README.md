@@ -18,6 +18,10 @@ server       thin API: health, and a NovelAI relay that forwards the player's ke
 tests        Vitest
 ```
 
+## Try a branch without deploying
+
+Open the repository on GitHub, switch to the branch you want (a pull request names its branch), then **Code → Codespaces → Create codespace on …**. The codespace installs everything and starts Praxis; when it says the app is running, open the **Ports** tab and click the globe beside **Praxis**. Narration works there with your own NovelAI token. Stop the codespace from **Code → Codespaces** when you're done; it also stops on its own after 30 idle minutes.
+
 ## Develop
 
 ```bash

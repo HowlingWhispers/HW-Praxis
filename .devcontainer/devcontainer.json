@@ -1,0 +1,12 @@
+{
+  "name": "Praxis",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+  "postCreateCommand": "npm ci",
+  "postAttachCommand": "npm run dev:all",
+  "forwardPorts": [5176],
+  "portsAttributes": {
+    "5176": { "label": "Praxis", "onAutoForward": "openBrowser" },
+    "8791": { "label": "Praxis API (internal)", "onAutoForward": "silent" }
+  },
+  "hostRequirements": { "cpus": 2 }
+}

@@ -17,6 +17,9 @@ short human-readable name after the version.
 - Add a Diagnostics panel on the play screen: the last ten narration calls with what
   NovelAI sent back (status, finish reason, reply and reasoning lengths, usage, and
   NovelAI's own error text), without the token, with a copy button.
+- Add a Codespaces setup: any branch can be opened in a codespace that installs
+  and starts Praxis by itself, so changes can be tried with real narration before
+  they are merged or deployed.
 
 ## 0.7.0 - First Narration - 2026-10-14
 
