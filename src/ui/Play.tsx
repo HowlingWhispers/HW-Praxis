@@ -58,7 +58,7 @@ export function Play({ module, initial, name, connection, onConnect, onChange, o
     setNotice('');
     try {
       const started = performance.now();
-      const result = await narrate(messages, connection.model, controller.signal);
+      const result = await narrate(messages, connection.model, connection.mode, controller.signal);
       if (controller.signal.aborted) return;
       setCalls((list) => [{ at: new Date().toLocaleTimeString(), ok: true, ms: Math.round(performance.now() - started), message: `${result.text.length} characters`, diagnostics: result.diagnostics ?? null }, ...list].slice(0, 10));
       setSave((current) => {

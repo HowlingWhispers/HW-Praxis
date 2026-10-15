@@ -5,6 +5,10 @@ import type { ChatMessage } from '../engine';
 
 const TOKEN_KEY = 'praxis.novelai.token';
 const MODEL_KEY = 'praxis.novelai.model';
+const MODE_KEY = 'praxis.novelai.mode';
+
+// 'prompt': GLM-formatted prompt to the completions endpoint. 'chat': messages to the chat endpoint.
+export type NarrationMode = 'prompt' | 'chat';
 export const DEFAULT_MODEL = 'glm-4-6';
 
 let memoryToken = '';
@@ -42,6 +46,14 @@ export function savedModel(): string {
 
 export function saveModel(model: string) {
   try { storage()?.setItem(MODEL_KEY, model); } catch { /* not remembered */ }
+}
+
+export function savedMode(): NarrationMode {
+  try { return storage()?.getItem(MODE_KEY) === 'chat' ? 'chat' : 'prompt'; } catch { return 'prompt'; }
+}
+
+export function saveMode(mode: NarrationMode) {
+  try { storage()?.setItem(MODE_KEY, mode); } catch { /* not remembered */ }
 }
 
 export type Diagnostics = Record<string, unknown>;
@@ -82,10 +94,10 @@ export interface Narration {
   diagnostics?: Diagnostics;
 }
 
-export function narrate(messages: ChatMessage[], model: string, signal?: AbortSignal): Promise<Narration> {
+export function narrate(messages: ChatMessage[], model: string, mode: NarrationMode, signal?: AbortSignal): Promise<Narration> {
   return call<Narration>('/api/novelai/chat', {
     method: 'POST',
-    body: JSON.stringify({ model, messages, max_tokens: 2048, temperature: 0.8 }),
+    body: JSON.stringify({ model, messages, mode, max_tokens: 2048, temperature: 0.8 }),
     signal,
   });
 }

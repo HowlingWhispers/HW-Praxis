@@ -8,6 +8,15 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.7.2 - GLM Prompt Route - 2026-10-15
+
+- NovelAI's chat endpoint answered GLM-4.6 in completion format with empty text
+  (113 tokens generated, none returned). Narration now defaults to sending one prompt
+  in GLM's own chat format, thinking off, to the completions endpoint. The chat route
+  stays available as a setting under Connect NovelAI.
+- Diagnostics now name the endpoint and show the raw first choice, with long token
+  lists shortened.
+
 ## 0.7.1 - Narration Diagnostics - 2026-10-14
 
 - Give replies room for reasoning models: GLM-4.6 thinks before it answers, and the

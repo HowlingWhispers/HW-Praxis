@@ -20,7 +20,35 @@ export const chatRequestSchema = z.object({
   // Reasoning models (GLM-4.6) spend part of this thinking before they answer, so it is generous.
   max_tokens: z.number().int().min(16).max(8192).default(2048),
   temperature: z.number().min(0).max(2).default(0.8),
+  // 'chat' sends the messages to NovelAI's chat endpoint. 'prompt' formats them into one
+  // prompt in GLM's own chat format and sends that to the completions endpoint.
+  mode: z.enum(['chat', 'prompt']).default('prompt'),
 }).strict();
+
+// GLM-4.x's chat format, with thinking turned off: '/nothink' on the user turns and an
+// empty think block where the reply begins.
+export function glmPrompt(messages: { role: string; content: string }[]): string {
+  let prompt = '[gMASK]<sop>';
+  for (const message of messages) {
+    if (message.role === 'system') prompt += `<|system|>\n${message.content}`;
+    else if (message.role === 'user') prompt += `<|user|>\n${message.content}${message.content.trimEnd().endsWith('/nothink') ? '' : '/nothink'}`;
+    else prompt += `<|assistant|>\n<think></think>\n${message.content}`;
+  }
+  return `${prompt}<|assistant|>\n<think></think>\n`;
+}
+
+export const GLM_STOPS = ['<|user|>', '<|observation|>', '<|system|>', '<|endoftext|>'];
+
+// The first choice as a readable record: long token lists become a count, logprobs are dropped.
+function describeChoice(choice: unknown): string {
+  if (!choice || typeof choice !== 'object') return JSON.stringify(choice ?? null);
+  const copy: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(choice as Record<string, unknown>)) {
+    if (key === 'logprobs') continue;
+    copy[key] = Array.isArray(value) && value.length > 8 ? `[${value.length} items: ${value.slice(0, 8).join(', ')}, ...]` : value;
+  }
+  return JSON.stringify(copy).slice(0, 1500);
+}
 
 export interface RelayResult {
   status: number;
@@ -82,21 +110,30 @@ export async function relayChat(fetchImpl: Fetch, rawToken: string | undefined, 
   if (!token) return missingToken;
   const parsed = chatRequestSchema.safeParse(raw);
   if (!parsed.success) return { status: 400, body: { error: `Invalid narration request: ${parsed.error.issues[0]?.message ?? 'unknown problem'}.` } };
+  const { mode, messages, ...settings } = parsed.data;
+
+  const endpoint = mode === 'chat' ? '/oa/v1/chat/completions' : '/oa/v1/completions';
+  const upstreamBody = mode === 'chat'
+    ? { ...settings, messages, stream: false }
+    : { ...settings, prompt: glmPrompt(messages), stop: GLM_STOPS, stream: false };
 
   let response: Response;
   try {
-    response = await fetchImpl(`${NOVELAI_TEXT_BASE}/oa/v1/chat/completions`, {
+    response = await fetchImpl(`${NOVELAI_TEXT_BASE}${endpoint}`, {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ ...parsed.data, stream: false }),
+      body: JSON.stringify(upstreamBody),
       signal: AbortSignal.timeout(120_000),
     });
   } catch {
-    return { status: 502, body: { error: 'Could not reach NovelAI.' } };
+    return { status: 502, body: { error: 'Could not reach NovelAI.', diagnostics: { endpoint, mode } } };
   }
-  if (!response.ok) return upstreamError(response);
+  if (!response.ok) {
+    const failed = await upstreamError(response);
+    const body = failed.body as { error: string; diagnostics?: Record<string, unknown> };
+    return { status: failed.status, body: { ...body, diagnostics: { ...body.diagnostics, endpoint, mode } } };
+  }
 
-  const started = Date.now();
   const body = await response.json().catch(() => null) as {
     model?: unknown;
     usage?: unknown;
@@ -109,20 +146,23 @@ export async function relayChat(fetchImpl: Fetch, rawToken: string | undefined, 
   const finishReason = typeof choice?.finish_reason === 'string' ? choice.finish_reason : null;
   // What the interface's diagnostics panel shows. Never includes the token.
   const diagnostics = {
+    endpoint,
+    mode,
     status: response.status,
-    model: typeof body?.model === 'string' ? body.model : parsed.data.model,
+    model: typeof body?.model === 'string' ? body.model : settings.model,
     finishReason,
     contentLength: content.length,
     reasoningLength: reasoning.length,
     reasoningPreview: reasoning.slice(0, 600),
     choiceFields: choice ? Object.keys(choice).concat(choice.message ? Object.keys(choice.message).map((key) => `message.${key}`) : []) : [],
-    maxTokens: parsed.data.max_tokens,
+    textType: choice && 'text' in choice ? (choice.text === null ? 'null' : typeof choice.text) : 'absent',
+    rawChoice: describeChoice(choice),
+    maxTokens: settings.max_tokens,
     usage: body?.usage && typeof body.usage === 'object' ? body.usage : null,
-    parseMs: Date.now() - started,
   };
   if (!content.trim()) {
     const why = reasoning && finishReason === 'length'
-      ? `The model used its whole allowance (${parsed.data.max_tokens} tokens) thinking and wrote no reply.`
+      ? `The model used its whole allowance (${settings.max_tokens} tokens) thinking and wrote no reply.`
       : body === null ? 'NovelAI sent something that was not JSON.' : 'NovelAI returned an empty reply.';
     return { status: 502, body: { error: why, diagnostics } };
   }

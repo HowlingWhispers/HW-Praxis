@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { relayChat, relayModels } from '../server/novelai-relay';
+import { glmPrompt, relayChat, relayModels } from '../server/novelai-relay';
 
 type Call = { url: string; init?: RequestInit };
 
@@ -14,7 +14,7 @@ function fakeNovelAI(reply: { status?: number; body: unknown }) {
 }
 
 const token = 'pst-abcdefghijklmnop';
-const request = { model: 'glm-4-6', messages: [{ role: 'user', content: 'Hello.' }] };
+const request = { model: 'glm-4-6', mode: 'chat', messages: [{ role: 'user', content: 'Hello.' }] };
 
 describe('the NovelAI relay', () => {
   it('forwards a chat with the caller\'s token and returns the text and usage', async () => {
@@ -64,6 +64,31 @@ describe('the NovelAI relay', () => {
     expect((await relayChat(upstream.fetchImpl, token, request)).status).toBe(502);
   });
 
+  it('sends a GLM-formatted prompt to the completions endpoint by default', async () => {
+    const upstream = fakeNovelAI({ body: { choices: [{ text: '*Rain.*', finish_reason: 'stop' }] } });
+    const result = await relayChat(upstream.fetchImpl, token, { model: 'glm-4-6', messages: [{ role: 'system', content: 'Rules.' }, { role: 'user', content: 'Hello.' }] });
+    expect(result).toMatchObject({ status: 200, body: { text: '*Rain.*', diagnostics: { endpoint: '/oa/v1/completions', mode: 'prompt' } } });
+    expect(upstream.calls[0]!.url).toBe('https://text.novelai.net/oa/v1/completions');
+    const sent = JSON.parse(String(upstream.calls[0]!.init!.body));
+    expect(sent.prompt).toBe('[gMASK]<sop><|system|>\nRules.<|user|>\nHello./nothink<|assistant|>\n<think></think>\n');
+    expect(sent.stop).toContain('<|user|>');
+    expect(sent.messages).toBeUndefined();
+  });
+
+  it('formats earlier replies as assistant turns', () => {
+    expect(glmPrompt([{ role: 'assistant', content: 'Fog.' }, { role: 'user', content: 'Go./nothink' }]))
+      .toBe('[gMASK]<sop><|assistant|>\n<think></think>\nFog.<|user|>\nGo./nothink<|assistant|>\n<think></think>\n');
+  });
+
+  it('shows the raw choice when text is empty, with token lists shortened', async () => {
+    const upstream = fakeNovelAI({ body: { choices: [{ index: 0, text: '', token_ids: Array.from({ length: 20 }, (_, i) => i), finish_reason: 'stop', matched_stop: 151329 }] } });
+    const result = await relayChat(upstream.fetchImpl, token, request);
+    expect(result.body).toMatchObject({ diagnostics: { textType: 'string', contentLength: 0 } });
+    const raw = (result.body as { diagnostics: { rawChoice: string } }).diagnostics.rawChoice;
+    expect(raw).toContain('"token_ids":"[20 items: 0, 1, 2, 3, 4, 5, 6, 7, ...]"');
+    expect(raw).toContain('151329');
+  });
+
   it('lists model ids', async () => {
     const upstream = fakeNovelAI({ body: { data: [{ id: 'glm-4-6' }, { id: 'xialong-v1' }, { name: 'no id' }] } });
     expect(await relayModels(upstream.fetchImpl, token)).toEqual({ status: 200, body: { models: ['glm-4-6', 'xialong-v1'] } });
@@ -71,6 +96,6 @@ describe('the NovelAI relay', () => {
 
   it('reports an unreachable NovelAI', async () => {
     const result = await relayChat(async () => { throw new Error('offline'); }, token, request);
-    expect(result).toEqual({ status: 502, body: { error: 'Could not reach NovelAI.' } });
+    expect(result).toMatchObject({ status: 502, body: { error: 'Could not reach NovelAI.' } });
   });
 });
