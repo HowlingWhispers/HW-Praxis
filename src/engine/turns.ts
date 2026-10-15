@@ -13,17 +13,18 @@ import { stateDefFor, type PraxisModule, type SceneAction } from './module';
 import { read, write, type StateTerminal } from './state';
 import { playable } from './records';
 import { windowStartFor } from './context';
-import { playerOf, travel, wait, type ActionResult, type LedgerEntry, type Save, type Turn, type WorldState } from './session';
+import { restEffects, settleCheck, type CheckChoice, type Target } from './checks';
+import { playerOf, travel, wait, type ActionResult, type CheckRecord, type LedgerEntry, type Save, type Turn, type WorldState } from './session';
 
 export type TurnResult =
   | { ok: true; save: Save; turn: Turn; entries: LedgerEntry[]; terminals: StateTerminal[] }
   | { ok: false; reason: string };
 
 function worldOf(save: Save): WorldState {
-  return { clock: save.clock, positions: save.positions, values: save.values };
+  return { clock: save.clock, positions: save.positions, values: save.values, spent: save.spent };
 }
 
-function open(module: PraxisModule, before: Save, after: Save, turn: Omit<Turn, 'before' | 'ledgerStart' | 'reply' | 'windowStart'>, entries: LedgerEntry[], terminals: StateTerminal[] = []): TurnResult {
+function open(module: PraxisModule, before: Save, after: Save, turn: Omit<Turn, 'before' | 'ledgerStart' | 'reply' | 'windowStart' | 'check'> & { check?: CheckRecord }, entries: LedgerEntry[], terminals: StateTerminal[] = []): TurnResult {
   const draft: Turn = { ...turn, reply: null, before: worldOf(before), ledgerStart: before.ledger.length, windowStart: 0 };
   const withTurn: Save = { ...after, turns: [...after.turns, draft] };
   const full: Turn = { ...draft, windowStart: windowStartFor(module, withTurn) };
@@ -53,7 +54,9 @@ export function say(module: PraxisModule, save: Save, id: string, text: string):
 export type Action =
   | { type: 'travel'; to: string }
   | { type: 'wait'; minutes: number }
-  | { type: 'scene'; actionId: string };
+  | { type: 'scene'; actionId: string }
+  // A check. `random` is the dice; null settles it without rolling, by the player's choice.
+  | { type: 'check'; target: Target; choice: CheckChoice; input: string; random: (() => number) | null };
 
 // Whether an authored action is offered to the player where they are now.
 function offered(module: PraxisModule, save: Save, action: SceneAction): boolean {
@@ -96,6 +99,13 @@ export function act(module: PraxisModule, save: Save, id: string, action: Action
   let result: ActionResult;
   let input: string;
   let directive: string;
+  if (action.type === 'check') {
+    const settled = settleCheck(world, save, action.target, action.choice, action.random);
+    if (!settled.ok) return settled;
+    const { outcome } = settled;
+    const input = action.input.trim() || `I try ${outcome.record.approachName.toLowerCase()} on ${inSentence(outcome.record.target.label.split(' · ')[0] ?? 'it')}.`;
+    return open(world, save, outcome.save, { id, kind: 'action', input, directive: outcome.directive, check: outcome.record }, outcome.entries, outcome.terminals);
+  }
   if (action.type === 'scene') {
     const chosen = world.ruleset.actions.find((entry) => entry.id === action.actionId);
     if (!chosen) return { ok: false, reason: 'That action does not exist.' };
@@ -118,6 +128,13 @@ export function act(module: PraxisModule, save: Save, id: string, action: Action
     if (!result.ok) return result;
     input = `I wait for ${durationWords(action.minutes)}.`;
     directive = `Time passes where the player is: ${roughDuration(action.minutes).replace('a short walk', 'a little while')}. Describe what changes, if anything.`;
+    const rest = world.ruleset.rest;
+    if (rest && action.minutes >= rest.minutes) {
+      const rested = restEffects(world, result.save);
+      result = { ...result, save: rested.save, entries: [...result.entries, ...rested.entries] };
+      input = `I rest for ${durationWords(action.minutes)}.`;
+      directive = `The player rests for ${roughDuration(action.minutes)} and wakes refreshed. Describe what changes, if anything.`;
+    }
   }
   return open(world, save, result.save, { id, kind: 'action', input, directive }, result.entries, result.terminals);
 }

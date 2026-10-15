@@ -10,3 +10,5 @@ export * from './save-file';
 export * from './options';
 export * from './records';
 export * from './journal';
+export * from './dice';
+export * from './checks';

@@ -19,6 +19,8 @@ export const optionsSchema = z.object({
   autoJournal: z.boolean().default(true),
   // Suggest compressing the oldest entries when the journal is over its budget.
   autoCompress: z.boolean().default(true),
+  // Settle checks without rolling unless the player asks for the dice.
+  alwaysSucceed: z.boolean().default(false),
   // Estimated tokens per character, recalibrated from NovelAI's reports.
   tokensPerChar: z.number().min(0.1).max(1).default(0.3),
 });

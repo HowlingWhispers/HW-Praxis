@@ -28,6 +28,30 @@ export interface WorldState {
   clock: number;
   positions: Readonly<Record<string, string>>;
   values: StateValues;
+  // Charges spent, by character and approach. They come back when every charge on that
+  // approach is spent, or on a full rest.
+  spent: Readonly<Record<string, Readonly<Record<string, readonly number[]>>>>;
+}
+
+// What a check was, kept on its turn so the transcript can show the dice.
+export interface CheckRecord {
+  approach: string;
+  approachName: string;
+  target: { owner: string; defId: string; label: string };
+  charge: number;
+  push: boolean;
+  storyPoint: boolean;
+  // Settled without rolling, by the player's choice.
+  auto: boolean;
+  good: { kind: string; face: string }[];
+  bad: { kind: string; face: string }[];
+  netSuccess: number;
+  netAdvantage: number;
+  succeeded: boolean;
+  triumph: boolean;
+  despair: boolean;
+  // The chance it had, from 0 to 1.
+  chance: number;
 }
 
 // One exchange: what the player did, what the rules decided, and what the narrator wrote.
@@ -44,6 +68,8 @@ export interface Turn {
   before: WorldState;
   // The ledger's length when the turn began; everything after belongs to this turn or later.
   ledgerStart: number;
+  // The dice, when the turn was a check.
+  check?: CheckRecord;
   // The first earlier turn the narrator is sent with this one. It moves only when the
   // story outgrows its share of the window, so the prompt's prefix stays the same between.
   windowStart: number;
@@ -106,6 +132,7 @@ export function startSave(module: PraxisModule): Save {
     clock: safeMinutes(scenario.startAt),
     positions,
     values,
+    spent: {},
     ledger: [],
     turns: [],
     journal: emptyJournal(),

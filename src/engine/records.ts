@@ -74,6 +74,7 @@ export function playable(module: PraxisModule, local: readonly LocalRecord[]): P
     factionIds: record.factionIds,
     states: {},
     maxima: {},
+    charges: {},
     origin: 'local',
   }));
   const places: Place[] = of('place').map((record) => ({

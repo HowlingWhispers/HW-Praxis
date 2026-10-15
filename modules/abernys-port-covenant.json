@@ -2,7 +2,7 @@
   "format": "praxis-module/1",
   "id": "abernys-port-covenant",
   "name": "Abernys: Port Covenant",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and their Four Approaches tiers (the Arbiter a rival, the guard a minion), and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own.",
   "source": {
     "kind": "local"
@@ -323,6 +323,12 @@
         "finesse": 2,
         "focus": 1,
         "flair": 3
+      },
+      "charges": {
+        "flair": "trained",
+        "force": "practiced",
+        "finesse": "practiced",
+        "focus": "raw"
       }
     },
     {
@@ -646,7 +652,125 @@
         "outcome": "The player signs the Covenant in the Arbiter’s ledger. It binds them from this moment, and the landward gate is open to them.",
         "canonStatus": "draft"
       }
-    ]
+    ],
+    "approaches": [
+      {
+        "id": "force",
+        "name": "Force",
+        "failure": [
+          {
+            "stateId": "health",
+            "who": "player",
+            "add": -1
+          },
+          {
+            "stateId": "alert",
+            "who": "place",
+            "add": 1
+          }
+        ],
+        "threat": [
+          {
+            "stateId": "alert",
+            "who": "place",
+            "add": 1
+          }
+        ],
+        "canonStatus": "draft"
+      },
+      {
+        "id": "finesse",
+        "name": "Finesse",
+        "failure": [
+          {
+            "stateId": "alert",
+            "who": "place",
+            "add": 1
+          }
+        ],
+        "threat": [
+          {
+            "stateId": "alert",
+            "who": "place",
+            "add": 1
+          }
+        ],
+        "canonStatus": "draft"
+      },
+      {
+        "id": "focus",
+        "name": "Focus",
+        "failureMinutes": 30,
+        "threatMinutes": 15,
+        "canonStatus": "draft"
+      },
+      {
+        "id": "flair",
+        "name": "Flair",
+        "failure": [
+          {
+            "stateId": "strain",
+            "who": "player",
+            "add": -1
+          }
+        ],
+        "threat": [
+          {
+            "stateId": "strain",
+            "who": "player",
+            "add": -1
+          }
+        ],
+        "canonStatus": "draft"
+      }
+    ],
+    "dice": {
+      "difficulty": 2,
+      "edge": "edge",
+      "storyPoints": "story-points",
+      "momentum": "momentum",
+      "setbacks": [
+        {
+          "stateId": "health",
+          "who": "player",
+          "atMost": 4,
+          "reason": "You are hurt"
+        },
+        {
+          "stateId": "alert",
+          "who": "place",
+          "atLeast": 2,
+          "approaches": [
+            "finesse"
+          ],
+          "reason": "Someone is watching"
+        },
+        {
+          "stateId": "alert",
+          "who": "place",
+          "atLeast": 3,
+          "reason": "The scene is roused"
+        }
+      ],
+      "push": {
+        "stateId": "strain",
+        "add": -2
+      }
+    },
+    "rest": {
+      "minutes": 480,
+      "effects": [
+        {
+          "stateId": "health",
+          "add": 1
+        },
+        {
+          "stateId": "strain",
+          "toMax": true
+        }
+      ],
+      "resetCharges": true
+    }
   },
   "scenario": {
     "title": "At the landward gate",

@@ -91,6 +91,8 @@ export const characterSchema = z.object({
   // This character's own maximum for a state, such as a minion's 2 Health. Bands with a
   // 'share' basis read against it.
   maxima: z.record(z.string(), z.number().int()).default({}),
+  // Four Approaches charges, by approach: trained (+1, +2, +3), practiced (+1, +2), raw (+1).
+  charges: z.record(z.string(), z.enum(['trained', 'practiced', 'raw'])).default({}),
 }).passthrough();
 
 export const itemSchema = z.object({
@@ -159,12 +161,64 @@ export const sceneActionSchema = z.object({
   outcome: z.string().min(1).max(1000),
 }).passthrough();
 
+// What a check costs: a change to the player's character, the place, or the target.
+export const costSchema = z.object({
+  stateId: id,
+  who: z.enum(['player', 'place', 'target']),
+  add: z.number().int(),
+});
+
+// One of the Four Approaches. Its rating is the character state with the same id. Failure
+// and two or more threat cost what is listed here, paid by whoever owns the ground: an
+// approach used as a secondary pays its owner's costs.
+export const approachSchema = z.object({
+  id,
+  name: z.string().min(1).max(60),
+  failure: z.array(costSchema).max(8).default([]),
+  failureMinutes: z.number().int().min(0).max(100_000).default(0),
+  threat: z.array(costSchema).max(8).default([]),
+  threatMinutes: z.number().int().min(0).max(100_000).default(0),
+}).passthrough();
+
+// A condition that adds a setback die: the player hurt, the place watchful.
+export const setbackSchema = z.object({
+  stateId: id,
+  who: z.enum(['player', 'place']),
+  atLeast: z.number().int().optional(),
+  atMost: z.number().int().optional(),
+  // Only for these approaches. Empty means every approach.
+  approaches: z.array(id).max(8).default([]),
+  reason: z.string().min(1).max(200),
+});
+
+export const diceSchema = z.object({
+  // Difficulty dice when nothing else sets it. Two is Genesys's Average.
+  difficulty: z.number().int().min(0).max(5).default(2),
+  // The player's states that hold Edge, Story Points and the hidden momentum count.
+  edge: id.optional(),
+  storyPoints: id.optional(),
+  momentum: id.optional(),
+  setbacks: z.array(setbackSchema).max(20).default([]),
+  // What pushing costs the player: reusing a spent charge. Four Approaches: 2 Strain.
+  push: z.object({ stateId: id, add: z.number().int() }).optional(),
+});
+
+// A full rest: waiting at least this long restores what is listed and resets charges.
+export const restSchema = z.object({
+  minutes: z.number().int().min(1).max(100_000).default(480),
+  effects: z.array(z.object({ stateId: id, add: z.number().int().optional(), toMax: z.boolean().optional() })).max(8).default([]),
+  resetCharges: z.boolean().default(true),
+});
+
 export const rulesetSchema = z.object({
   states: z.array(stateDefSchema).max(500).default([]),
   // Absent means the real calendar (DEFAULT_CALENDAR).
   calendar: calendarSchema.optional(),
   travel: travelSchema.default({ walkKph: 4, tiers: [] }),
   actions: z.array(sceneActionSchema).max(1000).default([]),
+  approaches: z.array(approachSchema).max(12).default([]),
+  dice: diceSchema.optional(),
+  rest: restSchema.optional(),
 });
 
 export const scenarioSchema = z.object({
@@ -192,7 +246,7 @@ export const moduleSchema = z.object({
   world: worldSchema,
   characters: z.array(characterSchema).max(5000).default([]),
   items: z.array(itemSchema).max(5000).default([]),
-  ruleset: rulesetSchema.default({ states: [], travel: { walkKph: 4, tiers: [] }, actions: [] }),
+  ruleset: rulesetSchema.default({ states: [], travel: { walkKph: 4, tiers: [] }, actions: [], approaches: [] }),
   scenario: scenarioSchema,
 }).superRefine((module, context) => {
   const issue = (path: (string | number)[], message: string) => context.addIssue({ code: 'custom', path, message });
@@ -261,6 +315,43 @@ export const moduleSchema = z.object({
   });
 
   const playerState = (state: StateDef | undefined) => Boolean(state && appliesTo(state, 'character', true));
+  const placeState = (state: StateDef | undefined) => Boolean(state && appliesTo(state, 'place'));
+  const approachIds = new Set(module.ruleset.approaches.map((approach) => approach.id));
+  unique(module.ruleset.approaches.map((approach) => approach.id), ['ruleset', 'approaches']);
+  module.ruleset.approaches.forEach((approach, index) => {
+    if (!characterState(states.get(approach.id))) issue(['ruleset', 'approaches', index, 'id'], `An approach's rating is the character state "${approach.id}", which does not exist.`);
+    (['failure', 'threat'] as const).forEach((kind) => approach[kind].forEach((cost, costIndex) => {
+      const state = states.get(cost.stateId);
+      const fits = cost.who === 'place' ? placeState(state) : cost.who === 'player' ? playerState(state) : characterState(state);
+      if (!fits) issue(['ruleset', 'approaches', index, kind, costIndex, 'stateId'], `"${cost.stateId}" is not a state ${cost.who === 'place' ? 'a place' : 'a character'} holds.`);
+    }));
+  });
+  module.ruleset.states.forEach((state, index) => {
+    if (!state.approach || !approachIds.size) return;
+    for (const approachId of [state.approach.owner, ...state.approach.secondary]) {
+      if (!approachIds.has(approachId)) issue(['ruleset', 'states', index, 'approach'], `Unknown approach "${approachId}".`);
+    }
+  });
+  const dice = module.ruleset.dice;
+  if (dice) {
+    if (dice.push && !playerState(states.get(dice.push.stateId))) issue(['ruleset', 'dice', 'push', 'stateId'], `"${dice.push.stateId}" is not a state the player's character holds.`);
+    for (const key of ['edge', 'storyPoints', 'momentum'] as const) {
+      const stateId = dice[key];
+      if (stateId && !playerState(states.get(stateId))) issue(['ruleset', 'dice', key], `"${stateId}" is not a state the player's character holds.`);
+    }
+    dice.setbacks.forEach((setback, setbackIndex) => {
+      const state = states.get(setback.stateId);
+      if (!(setback.who === 'place' ? placeState(state) : playerState(state))) issue(['ruleset', 'dice', 'setbacks', setbackIndex, 'stateId'], `"${setback.stateId}" does not fit "${setback.who}".`);
+    });
+  }
+  module.ruleset.rest?.effects.forEach((effect, effectIndex) => {
+    if (!playerState(states.get(effect.stateId))) issue(['ruleset', 'rest', 'effects', effectIndex, 'stateId'], `"${effect.stateId}" is not a state the player's character holds.`);
+  });
+  module.characters.forEach((character, index) => {
+    for (const approachId of Object.keys(character.charges)) {
+      if (!approachIds.has(approachId)) issue(['characters', index, 'charges', approachId], `Unknown approach "${approachId}".`);
+    }
+  });
   unique(module.ruleset.actions.map((action) => action.id), ['ruleset', 'actions']);
   module.ruleset.actions.forEach((action, index) => {
     const path = ['ruleset', 'actions', index];
@@ -308,6 +399,8 @@ export type Item = z.infer<typeof itemSchema>;
 export type WorldEntry = z.infer<typeof worldEntrySchema>;
 export type Memory = z.infer<typeof memorySchema>;
 export type SceneAction = z.infer<typeof sceneActionSchema>;
+export type Approach = z.infer<typeof approachSchema>;
+export type Cost = z.infer<typeof costSchema>;
 
 // A state's definition as it applies to one owner, with that character's own maximum.
 export function stateDefFor(module: PraxisModule, defId: string, ownerId: string): StateDef | undefined {
