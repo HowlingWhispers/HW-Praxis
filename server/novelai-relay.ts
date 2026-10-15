@@ -17,7 +17,8 @@ export const chatRequestSchema = z.object({
     role: z.enum(['system', 'user', 'assistant']),
     content: z.string().max(200_000),
   })).min(1).max(500),
-  max_tokens: z.number().int().min(16).max(2048).default(500),
+  // Reasoning models (GLM-4.6) spend part of this thinking before they answer, so it is generous.
+  max_tokens: z.number().int().min(16).max(8192).default(2048),
   temperature: z.number().min(0).max(2).default(0.8),
 }).strict();
 
@@ -37,8 +38,10 @@ const missingToken: RelayResult = { status: 401, body: { error: 'Connect NovelAI
 
 async function upstreamError(response: Response): Promise<RelayResult> {
   let message = '';
+  let raw = '';
   try {
     const text = await response.text();
+    raw = text.slice(0, 600);
     try {
       const parsed = JSON.parse(text) as { message?: unknown; error?: unknown };
       message = typeof parsed.message === 'string' ? parsed.message : typeof parsed.error === 'string' ? parsed.error : '';
@@ -50,7 +53,7 @@ async function upstreamError(response: Response): Promise<RelayResult> {
   }
   const status = [400, 401, 402, 403, 404, 429].includes(response.status) ? response.status : 502;
   const fallback = status === 401 ? 'NovelAI did not accept that token.' : status === 429 ? 'NovelAI is rate limiting requests; wait a moment.' : 'NovelAI could not complete the request.';
-  return { status, body: { error: message.trim() || fallback } };
+  return { status, body: { error: message.trim() || fallback, diagnostics: { status: response.status, upstreamBody: raw } } };
 }
 
 export async function relayModels(fetchImpl: Fetch, rawToken: string | undefined): Promise<RelayResult> {
@@ -93,21 +96,35 @@ export async function relayChat(fetchImpl: Fetch, rawToken: string | undefined, 
   }
   if (!response.ok) return upstreamError(response);
 
+  const started = Date.now();
   const body = await response.json().catch(() => null) as {
     model?: unknown;
     usage?: unknown;
-    choices?: { message?: { content?: unknown }; text?: unknown }[];
+    choices?: { message?: { content?: unknown; reasoning_content?: unknown; reasoning?: unknown }; text?: unknown; finish_reason?: unknown }[];
   } | null;
   const choice = body?.choices?.[0];
   const content = typeof choice?.message?.content === 'string' ? choice.message.content : typeof choice?.text === 'string' ? choice.text : '';
-  if (!content.trim()) return { status: 502, body: { error: 'NovelAI returned an empty reply.' } };
-  return {
-    status: 200,
-    body: {
-      text: content,
-      model: typeof body?.model === 'string' ? body.model : parsed.data.model,
-      // Passed through for the generation test: prompt and completion sizes, and any cache count.
-      usage: body?.usage && typeof body.usage === 'object' ? body.usage : null,
-    },
+  const reasoningRaw = choice?.message?.reasoning_content ?? choice?.message?.reasoning;
+  const reasoning = typeof reasoningRaw === 'string' ? reasoningRaw : '';
+  const finishReason = typeof choice?.finish_reason === 'string' ? choice.finish_reason : null;
+  // What the interface's diagnostics panel shows. Never includes the token.
+  const diagnostics = {
+    status: response.status,
+    model: typeof body?.model === 'string' ? body.model : parsed.data.model,
+    finishReason,
+    contentLength: content.length,
+    reasoningLength: reasoning.length,
+    reasoningPreview: reasoning.slice(0, 600),
+    choiceFields: choice ? Object.keys(choice).concat(choice.message ? Object.keys(choice.message).map((key) => `message.${key}`) : []) : [],
+    maxTokens: parsed.data.max_tokens,
+    usage: body?.usage && typeof body.usage === 'object' ? body.usage : null,
+    parseMs: Date.now() - started,
   };
+  if (!content.trim()) {
+    const why = reasoning && finishReason === 'length'
+      ? `The model used its whole allowance (${parsed.data.max_tokens} tokens) thinking and wrote no reply.`
+      : body === null ? 'NovelAI sent something that was not JSON.' : 'NovelAI returned an empty reply.';
+    return { status: 502, body: { error: why, diagnostics } };
+  }
+  return { status: 200, body: { text: content, model: diagnostics.model, usage: diagnostics.usage, diagnostics } };
 }

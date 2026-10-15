@@ -44,6 +44,15 @@ export function saveModel(model: string) {
   try { storage()?.setItem(MODEL_KEY, model); } catch { /* not remembered */ }
 }
 
+export type Diagnostics = Record<string, unknown>;
+
+// An error that carries the relay's diagnostics, so a failure can be inspected.
+export class NarrationError extends Error {
+  constructor(message: string, readonly diagnostics: Diagnostics | null, readonly status: number) {
+    super(message);
+  }
+}
+
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = currentToken();
   if (!token) throw new Error('Connect NovelAI first.');
@@ -52,8 +61,12 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-NovelAI-Token': token },
     cache: 'no-store',
   });
-  const body = await response.json().catch(() => null) as { error?: unknown } | null;
-  if (!response.ok) throw new Error(typeof body?.error === 'string' ? body.error : `Narration failed (${response.status}).`);
+  const body = await response.json().catch(() => null) as { error?: unknown; diagnostics?: unknown } | null;
+  if (!response.ok) {
+    const diagnostics = body?.diagnostics && typeof body.diagnostics === 'object' ? body.diagnostics as Diagnostics : null;
+    const message = typeof body?.error === 'string' ? body.error : body === null ? `The Praxis server answered ${response.status} with something that was not JSON. Is the API deployed?` : `Narration failed (${response.status}).`;
+    throw new NarrationError(message, diagnostics, response.status);
+  }
   return body as T;
 }
 
@@ -66,12 +79,13 @@ export interface Narration {
   text: string;
   model: string;
   usage: Record<string, unknown> | null;
+  diagnostics?: Diagnostics;
 }
 
 export function narrate(messages: ChatMessage[], model: string, signal?: AbortSignal): Promise<Narration> {
   return call<Narration>('/api/novelai/chat', {
     method: 'POST',
-    body: JSON.stringify({ model, messages, max_tokens: 500, temperature: 0.8 }),
+    body: JSON.stringify({ model, messages, max_tokens: 2048, temperature: 0.8 }),
     signal,
   });
 }

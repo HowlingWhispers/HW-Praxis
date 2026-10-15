@@ -20,11 +20,11 @@ describe('the NovelAI relay', () => {
   it('forwards a chat with the caller\'s token and returns the text and usage', async () => {
     const upstream = fakeNovelAI({ body: { model: 'glm-4-6', choices: [{ message: { content: '*Rain.*' } }], usage: { prompt_tokens: 12 } } });
     const result = await relayChat(upstream.fetchImpl, token, request);
-    expect(result).toEqual({ status: 200, body: { text: '*Rain.*', model: 'glm-4-6', usage: { prompt_tokens: 12 } } });
+    expect(result).toMatchObject({ status: 200, body: { text: '*Rain.*', model: 'glm-4-6', usage: { prompt_tokens: 12 } } });
     expect(upstream.calls[0]!.url).toBe('https://text.novelai.net/oa/v1/chat/completions');
     const headers = upstream.calls[0]!.init!.headers as Record<string, string>;
     expect(headers.Authorization).toBe(`Bearer ${token}`);
-    expect(JSON.parse(String(upstream.calls[0]!.init!.body))).toMatchObject({ model: 'glm-4-6', max_tokens: 500, stream: false });
+    expect(JSON.parse(String(upstream.calls[0]!.init!.body))).toMatchObject({ model: 'glm-4-6', max_tokens: 2048, stream: false });
   });
 
   it('refuses without a token and never calls out', async () => {
@@ -44,7 +44,18 @@ describe('the NovelAI relay', () => {
   it('passes on NovelAI\'s own refusal without the token', async () => {
     const upstream = fakeNovelAI({ status: 401, body: { message: 'Invalid token' } });
     const result = await relayChat(upstream.fetchImpl, token, request);
-    expect(result).toEqual({ status: 401, body: { error: 'Invalid token' } });
+    expect(result).toMatchObject({ status: 401, body: { error: 'Invalid token', diagnostics: { status: 401 } } });
+    expect(JSON.stringify(result)).not.toContain(token);
+  });
+
+  it('explains a reasoning model that ran out of room before answering', async () => {
+    const upstream = fakeNovelAI({ body: { choices: [{ finish_reason: 'length', message: { content: '', reasoning_content: 'Let me think about the gate...' } }] } });
+    const result = await relayChat(upstream.fetchImpl, token, request);
+    expect(result.status).toBe(502);
+    expect(result.body).toMatchObject({
+      error: 'The model used its whole allowance (2048 tokens) thinking and wrote no reply.',
+      diagnostics: { finishReason: 'length', contentLength: 0, reasoningLength: 30, choiceFields: ['finish_reason', 'message', 'message.content', 'message.reasoning_content'] },
+    });
     expect(JSON.stringify(result)).not.toContain(token);
   });
 

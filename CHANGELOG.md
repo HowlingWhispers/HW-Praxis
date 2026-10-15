@@ -8,6 +8,16 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.7.1 - Narration Diagnostics - 2026-10-14
+
+- Give replies room for reasoning models: GLM-4.6 thinks before it answers, and the
+  old 500-token limit could be spent entirely on thinking, leaving an empty reply.
+  The default is now 2048.
+- Explain that case by name when it happens, and strip leaked thinking from replies.
+- Add a Diagnostics panel on the play screen: the last ten narration calls with what
+  NovelAI sent back (status, finish reason, reply and reasoning lengths, usage, and
+  NovelAI's own error text), without the token, with a copy button.
+
 ## 0.7.0 - First Narration - 2026-10-14
 
 - Add turns. Speaking or acting opens a turn; an action is resolved by the rules
