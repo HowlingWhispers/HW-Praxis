@@ -11,12 +11,12 @@ class Crash extends Component<{ children: ReactNode }, { error: Error | null }> 
     const { error } = this.state;
     if (!error) return this.props.children;
     return (
-      <div className="shell">
-        <h1>Praxis stopped</h1>
+      <main className="home">
+        <h1 className="wordmark">Praxis stopped</h1>
         <p className="bad">{error.message}</p>
         <pre className="crash">{error.stack}</pre>
-        <button type="button" onClick={() => window.location.reload()}>Reload</button>
-      </div>
+        <button type="button" className="btn primary" onClick={() => window.location.reload()}>Reload</button>
+      </main>
     );
   }
 }

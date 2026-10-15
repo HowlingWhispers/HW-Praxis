@@ -1,17 +1,30 @@
-// Connecting NovelAI: the player's Persistent API Token and a model.
+// Connecting NovelAI with the player's Persistent API Token. The token is sent with each
+// request and never stored on the server; in this browser only if the player asks.
 import { useState } from 'react';
-import { DEFAULT_MODEL, currentToken, forgetToken, listModels, rememberedToken, saveMode, saveModel, setToken, type NarrationMode } from './novelai';
+import { DEFAULT_MODEL, currentToken, forgetToken, listModels, rememberedToken, saveModel, setToken, type NarrationMode } from './novelai';
 
 export interface Connection {
   connected: boolean;
   model: string;
   mode: NarrationMode;
+  models: string[];
 }
 
-export function Connect({ connection, onChange }: { connection: Connection; onChange: (next: Connection) => void }) {
+// Connects with whatever token is already known. Used at start when one was remembered.
+export async function reconnect(connection: Connection): Promise<Connection> {
+  if (!currentToken()) return connection;
+  try {
+    const models = await listModels();
+    const model = models.includes(connection.model) ? connection.model : models.includes(DEFAULT_MODEL) ? DEFAULT_MODEL : models[0] ?? DEFAULT_MODEL;
+    return { ...connection, connected: true, model, models };
+  } catch {
+    return { ...connection, connected: false };
+  }
+}
+
+export function ConnectForm({ connection, onChange }: { connection: Connection; onChange: (next: Connection) => void }) {
   const [token, setTokenText] = useState('');
   const [remember, setRemember] = useState(Boolean(rememberedToken()));
-  const [models, setModels] = useState<string[]>([]);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -22,13 +35,12 @@ export function Connect({ connection, onChange }: { connection: Connection; onCh
     setStatus('Connecting…');
     setToken(value, remember);
     try {
-      const list = await listModels();
-      setModels(list);
-      const model = list.includes(connection.model) ? connection.model : list.includes(DEFAULT_MODEL) ? DEFAULT_MODEL : list[0] ?? DEFAULT_MODEL;
+      const models = await listModels();
+      const model = models.includes(connection.model) ? connection.model : models.includes(DEFAULT_MODEL) ? DEFAULT_MODEL : models[0] ?? DEFAULT_MODEL;
       saveModel(model);
       setTokenText('');
-      setStatus(`Connected. ${list.length} models available.`);
-      onChange({ ...connection, connected: true, model });
+      setStatus('');
+      onChange({ ...connection, connected: true, model, models });
     } catch (error) {
       forgetToken();
       setStatus(error instanceof Error ? error.message : 'Could not connect.');
@@ -40,55 +52,38 @@ export function Connect({ connection, onChange }: { connection: Connection; onCh
 
   function disconnect() {
     forgetToken();
-    setModels([]);
     setStatus('Disconnected. The token is no longer kept anywhere.');
-    onChange({ ...connection, connected: false });
+    onChange({ ...connection, connected: false, models: [] });
+  }
+
+  if (connection.connected) {
+    return (
+      <div className="lr" style={{ minHeight: 64 }}>
+        <span aria-hidden="true" className="dot" style={{ width: 10, height: 10, background: 'var(--good)', boxShadow: '0 0 0 4px #1d2e27' }} />
+        <span className="grow">
+          <span className="name" style={{ display: 'block' }}>NovelAI connected</span>
+          <span className="meta" style={{ display: 'block', marginTop: 2 }}>{rememberedToken() ? 'Your token is remembered on this device' : 'Your token stays in this tab'}</span>
+        </span>
+        <button type="button" className="btn" onClick={disconnect}>Disconnect</button>
+      </div>
+    );
   }
 
   return (
-    <div className="connect">
-      <p className="muted">
-        Narration uses your NovelAI account. Find your Persistent API Token in NovelAI under User Settings, Account.
-        It is sent with each request and never stored on the server.
+    <div className="lr stack">
+      <p className="meta" style={{ lineHeight: 1.45 }}>
+        Narration uses your own NovelAI account. Find your Persistent API Token in NovelAI under User Settings, Account. It goes with each request and is never stored on the server.
       </p>
-      {!connection.connected && (
-        <>
-          <label className="field">
-            <span>Persistent API Token</span>
-            <input type="password" autoComplete="off" value={token} placeholder="pst-…" onChange={(event: { target: HTMLInputElement }) => setTokenText(event.target.value)} />
-          </label>
-          <label className="check">
-            <input type="checkbox" checked={remember} onChange={(event: { target: HTMLInputElement }) => setRemember(event.target.checked)} />
-            <span>Remember on this device</span>
-          </label>
-          <button type="button" className="primary" onClick={connect} disabled={busy}>Connect</button>
-        </>
-      )}
-      {connection.connected && (
-        <>
-          <label className="field">
-            <span>Model</span>
-            <select
-              value={connection.model}
-              onChange={(event: { target: HTMLSelectElement }) => { saveModel(event.target.value); onChange({ ...connection, model: event.target.value }); }}
-            >
-              {(models.length ? models : [connection.model]).map((model) => <option key={model} value={model}>{model}</option>)}
-            </select>
-          </label>
-          <label className="field">
-            <span>How requests are sent</span>
-            <select
-              value={connection.mode}
-              onChange={(event: { target: HTMLSelectElement }) => { const mode = event.target.value as NarrationMode; saveMode(mode); onChange({ ...connection, mode }); }}
-            >
-              <option value="prompt">Raw prompt in GLM format (completions)</option>
-              <option value="chat">Chat messages (chat completions)</option>
-            </select>
-          </label>
-          <button type="button" onClick={disconnect}>Disconnect</button>
-        </>
-      )}
-      {status && <p className="muted" role="status">{status}</p>}
+      <div>
+        <label htmlFor="nai-token" className="label field-label">Persistent API Token</label>
+        <input id="nai-token" className="field" type="password" autoComplete="off" value={token} placeholder="pst-…" onChange={(event) => setTokenText(event.target.value)} />
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 15 }}>
+        <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} style={{ width: 20, height: 20 }} />
+        Remember on this device
+      </label>
+      <button type="button" className="btn primary" onClick={() => void connect()} disabled={busy}>Connect NovelAI</button>
+      {status && <p className="meta" role="status">{status}</p>}
     </div>
   );
 }

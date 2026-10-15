@@ -43,7 +43,7 @@ describe('local records', () => {
     expect(sceneOf(module, save).present.map((person) => person.name)).toContain('Teo');
     const withTurn = must(say(module, save, 't1', 'I look around.')).save;
     const messages = compileContext(module, withTurn);
-    expect(messages.at(-1)!.content).toMatch(/Teo, A gate runner, Humans: Carries messages/);
+    expect(messages.at(-1)!.content).toMatch(/Teo, a gate runner, Humans: Carries messages/);
     expect(messages[0]!.content).toMatch(/- Teo \(Humans\): a gate runner\./);
   });
 

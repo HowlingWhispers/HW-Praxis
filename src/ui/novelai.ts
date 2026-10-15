@@ -94,10 +94,22 @@ export interface Narration {
   diagnostics?: Diagnostics;
 }
 
-export function narrate(messages: ChatMessage[], model: string, mode: NarrationMode, signal?: AbortSignal): Promise<Narration> {
+export interface NarrateOptions {
+  maxTokens?: number;
+  temperature?: number;
+  signal?: AbortSignal;
+}
+
+export function narrate(messages: ChatMessage[], model: string, mode: NarrationMode, options: NarrateOptions = {}): Promise<Narration> {
   return call<Narration>('/api/novelai/chat', {
     method: 'POST',
-    body: JSON.stringify({ model, messages, mode, max_tokens: 2048, temperature: 0.8 }),
-    signal,
+    body: JSON.stringify({ model, messages, mode, max_tokens: options.maxTokens ?? 1000, temperature: options.temperature ?? 0.8 }),
+    signal: options.signal,
   });
+}
+
+// NovelAI's count of the prompt's tokens, when it sent one.
+export function promptTokensOf(usage: Record<string, unknown> | null | undefined): number | null {
+  const value = usage?.prompt_tokens;
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
 }

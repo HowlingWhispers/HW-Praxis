@@ -73,7 +73,7 @@ function worldDigest(module: PraxisModule): string {
 
 const inSentence = (name: string) => (name.startsWith('The ') ? `the ${name.slice(4)}` : name);
 // "A gate runner" reads as "a gate runner" after a name.
-const midSentence = (text: string) => (/^(The|A|An) /.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : text);
+export const midSentence = (text: string) => (/^(The|A|An) /.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : text);
 
 // One line for everyone and everything the world names, so the narrator reaches for what
 // exists instead of inventing it. Capped: the least specific entries are left out first.
@@ -165,7 +165,7 @@ function ancestry(world: PraxisModule, place: Place): string[] {
 
 function dossier(world: PraxisModule, character: Character): string {
   const species = world.world.species.find((entry) => entry.id === character.speciesId)?.name;
-  const role = typeof character.role === 'string' ? character.role : '';
+  const role = typeof character.role === 'string' ? midSentence(character.role) : '';
   const head = [character.name, role, species].filter(Boolean).join(', ');
   return character.description ? `${head}: ${character.description}` : head;
 }
