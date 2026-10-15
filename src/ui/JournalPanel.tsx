@@ -8,7 +8,7 @@ import type { PlayApi } from './Play';
 import { ArchiveIcon, BackIcon, CloseIcon, PenIcon } from './icons';
 import { newId } from './shared';
 
-export function JournalPanel({ api, headRef, onBack }: { api: PlayApi; headRef: RefObject<HTMLDivElement | null>; onBack: () => void }) {
+export function JournalPanel({ api, headRef, onBack }: { api: PlayApi; headRef: RefObject<HTMLDivElement>; onBack: () => void }) {
   const { save, world, journalBusy, connection } = api;
   const pending = save.journal.pending;
   const [pendingText, setPendingText] = useState(pending?.text ?? '');

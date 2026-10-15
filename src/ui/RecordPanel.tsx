@@ -23,7 +23,7 @@ const READS: Record<RecordType, string> = {
   note: 'Sent with every turn, in the world notes.',
 };
 
-export function RecordPanel({ api, target, headRef, onDone }: { api: PlayApi; target: RecordTarget; headRef: RefObject<HTMLDivElement | null>; onDone: () => void }) {
+export function RecordPanel({ api, target, headRef, onDone }: { api: PlayApi; target: RecordTarget; headRef: RefObject<HTMLDivElement>; onDone: () => void }) {
   const { module, world, save } = api;
   const scene = sceneOf(world, save);
   const playerId = playerOf(world);

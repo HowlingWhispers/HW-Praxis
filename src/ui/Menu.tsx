@@ -43,7 +43,7 @@ export function Menu({ api, section, setSection, worldQuery, setWorldQuery, head
   setSection: (section: Section) => void;
   worldQuery: string;
   setWorldQuery: (query: string) => void;
-  headRef: RefObject<HTMLDivElement | null>;
+  headRef: RefObject<HTMLDivElement>;
   onClose: () => void;
 }) {
   const { world, save, connection } = api;

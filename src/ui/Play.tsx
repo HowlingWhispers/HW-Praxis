@@ -87,7 +87,7 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
   const failedAt = useRef(-1);
   const logEnd = useRef<HTMLDivElement | null>(null);
   const composer = useRef<HTMLTextAreaElement | null>(null);
-  const panelHead = useRef<HTMLDivElement | null>(null);
+  const panelHead = useRef<HTMLDivElement>(null);
 
   const world = playable(module, save.local);
   const playerId = playerOf(world);

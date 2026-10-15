@@ -107,7 +107,7 @@ const CHAPTERS: { id: Chapter; title: string; summary: string; body: ReactNode }
   },
 ];
 
-export function GuidePanel({ headRef, onBack }: { headRef: RefObject<HTMLDivElement | null>; onBack: () => void }) {
+export function GuidePanel({ headRef, onBack }: { headRef: RefObject<HTMLDivElement>; onBack: () => void }) {
   const [open, setOpen] = useState<Chapter | null>('basics');
   return (
     <div className="guide">

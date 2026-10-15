@@ -8,6 +8,39 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.8.0 - Play Screen - 2026-10-15
+
+- A new interface. The story and the composer fill the screen. The menu is one scroll
+  of five sections, one open at a time, each heading saying enough to know whether to
+  open it: Scene, You, Map, World, Settings. On a phone it covers the story; on a wide
+  screen it sits beside it.
+- Every turn shows what changed and whether the rules or the player changed it. The
+  scene's own actions, a short wait and the nearest ways out sit above the composer.
+- The narrator's context is now sized to the model's window and laid out by how often
+  each part changes. The transcript's start stays put between cuts and a whole piece
+  leaves at once, so the prompt's prefix can be reused. A who's who of the world's
+  people, groups and places goes in the system message, so the narrator reaches for
+  what exists instead of inventing it, and the groups and history bearing on the scene
+  go in the latest message.
+- The journal keeps the story so far and is sent with every turn. Before a piece of
+  story leaves the window, Praxis suggests a short entry recording it; when the journal
+  passes its budget, it suggests combining the oldest entries. Nothing joins the journal
+  until the player keeps it. The player can write, edit, archive and restore anything,
+  and switch the suggestions off.
+- Local records: the player can add people, places, things, groups and notes to a save.
+  The narrator reads them like the module's own, a local place can be travelled to,
+  and the records can be exported and imported on their own. The module never changes.
+- Authored scene actions settled by the rules. *Abernys: Port Covenant* 0.2.0 adds
+  signing the Covenant at the landward gate, and links the Pact to the Arbiters and to
+  Port Covenant.
+- A rules guide, How Praxis plays, written from the Four Approaches proposal.
+- Settings for the model's window, reply length, journal budget and piece size, reading
+  size and typeface, and a testing group: draft markers, numbers beside bands, what the
+  narrator was sent, and diagnostics.
+- A remembered NovelAI token connects by itself. The token estimate is corrected from
+  NovelAI's own prompt counts.
+- Saves from 0.7 open with an empty journal and default settings.
+
 ## 0.7.3 - Codespace Fix - 2026-10-15
 
 - Codespaces now build Praxis and serve it the way production does, on port 8791,
