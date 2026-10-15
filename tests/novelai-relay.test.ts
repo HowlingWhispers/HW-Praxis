@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { glmPrompt, relayChat, relayModels } from '../server/novelai-relay';
+import { describe, expect, it, vi } from 'vitest';
+import { relayChat, relayModels } from '../server/novelai-relay';
 
 type Call = { url: string; init?: RequestInit };
 
@@ -87,6 +89,22 @@ describe('the NovelAI relay', () => {
     const raw = (result.body as { diagnostics: { rawChoice: string } }).diagnostics.rawChoice;
     expect(raw).toContain('"token_ids":"[20 items: 0, 1, 2, 3, 4, 5, 6, 7, ...]"');
     expect(raw).toContain('151329');
+  it('logs only structural metadata for an empty reply', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const upstream = fakeNovelAI({ body: {
+        choices: [{ message: { content: '', reasoning_content: 'private reasoning' }, parsedContent: 'private fiction', finish_reason: 'length' }],
+        usage: { prompt_tokens: 12, completion_tokens: 500 },
+      } });
+      expect((await relayChat(upstream.fetchImpl, token, request)).status).toBe(502);
+      expect(warning).toHaveBeenCalledOnce();
+      const metadata = JSON.parse(warning.mock.calls[0]![1]);
+      expect(metadata).toMatchObject({ hasParsedContent: true, hasReasoningContent: true, finishReason: 'length', completionTokens: 500, requestedMaxTokens: 500 });
+      const output = JSON.stringify(warning.mock.calls);
+      for (const secret of [token, 'private reasoning', 'private fiction', 'Hello.']) expect(output).not.toContain(secret);
+    } finally {
+      warning.mockRestore();
+    }
   });
 
   it('lists model ids', async () => {
