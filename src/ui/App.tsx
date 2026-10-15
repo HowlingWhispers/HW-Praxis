@@ -1,12 +1,12 @@
-// Development shell: saved games, new games and loading files on one screen; play on another.
-// A placeholder until the play interface is designed.
+// The title screen (saved games, a new game, importing) and the game itself.
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import abernysRaw from '../../modules/abernys-port-covenant.json';
 import { loadModule, readSaveFile, sceneOf, startSave, type PraxisModule, type Save } from '../engine';
-import { Connect, type Connection } from './Connect';
+import { ConnectForm, reconnect, type Connection } from './Connect';
 import { Play } from './Play';
 import { readJsonFile } from './files';
 import { savedMode, savedModel } from './novelai';
+import { usePrefs } from './prefs';
 import { deleteSave, listSaves, moduleKey, openSave, putModule, putSave, type SaveRecord } from './storage';
 
 type Screen =
@@ -22,13 +22,15 @@ export function App() {
   const [saves, setSaves] = useState<SaveRecord[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [storageNote, setStorageNote] = useState('');
-  const [connection, setConnection] = useState<Connection>({ connected: false, model: savedModel(), mode: savedMode() });
-  const [showConnect, setShowConnect] = useState(false);
+  const [connection, setConnection] = useState<Connection>({ connected: false, model: savedModel(), mode: savedMode(), models: [] });
+  const [prefs, setPrefs] = usePrefs();
 
   const refresh = useCallback(async () => {
     try { setSaves(await listSaves()); } catch (error) { setStorageNote(error instanceof Error ? error.message : 'Saved games are unavailable.'); }
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
+  // A token remembered on this device connects by itself.
+  useEffect(() => { void reconnect(connection).then(setConnection); }, []);
 
   async function begin(module: PraxisModule, save: Save, name: string, id = newId()) {
     try { await putModule(module); } catch { setStorageNote('This browser is not keeping saves. Export your game to keep it.'); }
@@ -95,77 +97,88 @@ export function App() {
     }).catch(() => setStorageNote('This browser is not keeping saves. Export your game to keep it.'));
   }, []);
 
+  if (playing) {
+    return (
+      <Play
+        key={playing.id}
+        module={playing.module}
+        initial={playing.save}
+        name={playing.name}
+        connection={connection}
+        setConnection={setConnection}
+        prefs={prefs}
+        setPrefs={setPrefs}
+        onChange={persist}
+        onClose={() => { setScreen({ kind: 'home' }); void refresh(); }}
+      />
+    );
+  }
+
   return (
-    <div className="shell">
-      <header className="shell-head">
-        <h1>Praxis</h1>
-        <button type="button" className={connection.connected ? 'status on' : 'status'} aria-expanded={showConnect} onClick={() => setShowConnect((open) => !open)}>
-          {connection.connected ? `NovelAI · ${connection.model}` : 'Connect NovelAI'}
-        </button>
+    <main className="home">
+      <header className="home-head">
+        <div>
+          <h1 className="wordmark">Praxis</h1>
+          <p className="tagline">A roleplay where the story is yours and the facts are kept.</p>
+        </div>
       </header>
-      {showConnect && (
-        <section className="card connect-panel">
-          <Connect connection={connection} onChange={(next) => { setConnection(next); if (next.connected) setShowConnect(false); }} />
+
+      {storageNote && <p className="notice warn">{storageNote}</p>}
+
+      {saves.length > 0 && (
+        <section>
+          <h2>Continue</h2>
+          <div className="card clip">
+            {saves.map((record) => (
+              <div key={record.id} className="save-row">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p className="name">{record.name}</p>
+                  <p className="meta">{record.place} · {record.stamp} · {record.turns} {record.turns === 1 ? 'turn' : 'turns'}</p>
+                  <p className="meta">Saved {new Date(record.updatedAt).toLocaleString()}</p>
+                </div>
+                <button type="button" className="btn primary" onClick={() => void resume(record)}>Continue</button>
+                <button type="button" className="btn quiet" aria-label={`Delete ${record.name}`} onClick={() => void remove(record)}>Delete</button>
+              </div>
+            ))}
+          </div>
         </section>
       )}
-      {storageNote && <p className="notice">{storageNote}</p>}
-      {playing ? (
-        <Play
-          key={playing.id}
-          module={playing.module}
-          initial={playing.save}
-          name={playing.name}
-          connection={connection}
-          onConnect={() => { setShowConnect(true); window.scrollTo({ top: 0 }); }}
-          onChange={persist}
-          onClose={() => { setScreen({ kind: 'home' }); void refresh(); }}
-        />
-      ) : (
-        <main className="shell-body">
-          {saves.length > 0 && (
-            <section className="card">
-              <h2>Continue</h2>
-              <ul className="saves">
-                {saves.map((record) => (
-                  <li key={record.id}>
-                    <div>
-                      <strong>{record.name}</strong>
-                      <p className="muted">{record.place} · {record.stamp} · {record.turns} {record.turns === 1 ? "turn" : "turns"} · saved {new Date(record.updatedAt).toLocaleString()}</p>
-                    </div>
-                    <div className="inline">
-                      <button type="button" className="primary" onClick={() => void resume(record)}>Continue</button>
-                      <button type="button" onClick={() => void remove(record)}>Delete</button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-          <section className="card">
-            <h2>New game</h2>
-            <button type="button" className="primary" onClick={() => newGame(abernysRaw)}>Abernys: Port Covenant</button>
-            <label className="file">
-              <span className="muted">Or a module file</span>
-              <input type="file" accept="application/json,.json" onChange={onModuleFile} />
-            </label>
-          </section>
-          <section className="card">
-            <h2>Import a save</h2>
-            <p className="muted">Saves live in this browser. Clearing its site data deletes them, so export the ones you want to keep.</p>
-            <label className="file">
-              <span className="muted">A .praxis.json file</span>
-              <input type="file" accept="application/json,.json" onChange={onSaveFile} />
-            </label>
-          </section>
-          {errors.length > 0 && (
-            <section aria-live="polite">
-              <h2>That could not be loaded</h2>
-              <ul className="errors">{errors.map((line) => <li key={line}>{line}</li>)}</ul>
-            </section>
-          )}
-        </main>
+
+      <section>
+        <h2>New game</h2>
+        <div className="card pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <button type="button" className="btn primary wide" style={{ minHeight: 52, justifyContent: 'flex-start' }} onClick={() => newGame(abernysRaw)}>Abernys: Port Covenant</button>
+          <label className="file-pick">
+            <span className="meta">Or a module file</span>
+            <input type="file" accept="application/json,.json" onChange={(event) => void onModuleFile(event)} />
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Narration</h2>
+        <div className="card clip"><ConnectForm connection={connection} onChange={setConnection} /></div>
+      </section>
+
+      <section>
+        <h2>Import a save</h2>
+        <div className="card pad">
+          <p className="meta" style={{ lineHeight: 1.45 }}>Saves live in this browser. Clearing its site data deletes them, so export the ones you want to keep.</p>
+          <label className="file-pick">
+            <span className="meta">A .praxis.json file</span>
+            <input type="file" accept="application/json,.json" onChange={(event) => void onSaveFile(event)} />
+          </label>
+        </div>
+      </section>
+
+      {errors.length > 0 && (
+        <section aria-live="polite" className="card pad">
+          <p className="name">That could not be loaded</p>
+          <ul className="errors">{errors.map((line) => <li key={line}>{line}</li>)}</ul>
+        </section>
       )}
-      <p className="muted version">{__PRAXIS_VERSION__}</p>
-    </div>
+
+      <p className="version">{__PRAXIS_VERSION__}</p>
+    </main>
   );
 }

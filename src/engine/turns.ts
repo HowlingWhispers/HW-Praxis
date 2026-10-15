@@ -9,20 +9,25 @@
 
 import { atlasOf } from './world';
 import { durationWords } from './clock';
-import type { PraxisModule } from './module';
-import { travel, wait, type ActionResult, type LedgerEntry, type Save, type Turn, type WorldState } from './session';
+import { stateDefFor, type PraxisModule, type SceneAction } from './module';
+import { read, write, type StateTerminal } from './state';
+import { playable } from './records';
+import { windowStartFor } from './context';
+import { playerOf, travel, wait, type ActionResult, type LedgerEntry, type Save, type Turn, type WorldState } from './session';
 
 export type TurnResult =
-  | { ok: true; save: Save; turn: Turn; entries: LedgerEntry[] }
+  | { ok: true; save: Save; turn: Turn; entries: LedgerEntry[]; terminals: StateTerminal[] }
   | { ok: false; reason: string };
 
 function worldOf(save: Save): WorldState {
   return { clock: save.clock, positions: save.positions, values: save.values };
 }
 
-function open(before: Save, after: Save, turn: Omit<Turn, 'before' | 'ledgerStart' | 'reply'>, entries: LedgerEntry[]): TurnResult {
-  const full: Turn = { ...turn, reply: null, before: worldOf(before), ledgerStart: before.ledger.length };
-  return { ok: true, save: { ...after, turns: [...after.turns, full] }, turn: full, entries };
+function open(module: PraxisModule, before: Save, after: Save, turn: Omit<Turn, 'before' | 'ledgerStart' | 'reply' | 'windowStart'>, entries: LedgerEntry[], terminals: StateTerminal[] = []): TurnResult {
+  const draft: Turn = { ...turn, reply: null, before: worldOf(before), ledgerStart: before.ledger.length, windowStart: 0 };
+  const withTurn: Save = { ...after, turns: [...after.turns, draft] };
+  const full: Turn = { ...draft, windowStart: windowStartFor(module, withTurn) };
+  return { ok: true, save: { ...after, turns: [...after.turns, full] }, turn: full, entries, terminals };
 }
 
 // A name as it reads inside a sentence: "The harbour" becomes "the harbour".
@@ -39,23 +44,69 @@ export function roughDuration(minutes: number): string {
   return 'more than a day';
 }
 
-export function say(save: Save, id: string, text: string): TurnResult {
+export function say(module: PraxisModule, save: Save, id: string, text: string): TurnResult {
   const input = text.trim();
   if (!input) return { ok: false, reason: 'Write something first.' };
-  return open(save, save, { id, kind: 'say', input, directive: null }, []);
+  return open(module, save, save, { id, kind: 'say', input, directive: null }, []);
 }
 
 export type Action =
   | { type: 'travel'; to: string }
-  | { type: 'wait'; minutes: number };
+  | { type: 'wait'; minutes: number }
+  | { type: 'scene'; actionId: string };
+
+// Whether an authored action is offered to the player where they are now.
+function offered(module: PraxisModule, save: Save, action: SceneAction): boolean {
+  const playerId = playerOf(module);
+  const here = save.positions[playerId];
+  if (action.placeIds.length && (!here || !action.placeIds.includes(here))) return false;
+  return action.when.every((condition) => {
+    const def = stateDefFor(module, condition.stateId, playerId);
+    if (!def) return false;
+    const value = read(save.values, def, playerId);
+    return (condition.atLeast === undefined || value >= condition.atLeast) && (condition.atMost === undefined || value <= condition.atMost);
+  });
+}
+
+export function sceneActionsFor(module: PraxisModule, save: Save): SceneAction[] {
+  return module.ruleset.actions.filter((action) => offered(module, save, action));
+}
+
+// Resolves an authored action: its effects are written by the rules, in order.
+function resolveScene(module: PraxisModule, save: Save, action: SceneAction): ActionResult {
+  const playerId = playerOf(module);
+  let values = save.values;
+  const entries: LedgerEntry[] = [];
+  const terminals: StateTerminal[] = [];
+  for (const effect of action.effects) {
+    const def = stateDefFor(module, effect.stateId, playerId);
+    if (!def) return { ok: false, reason: `"${effect.stateId}" is not a state here.` };
+    const current = read(values, def, playerId);
+    const next = effect.set !== undefined ? effect.set : current + (effect.add ?? 0);
+    const result = write(values, def, playerId, next, 'rule');
+    values = result.values;
+    if (result.change) entries.push({ kind: 'state', at: save.clock, ...result.change });
+    if (result.terminal) terminals.push(result.terminal);
+  }
+  return { ok: true, save: { ...save, values, ledger: [...save.ledger, ...entries] }, entries, terminals };
+}
 
 export function act(module: PraxisModule, save: Save, id: string, action: Action): TurnResult {
+  const world = playable(module, save.local);
   let result: ActionResult;
   let input: string;
   let directive: string;
+  if (action.type === 'scene') {
+    const chosen = world.ruleset.actions.find((entry) => entry.id === action.actionId);
+    if (!chosen) return { ok: false, reason: 'That action does not exist.' };
+    if (!offered(world, save, chosen)) return { ok: false, reason: `${chosen.name} is not possible here and now.` };
+    result = resolveScene(world, save, chosen);
+    if (!result.ok) return result;
+    return open(world, save, result.save, { id, kind: 'action', input: chosen.input, directive: chosen.outcome }, result.entries, result.terminals);
+  }
   if (action.type === 'travel') {
-    const place = atlasOf(module).places.get(action.to);
-    result = travel(module, save, action.to);
+    const place = atlasOf(world).places.get(action.to);
+    result = travel(world, save, action.to);
     if (!result.ok) return result;
     const move = result.entries.find((entry): entry is Extract<LedgerEntry, { kind: 'move' }> => entry.kind === 'move');
     const minutes = move?.minutes ?? 0;
@@ -68,7 +119,7 @@ export function act(module: PraxisModule, save: Save, id: string, action: Action
     input = `I wait for ${durationWords(action.minutes)}.`;
     directive = `Time passes where the player is: ${roughDuration(action.minutes).replace('a short walk', 'a little while')}. Describe what changes, if anything.`;
   }
-  return open(save, result.save, { id, kind: 'action', input, directive }, result.entries);
+  return open(world, save, result.save, { id, kind: 'action', input, directive }, result.entries, result.terminals);
 }
 
 export function lastTurn(save: Save): Turn | null {

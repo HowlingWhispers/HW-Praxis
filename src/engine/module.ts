@@ -132,11 +132,39 @@ export const travelSchema = z.object({
   tiers: z.array(travelTierSchema).max(21).default([]),
 });
 
+// Something the player can do at a place that the rules settle outright, such as signing
+// the Covenant at the gate. Offered while its conditions hold; resolving it writes its
+// effects to the player's character and hands the narrator its outcome.
+export const sceneActionSchema = z.object({
+  id,
+  name: z.string().min(1).max(120),
+  // What it does, for the player.
+  summary: text(400).default(''),
+  // Where it is offered. Empty means anywhere.
+  placeIds: z.array(id).max(200).default([]),
+  // Conditions on the player's character, all of which must hold.
+  when: z.array(z.object({
+    stateId: id,
+    atLeast: z.number().int().optional(),
+    atMost: z.number().int().optional(),
+  })).max(8).default([]),
+  effects: z.array(z.object({
+    stateId: id,
+    set: z.number().int().optional(),
+    add: z.number().int().optional(),
+  })).min(1).max(8),
+  // The player's line in the transcript.
+  input: z.string().min(1).max(400),
+  // What the narrator must show, for this turn only.
+  outcome: z.string().min(1).max(1000),
+}).passthrough();
+
 export const rulesetSchema = z.object({
   states: z.array(stateDefSchema).max(500).default([]),
   // Absent means the real calendar (DEFAULT_CALENDAR).
   calendar: calendarSchema.optional(),
   travel: travelSchema.default({ walkKph: 4, tiers: [] }),
+  actions: z.array(sceneActionSchema).max(1000).default([]),
 });
 
 export const scenarioSchema = z.object({
@@ -164,7 +192,7 @@ export const moduleSchema = z.object({
   world: worldSchema,
   characters: z.array(characterSchema).max(5000).default([]),
   items: z.array(itemSchema).max(5000).default([]),
-  ruleset: rulesetSchema.default({ states: [], travel: { walkKph: 4, tiers: [] } }),
+  ruleset: rulesetSchema.default({ states: [], travel: { walkKph: 4, tiers: [] }, actions: [] }),
   scenario: scenarioSchema,
 }).superRefine((module, context) => {
   const issue = (path: (string | number)[], message: string) => context.addIssue({ code: 'custom', path, message });
@@ -232,6 +260,22 @@ export const moduleSchema = z.object({
     }
   });
 
+  const playerState = (state: StateDef | undefined) => Boolean(state && appliesTo(state, 'character', true));
+  unique(module.ruleset.actions.map((action) => action.id), ['ruleset', 'actions']);
+  module.ruleset.actions.forEach((action, index) => {
+    const path = ['ruleset', 'actions', index];
+    action.placeIds.forEach((placeId, placeIndex) => {
+      if (!places.has(placeId)) issue([...path, 'placeIds', placeIndex], `Unknown place "${placeId}".`);
+    });
+    action.when.forEach((condition, conditionIndex) => {
+      if (!playerState(states.get(condition.stateId))) issue([...path, 'when', conditionIndex, 'stateId'], `"${condition.stateId}" is not a state the player's character holds.`);
+    });
+    action.effects.forEach((effect, effectIndex) => {
+      if (!playerState(states.get(effect.stateId))) issue([...path, 'effects', effectIndex, 'stateId'], `"${effect.stateId}" is not a state the player's character holds.`);
+      if ((effect.set === undefined) === (effect.add === undefined)) issue([...path, 'effects', effectIndex], 'An effect either sets a value or adds to it.');
+    });
+  });
+
   module.characters.forEach((character, index) => {
     if (character.homeLocationId !== undefined && !places.has(character.homeLocationId)) {
       issue(['characters', index, 'homeLocationId'], `Unknown place "${character.homeLocationId}".`);
@@ -260,6 +304,10 @@ export type PraxisModule = z.infer<typeof moduleSchema>;
 export type Place = z.infer<typeof placeSchema>;
 export type Route = z.infer<typeof routeSchema>;
 export type Character = z.infer<typeof characterSchema>;
+export type Item = z.infer<typeof itemSchema>;
+export type WorldEntry = z.infer<typeof worldEntrySchema>;
+export type Memory = z.infer<typeof memorySchema>;
+export type SceneAction = z.infer<typeof sceneActionSchema>;
 
 // A state's definition as it applies to one owner, with that character's own maximum.
 export function stateDefFor(module: PraxisModule, defId: string, ownerId: string): StateDef | undefined {

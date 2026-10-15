@@ -2,7 +2,7 @@
   "format": "praxis-module/1",
   "id": "abernys-port-covenant",
   "name": "Abernys: Port Covenant",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and their Four Approaches tiers (the Arbiter a rival, the guard a minion), and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own.",
   "source": {
     "kind": "local"
@@ -290,7 +290,13 @@
       {
         "id": "the-pact",
         "name": "The Pact",
-        "description": "The humans of Port Covenant and the beastkin who have signed into it. A law applies only to those who sign it, no contract is unfair, and the most important contracts are tattooed on the body."
+        "description": "The humans of Port Covenant and the beastkin who have signed into it. A law applies only to those who sign it, no contract is unfair, and the most important contracts are tattooed on the body.",
+        "settlementLocationIds": [
+          "port-covenant"
+        ],
+        "factionIds": [
+          "the-arbiters"
+        ]
       }
     ],
     "memories": [
@@ -614,6 +620,31 @@
           "owner": "finesse",
           "secondary": []
         }
+      }
+    ],
+    "actions": [
+      {
+        "id": "sign-the-covenant",
+        "name": "Sign the Covenant",
+        "summary": "Put your name in the Arbiter’s ledger. From then on the Covenant binds you, and the gate is open to you.",
+        "placeIds": [
+          "pc-landward-gate"
+        ],
+        "when": [
+          {
+            "stateId": "signed-covenant",
+            "atMost": 0
+          }
+        ],
+        "effects": [
+          {
+            "stateId": "signed-covenant",
+            "set": 1
+          }
+        ],
+        "input": "I sign the Covenant.",
+        "outcome": "The player signs the Covenant in the Arbiter’s ledger. It binds them from this moment, and the landward gate is open to them.",
+        "canonStatus": "draft"
       }
     ]
   },

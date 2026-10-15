@@ -7,3 +7,6 @@ export * from './session';
 export * from './turns';
 export * from './context';
 export * from './save-file';
+export * from './options';
+export * from './records';
+export * from './journal';

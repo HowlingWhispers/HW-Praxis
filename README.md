@@ -6,7 +6,7 @@ The scope, architecture and release plan are in *Praxis — Charter* in the Howl
 
 ## Status
 
-`0.7.0`. The engine has the state primitive, the clock and calendar, places and travel, scene presence, the save with its ledger, turns with reroll and undo, and the context compiler. The first module, *Abernys: Port Covenant*, is in `modules/`. The interface is a development shell: it narrates through NovelAI with the player's own key, keeps saves in the browser, and exports and imports them. The Java prototype that preceded this is in the history at `d3b13ee`.
+`0.8.0`. The engine has the state primitive, the clock and calendar, places and travel, scene presence, authored scene actions, the save with its ledger, turns with reroll and undo, the journal, local records, and a context compiler sized to the model's window. The first module, *Abernys: Port Covenant*, is in `modules/`. The interface plays it with narration through NovelAI on the player's own key; saves stay in the browser and can be exported and imported. Dice arrive in 0.9. The Java prototype that preceded this is in the history at `d3b13ee`.
 
 ## Layout
 
