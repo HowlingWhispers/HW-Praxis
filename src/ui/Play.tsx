@@ -11,7 +11,7 @@ import type { Connection } from './Connect';
 import { RichText } from './RichText';
 import { StateRows } from './StateRows';
 import { downloadJson, fileSafe } from './files';
-import { narrate } from './novelai';
+import { NarrationError, narrate, type Diagnostics } from './novelai';
 
 function newId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `t${Date.now()}${Math.random().toString(16).slice(2)}`;
@@ -31,6 +31,7 @@ export function Play({ module, initial, name, connection, onConnect, onChange, o
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [lastSent, setLastSent] = useState<ChatMessage[] | null>(null);
+  const [calls, setCalls] = useState<{ at: string; ok: boolean; ms: number; message: string; diagnostics: Diagnostics | null }[]>([]);
   const [destination, setDestination] = useState('');
   const pending = useRef<AbortController | null>(null);
   const logEnd = useRef<HTMLDivElement | null>(null);
@@ -56,15 +57,19 @@ export function Play({ module, initial, name, connection, onConnect, onChange, o
     setBusy(true);
     setNotice('');
     try {
-      const result = await narrate(messages, connection.model, controller.signal);
+      const started = performance.now();
+      const result = await narrate(messages, connection.model, connection.mode, controller.signal);
       if (controller.signal.aborted) return;
+      setCalls((list) => [{ at: new Date().toLocaleTimeString(), ok: true, ms: Math.round(performance.now() - started), message: `${result.text.length} characters`, diagnostics: result.diagnostics ?? null }, ...list].slice(0, 10));
       setSave((current) => {
         const placed = setReply(current, turn.id, cleanReply(result.text, turn.input));
         return placed.ok ? placed.save : current;
       });
     } catch (error) {
       if (controller.signal.aborted) return;
-      setNotice(error instanceof Error ? error.message : 'Narration failed.');
+      const message = error instanceof Error ? error.message : 'Narration failed.';
+      setNotice(`${message} See Diagnostics below.`);
+      setCalls((list) => [{ at: new Date().toLocaleTimeString(), ok: false, ms: 0, message, diagnostics: error instanceof NarrationError ? error.diagnostics : null }, ...list].slice(0, 10));
     } finally {
       if (pending.current === controller) { pending.current = null; setBusy(false); }
     }
@@ -202,6 +207,22 @@ export function Play({ module, initial, name, connection, onConnect, onChange, o
         <summary>{module.characters.find((character) => character.id === playerId)?.name ?? 'You'}</summary>
         <p className="muted">Every value can be set by hand. Changes are recorded as yours.</p>
         <StateRows defs={playerStates} values={save.values} owner={playerId} onSet={override} />
+      </details>
+
+      <details className="card">
+        <summary>Diagnostics</summary>
+        <p className="muted">The last ten narration calls, newest first: what NovelAI sent back, without your token.</p>
+        {calls.length ? (
+          <ol className="sent">
+            {calls.map((call, index) => (
+              <li key={index}>
+                <span className={call.ok ? 'muted' : 'bad'}>{call.at} · {call.ok ? `ok, ${call.ms} ms` : 'failed'} · {call.message}</span>
+                {call.diagnostics && <pre>{JSON.stringify(call.diagnostics, null, 2)}</pre>}
+              </li>
+            ))}
+          </ol>
+        ) : <p className="muted">No calls yet this session.</p>}
+        <button type="button" onClick={() => void navigator.clipboard?.writeText(JSON.stringify(calls, null, 2))} disabled={!calls.length}>Copy diagnostics</button>
       </details>
 
       <details className="card">

@@ -1,7 +1,7 @@
 {
   "name": "hw-praxis",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.7.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,8 @@
     "start:api": "node dist-server/server/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "tsc -b --pretty false && tsc -p server/tsconfig.json --pretty false"
+    "lint": "tsc -b --pretty false && tsc -p server/tsconfig.json --pretty false",
+    "dev:all": "node scripts/dev-all.mjs"
   },
   "dependencies": {
     "express": "^5.1.0",

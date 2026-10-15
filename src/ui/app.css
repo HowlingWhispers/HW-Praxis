@@ -95,3 +95,5 @@ details.card[open] > summary { margin-bottom: 8px; }
 .status.on { border-color: var(--line); color: var(--muted); }
 .connect-panel { margin-top: 12px; }
 .version { text-align: center; margin-top: 24px; }
+.bad { color: var(--bad); font-size: 14px; }
+.crash { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; color: var(--muted); }

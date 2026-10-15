@@ -147,3 +147,10 @@ describe('save files', () => {
     expect(readSaveFile({ format: 'something-else' })).toEqual({ ok: false, errors: ['This is not a Praxis save file.'] });
   });
 });
+
+describe('reasoning leaks', () => {
+  it('are removed from replies', () => {
+    expect(cleanReply('<think>The gate...</think>\n*Rain.*', 'x')).toBe('*Rain.*');
+    expect(cleanReply('half a thought</think>*Rain.*', 'x')).toBe('*Rain.*');
+  });
+});

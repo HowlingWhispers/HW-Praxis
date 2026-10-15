@@ -1,10 +1,11 @@
 // Connecting NovelAI: the player's Persistent API Token and a model.
 import { useState } from 'react';
-import { DEFAULT_MODEL, currentToken, forgetToken, listModels, rememberedToken, saveModel, setToken } from './novelai';
+import { DEFAULT_MODEL, currentToken, forgetToken, listModels, rememberedToken, saveMode, saveModel, setToken, type NarrationMode } from './novelai';
 
 export interface Connection {
   connected: boolean;
   model: string;
+  mode: NarrationMode;
 }
 
 export function Connect({ connection, onChange }: { connection: Connection; onChange: (next: Connection) => void }) {
@@ -27,7 +28,7 @@ export function Connect({ connection, onChange }: { connection: Connection; onCh
       saveModel(model);
       setTokenText('');
       setStatus(`Connected. ${list.length} models available.`);
-      onChange({ connected: true, model });
+      onChange({ ...connection, connected: true, model });
     } catch (error) {
       forgetToken();
       setStatus(error instanceof Error ? error.message : 'Could not connect.');
@@ -72,6 +73,16 @@ export function Connect({ connection, onChange }: { connection: Connection; onCh
               onChange={(event: { target: HTMLSelectElement }) => { saveModel(event.target.value); onChange({ ...connection, model: event.target.value }); }}
             >
               {(models.length ? models : [connection.model]).map((model) => <option key={model} value={model}>{model}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>How requests are sent</span>
+            <select
+              value={connection.mode}
+              onChange={(event: { target: HTMLSelectElement }) => { const mode = event.target.value as NarrationMode; saveMode(mode); onChange({ ...connection, mode }); }}
+            >
+              <option value="prompt">Raw prompt in GLM format (completions)</option>
+              <option value="chat">Chat messages (chat completions)</option>
             </select>
           </label>
           <button type="button" onClick={disconnect}>Disconnect</button>

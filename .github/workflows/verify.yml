@@ -23,3 +23,11 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
+      - name: Serve the production build and check it answers
+        run: |
+          NODE_ENV=production PORT=8791 node dist-server/server/index.js &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8791/api/health && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8791/ | tee /tmp/index.html | grep -q 'id="root"'
+          script=$(grep -o 'src="/assets/[^"]*\.js"' /tmp/index.html | head -1 | cut -d'"' -f2)
+          test -n "$script"
+          curl -fsS -o /dev/null -w '%{content_type}\n' "http://127.0.0.1:8791$script" | grep -q javascript

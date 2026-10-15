@@ -96,7 +96,9 @@ export function undoLastTurn(save: Save): { ok: true; save: Save; turn: Turn } |
 
 // Tidies a model reply: drops a speaker label the model added and an echo of the player's words.
 export function cleanReply(reply: string, input: string): string {
-  let text = reply.replace(/\r\n/g, '\n').trim();
+  let text = reply.replace(/\r\n/g, '\n');
+  // A reasoning model may leave its thinking in the reply.
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/^[\s\S]*?<\/think>/i, '').trim();
   text = text.replace(/^(?:narrator|assistant|gm)\s*:\s*/i, '');
   const echo = input.trim();
   if (echo && text.startsWith(echo)) text = text.slice(echo.length).trim();

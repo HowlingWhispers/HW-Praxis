@@ -6,7 +6,7 @@ import { loadModule, readSaveFile, sceneOf, startSave, type PraxisModule, type S
 import { Connect, type Connection } from './Connect';
 import { Play } from './Play';
 import { readJsonFile } from './files';
-import { savedModel } from './novelai';
+import { savedMode, savedModel } from './novelai';
 import { deleteSave, listSaves, moduleKey, openSave, putModule, putSave, type SaveRecord } from './storage';
 
 type Screen =
@@ -22,7 +22,7 @@ export function App() {
   const [saves, setSaves] = useState<SaveRecord[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [storageNote, setStorageNote] = useState('');
-  const [connection, setConnection] = useState<Connection>({ connected: false, model: savedModel() });
+  const [connection, setConnection] = useState<Connection>({ connected: false, model: savedModel(), mode: savedMode() });
   const [showConnect, setShowConnect] = useState(false);
 
   const refresh = useCallback(async () => {

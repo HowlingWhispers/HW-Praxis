@@ -19,6 +19,8 @@ export default defineConfig({
   },
   server: {
     port: 5176,
+    // Codespaces serves the dev server from *.app.github.dev.
+    allowedHosts: ['.app.github.dev'],
     proxy: { '/api': 'http://127.0.0.1:8791' },
   },
   preview: { port: 4176 },
