@@ -2,11 +2,10 @@
   "name": "Praxis",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
   "postCreateCommand": "npm ci",
-  "postAttachCommand": "npm run dev:all",
-  "forwardPorts": [5176],
+  "postStartCommand": "setsid nohup bash scripts/codespace-start.sh > /dev/null 2>&1 &",
+  "forwardPorts": [8791],
   "portsAttributes": {
-    "5176": { "label": "Praxis", "onAutoForward": "openBrowser" },
-    "8791": { "label": "Praxis API (internal)", "onAutoForward": "silent" }
+    "8791": { "label": "Praxis", "onAutoForward": "openBrowser" }
   },
   "hostRequirements": { "cpus": 2 }
 }

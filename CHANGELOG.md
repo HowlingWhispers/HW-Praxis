@@ -8,6 +8,14 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.7.3 - Codespace Fix - 2026-10-15
+
+- Codespaces now build Praxis and serve it the way production does, on port 8791,
+  started on every codespace start rather than when an editor attaches.
+- The page says "Loading Praxis…" until the app draws, and shows the error if the
+  app script fails or the app crashes, instead of a blank page.
+- CI now starts the production server and checks it serves the page and its script.
+
 ## 0.7.2 - GLM Prompt Route - 2026-10-15
 
 - NovelAI's chat endpoint answered GLM-4.6 in completion format with empty text
