@@ -1,7 +1,7 @@
 // Scene: where you are, the time, who and what is here, and what you can do.
 import { useState } from 'react';
 import {
-  band, calendarOf, datePhrase, durationWords, line, read, sceneActionsFor, sceneOf, stateDefFor, timeOfDay, weekdayOf,
+  band, calendarOf, datePhrase, durationWords, line, read, sceneActionsFor, sceneOf, stateDefFor, targetsHere, timeOfDay, weekdayOf,
   type Character,
 } from '../engine';
 import type { PlayApi } from './Play';
@@ -94,6 +94,15 @@ export function SceneSection({ api }: { api: PlayApi }) {
             <button type="button" className="btn primary" disabled={busy} onClick={() => api.perform({ type: 'scene', actionId: action.id })}>Do it</button>
           </div>
         ))}
+        {world.ruleset.approaches.length > 0 && targetsHere(world, save).length > 0 && (
+          <div className="lr">
+            <span className="grow">
+              <span className="name" style={{ display: 'block' }}>Make a check</span>
+              <span className="meta" style={{ display: 'block', marginTop: 2 }}>Roll for something uncertain, or let it succeed.</span>
+            </span>
+            <button type="button" className="btn" disabled={busy} onClick={() => api.openCheck()}>Choose</button>
+          </div>
+        )}
         <div className="lr stack">
           <span className="name">Wait</span>
           <div className="seg" role="group" aria-label="Wait for">
@@ -186,6 +195,9 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="btn" style={{ flex: 1 }} onClick={() => api.talkTo(person.name)}>Talk to them</button>
+          {world.ruleset.approaches.length > 0 && defs.some((def) => def.approach && def.bands.length) && (
+            <button type="button" className="btn" style={{ flex: 1 }} onClick={() => api.openCheck(person.id)}>Make a check</button>
+          )}
           <button type="button" className="btn quiet" onClick={() => api.lookUp(person.name)}>Look up</button>
           {local && <button type="button" className="btn quiet" onClick={() => api.editRecord({ mode: 'edit', id: person.id })}>Edit</button>}
         </div>

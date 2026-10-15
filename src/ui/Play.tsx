@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 're
 import {
   act, cleanReply, cleanSuggestion, compressRequest, compressionDue, contextPlan, durationWords, entryRequest, inSentence,
   journalDue, lastTurn, placeCharacter, playable, playerOf, promptChars, recordPromptSize, say, sceneActionsFor, sceneOf,
-  setPending, setReply, setState, timeOfDay, uncoveredTurns, undoLastTurn,
+  setPending, setReply, setState, targetsHere, timeOfDay, uncoveredTurns, undoLastTurn,
   type Action, type ContextPlan, type PraxisModule, type Save, type Turn,
 } from '../engine';
 import type { Connection } from './Connect';
@@ -14,12 +14,14 @@ import { Menu, type Section } from './Menu';
 import { JournalPanel } from './JournalPanel';
 import { GuidePanel } from './GuidePanel';
 import { RecordPanel, type RecordTarget } from './RecordPanel';
-import { MenuIcon, PlusIcon, RerollIcon, SendIcon, StopIcon, UndoIcon } from './icons';
+import { CheckPanel } from './CheckPanel';
+import { CheckCard } from './CheckCard';
+import { DiamondIcon, MenuIcon, PlusIcon, RerollIcon, SendIcon, StopIcon, UndoIcon } from './icons';
 import { SourceTag, describeEntry, newId } from './shared';
 import { NarrationError, narrate, promptTokensOf, type Diagnostics } from './novelai';
 import type { Prefs } from './prefs';
 
-export type View = 'story' | 'menu' | 'journal' | 'guide' | 'record';
+export type View = 'story' | 'menu' | 'journal' | 'guide' | 'record' | 'check';
 
 export interface Call {
   at: string;
@@ -54,6 +56,11 @@ export interface PlayApi {
   lookUp: (query: string) => void;
   open: (view: View, section?: Section) => void;
   editRecord: (target: RecordTarget) => void;
+  // Opens the check screen, aimed at someone or something here if given.
+  openCheck: (owner?: string) => void;
+  // The player's unsent words, which a check can use as its line.
+  draft: string;
+  clearDraft: () => void;
   suggestEntry: () => void;
   suggestCompression: () => void;
   leave: () => void;
@@ -81,6 +88,8 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
   const [section, setSection] = useState<Section>('scene');
   const [worldQuery, setWorldQuery] = useState('');
   const [recordTarget, setRecordTarget] = useState<RecordTarget>({ mode: 'new' });
+  const [checkOwner, setCheckOwner] = useState<string | undefined>(undefined);
+  const [checkFrom, setCheckFrom] = useState<View>('story');
   const pending = useRef<AbortController | null>(null);
   const suggesting = useRef(false);
   // The turn count when a suggestion last failed, so a failure is not retried every render.
@@ -253,6 +262,9 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
     lookUp: (query) => { setWorldQuery(query); setSection('world'); setView('menu'); },
     open: (next, nextSection) => { if (nextSection) setSection(nextSection); setView(next); },
     editRecord: (target) => { setRecordTarget(target); setView('record'); },
+    openCheck: (owner) => { setCheckOwner(owner); setCheckFrom(view); setView('check'); },
+    draft,
+    clearDraft: () => setDraft(''),
     suggestEntry: () => {
       const range = uncoveredTurns(save);
       if (!range) { setNotice('Every narrated turn is already in the journal.'); return; }
@@ -273,6 +285,7 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
   const openExits = scene.exits.filter((exit) => !exit.blocked && exit.edge.minutes <= 60).slice(0, 2);
   const pendingSuggestion = save.journal.pending;
   const panelOpen = view !== 'story';
+  const canCheck = world.ruleset.approaches.length > 0 && targetsHere(world, save).length > 0;
 
   return (
     <div className="play">
@@ -328,6 +341,11 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
               {actions.map((action) => (
                 <button key={action.id} type="button" className="chip" disabled={busy} onClick={() => perform({ type: 'scene', actionId: action.id })}>{action.name}</button>
               ))}
+              {canCheck && (
+                <button type="button" className="chip" disabled={busy} onClick={() => api.openCheck()}>
+                  <DiamondIcon />Make a check
+                </button>
+              )}
               <button type="button" className="chip" disabled={busy} onClick={() => perform({ type: 'wait', minutes: 10 })}>Wait 10 min</button>
               {openExits.map((exit) => (
                 <button key={exit.place.id} type="button" className="chip" disabled={busy} onClick={() => perform({ type: 'travel', to: exit.place.id })}>
@@ -363,6 +381,7 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
       >
         {view === 'journal' ? <JournalPanel api={api} headRef={panelHead} onBack={() => setView('menu')} />
           : view === 'guide' ? <GuidePanel headRef={panelHead} onBack={() => setView('menu')} />
+          : view === 'check' ? <CheckPanel key={checkOwner ?? 'any'} api={api} owner={checkOwner} headRef={panelHead} onCancel={() => setView(checkFrom === 'check' ? 'story' : checkFrom)} />
           : view === 'record' ? <RecordPanel key={JSON.stringify(recordTarget)} api={api} target={recordTarget} headRef={panelHead} onDone={() => setView('menu')} />
           : <Menu api={api} section={section} setSection={setSection} worldQuery={worldQuery} setWorldQuery={setWorldQuery} headRef={panelHead} onClose={() => setView('story')} />}
       </aside>
@@ -395,7 +414,9 @@ function TurnView({ world, save, turn, next, latest, busy, connected, onReroll, 
   onStop: () => void;
   model: Call | undefined;
 }) {
-  const entries = save.ledger.slice(turn.ledgerStart, next ? next.ledgerStart : save.ledger.length);
+  // Hidden states (momentum) stay out of the story; the ledger in Settings still has them.
+  const entries = save.ledger.slice(turn.ledgerStart, next ? next.ledgerStart : save.ledger.length)
+    .filter((entry) => entry.kind !== 'state' || world.ruleset.states.find((def) => def.id === entry.defId)?.display !== 'hidden');
   const waiting = latest && busy && !turn.reply;
   return (
     <>
@@ -403,6 +424,7 @@ function TurnView({ world, save, turn, next, latest, busy, connected, onReroll, 
         <div className="who"><b>You</b><span>{timeOfDay(turn.before.clock)}</span></div>
         <RichText text={turn.input} />
       </section>
+      {turn.check && <CheckCard check={turn.check} />}
       {entries.length > 0 && (
         <div className="changes" aria-label="What changed">
           {entries.map((entry, index) => (
@@ -425,7 +447,7 @@ function TurnView({ world, save, turn, next, latest, busy, connected, onReroll, 
             <button type="button" className="ghost" onClick={onReroll} disabled={!connected}><RerollIcon />{turn.reply ? 'Reroll' : 'Narrate'}</button>
           )}
           <button type="button" className="ghost" onClick={onUndo}><UndoIcon />Undo turn</button>
-          {model && turn.reply && <span className="meta">{String(model.diagnostics?.model ?? '')}{model.ms ? ` · ${(model.ms / 1000).toFixed(1)} s` : ''}</span>}
+          {model && turn.reply && <span className="meta">{[typeof model.diagnostics?.model === 'string' ? model.diagnostics.model : '', model.ms ? `${(model.ms / 1000).toFixed(1)} s` : ''].filter(Boolean).join(' · ')}</span>}
         </div>
       )}
     </>

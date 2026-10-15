@@ -34,3 +34,4 @@ export const Diamond = ({ color, filled, size = 11 }: { color: string; filled: b
     {filled ? <path d="M6 1 11 6 6 11 1 6z" fill={color} /> : <path d="M6 1.7 10.3 6 6 10.3 1.7 6z" fill="none" stroke="#4a5160" />}
   </svg>
 );
+export const DiamondIcon = () => <Icon size={16} width={1.8}><path d="M12 3 21 12 12 21 3 12z" /></Icon>;

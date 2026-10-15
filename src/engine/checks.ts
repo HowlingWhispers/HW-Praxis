@@ -329,7 +329,7 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
     if (targetTerminal) parts.push(`${name(target.owner)}: ${targetTerminal.terminal.note}`);
     else {
       const fact = line(plan.target.def, name(target.owner), read(values, plan.target.def, target.owner));
-      if (fact) parts.push(fact.replace(/^\[|\]$/g, ''));
+      parts.push(fact ? fact.replace(/^\[|\]$/g, '') : `It tells on ${inSentence(name(target.owner))}, though it does not show yet.`);
     }
   } else {
     parts.push(`${plan.approach.name} fails${reading.despair ? ', and it goes badly wrong' : ''}.`);

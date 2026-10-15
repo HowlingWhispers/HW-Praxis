@@ -99,7 +99,13 @@ export function SettingsSection({ api }: { api: PlayApi }) {
       </div>
 
       <div className="sub"><p className="label">Checks</p><button type="button" className="link" onClick={() => api.open('guide')}>How checks work</button></div>
-      <div className="card pad"><p className="meta" style={{ lineHeight: 1.45 }}>Dice arrive in the next update. Until then every action the rules settle simply succeeds, and anything can be set by hand.</p></div>
+      <div className="card">
+        <div className="lr stack">
+          <span className="name">When you make a check</span>
+          <Seg<string> label="When you make a check" value={options.alwaysSucceed ? 'succeed' : 'roll'} options={[['roll', 'Roll the dice'], ['succeed', 'Succeed, no roll']]} onPick={(pick) => change({ alwaysSucceed: pick === 'succeed' })} />
+          <span className="meta" style={{ lineHeight: 1.45 }}>Either choice is always one tap away on the check itself. The ledger records who decided.</span>
+        </div>
+      </div>
 
       <div className="sub"><p className="label">Reading</p></div>
       <div className="card">
