@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   act, cleanReply, compileContext, exportSave, lastTurn, parseSave, readSaveFile, roughDuration, say, sceneOf, setReply,
-  setState, startSave, undoLastTurn, type Save,
+  setOptions, setState, startSave, undoLastTurn, type Save,
 } from '../src/engine';
 import { abernys } from './abernys';
 
@@ -18,10 +18,10 @@ function signed(): Save {
 
 describe('turns', () => {
   it('record speech with no outcome', () => {
-    const { save, turn } = must(say(startSave(module), 't1', '  I hold out my hand for the pen.  '));
+    const { save, turn } = must(say(module, startSave(module), 't1', '  I hold out my hand for the pen.  '));
     expect(turn).toMatchObject({ id: 't1', kind: 'say', input: 'I hold out my hand for the pen.', directive: null, reply: null });
     expect(save.turns).toHaveLength(1);
-    expect(say(save, 't2', '   ').ok).toBe(false);
+    expect(say(module, save, 't2', '   ').ok).toBe(false);
   });
 
   it('resolve an action first and carry its outcome', () => {
@@ -45,11 +45,11 @@ describe('turns', () => {
 
 describe('reroll and undo', () => {
   it('put narration on the latest turn only, and replace it on reroll', () => {
-    let save = must(say(startSave(module), 't1', 'Hello.')).save;
+    let save = must(say(module, startSave(module), 't1', 'Hello.')).save;
     save = must(setReply(save, 't1', 'First.')).save;
     save = must(setReply(save, 't1', 'Second.')).save;
     expect(lastTurn(save)?.reply).toBe('Second.');
-    save = must(say(save, 't2', 'Again.')).save;
+    save = must(say(module, save, 't2', 'Again.')).save;
     expect(setReply(save, 't1', 'Late.')).toEqual({ ok: false, reason: 'That turn is no longer the latest.' });
   });
 
@@ -76,9 +76,9 @@ describe('reroll and undo', () => {
 
 describe('the narrator\'s context', () => {
   it('puts the stable parts first and the moment last', () => {
-    let save = must(say(startSave(module), 't1', 'I hold out my hand for the pen.')).save;
+    let save = must(say(module, startSave(module), 't1', 'I hold out my hand for the pen.')).save;
     save = must(setReply(save, 't1', '*She hands it over.*')).save;
-    save = must(say(save, 't2', 'I sign.')).save;
+    save = must(say(module, save, 't2', 'I sign.')).save;
     const messages = compileContext(module, save);
     expect(messages.map((message) => message.role)).toEqual(['system', 'assistant', 'user', 'assistant', 'user']);
     expect(messages[0]!.content).toMatch(/You are the narrator/);
@@ -93,7 +93,7 @@ describe('the narrator\'s context', () => {
 
   it('carries standing facts only off their resting band, and the outcome once', () => {
     let save = must(setState(module, signed(), 'health', 'gate-guard', 1)).save;
-    save = must(say(save, 't1', 'I look at the guard.')).save;
+    save = must(say(module, save, 't1', 'I look at the guard.')).save;
     const moment = compileContext(module, save).at(-1)!.content;
     expect(moment).toMatch(/\[A garrison guard is hurt\.\]/);
     expect(moment).toMatch(/\[The traveller has signed the Covenant\.\]/);
@@ -106,17 +106,23 @@ describe('the narrator\'s context', () => {
   });
 
   it('never names the clock\'s numbers', () => {
-    const save = must(say(startSave(module), 't1', 'I wait.')).save;
+    const save = must(say(module, startSave(module), 't1', 'I wait.')).save;
     const all = compileContext(module, save).map((message) => message.content).join('\n');
     expect(all).not.toMatch(/07:40|Sunday|January/);
   });
 
   it('drops the opening once the transcript outgrows the window', () => {
-    let save = startSave(module);
-    for (let index = 0; index < 4; index++) save = must(say(save, `t${index}`, `Line ${index}.`)).save;
-    const messages = compileContext(module, save, { historyTurns: 2 });
+    let save = must(setOptions(startSave(module), { contextTokens: 6000, journalTokens: 300, replyTokens: 200, pieceTokens: 1000 })).save;
+    const long = 'The fog thickens over the wall and the gulls go quiet. '.repeat(20);
+    for (let index = 0; index < 12; index++) {
+      save = must(say(module, save, `t${index}`, `Line ${index}.`)).save;
+      save = must(setReply(save, `t${index}`, long)).save;
+    }
+    save = must(say(module, save, 'last', 'And now?')).save;
+    const messages = compileContext(module, save);
     expect(messages.some((message) => message.content.includes('Fog lies over'))).toBe(false);
     expect(messages.some((message) => message.content.includes('Line 0.'))).toBe(false);
+    expect(messages.some((message) => message.content.includes('Line 11.'))).toBe(true);
   });
 });
 

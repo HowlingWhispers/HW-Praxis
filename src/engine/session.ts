@@ -9,8 +9,11 @@
 
 import { calendarOf, findPath, isArea, atlasOf, exitsFrom, type Exit } from './world';
 import { stamp, timeBandOf, safeMinutes, datePhrase } from './clock';
-import { stateDefFor, type Character, type Place, type PraxisModule } from './module';
+import { stateDefFor, type Character, type Item, type Place, type PraxisModule } from './module';
 import { appliesTo, clamp, write, type ChangeSource, type StateTerminal, type StateValues, WORLD_OWNER } from './state';
+import { DEFAULT_OPTIONS, calibrate, optionsSchema, type Options } from './options';
+import { emptyJournal, type Journal } from './journal';
+import { playable, type LocalRecord } from './records';
 
 export const SAVE_FORMAT = 'praxis-save/1';
 
@@ -41,6 +44,9 @@ export interface Turn {
   before: WorldState;
   // The ledger's length when the turn began; everything after belongs to this turn or later.
   ledgerStart: number;
+  // The first earlier turn the narrator is sent with this one. It moves only when the
+  // story outgrows its share of the window, so the prompt's prefix stays the same between.
+  windowStart: number;
 }
 
 export interface Save extends WorldState {
@@ -48,6 +54,10 @@ export interface Save extends WorldState {
   module: { id: string; version: string };
   ledger: readonly LedgerEntry[];
   turns: readonly Turn[];
+  journal: Journal;
+  // People, places, things, groups and notes the player added. See records.ts.
+  local: readonly LocalRecord[];
+  options: Options;
 }
 
 export type ActionResult =
@@ -98,18 +108,44 @@ export function startSave(module: PraxisModule): Save {
     values,
     ledger: [],
     turns: [],
+    journal: emptyJournal(),
+    local: [],
+    options: { ...DEFAULT_OPTIONS },
   };
+}
+
+// Changes the save's own settings. Bad values are refused whole.
+export function setOptions(save: Save, changes: Partial<Options>): { ok: true; save: Save } | { ok: false; reason: string } {
+  const parsed = optionsSchema.safeParse({ ...save.options, ...changes });
+  if (!parsed.success) return { ok: false, reason: parsed.error.issues[0]?.message ?? 'Those settings are out of range.' };
+  return { ok: true, save: { ...save, options: parsed.data } };
+}
+
+// Folds NovelAI's report of a prompt's real size into the save's token estimate.
+export function recordPromptSize(save: Save, promptChars: number, promptTokens: number): Save {
+  const tokensPerChar = calibrate(save.options.tokensPerChar, promptChars, promptTokens);
+  return tokensPerChar === save.options.tokensPerChar ? save : { ...save, options: { ...save.options, tokensPerChar } };
 }
 
 export function placeOf(module: PraxisModule, save: Save, characterId: string): Place | null {
   const placeId = save.positions[characterId];
-  return placeId ? atlasOf(module).places.get(placeId) ?? null : null;
+  return placeId ? atlasOf(playable(module, save.local)).places.get(placeId) ?? null : null;
+}
+
+// Things at a place, and things someone carries. Only local things have a whereabouts yet.
+export function thingsAt(module: PraxisModule, save: Save, placeId: string): Item[] {
+  return playable(module, save.local).items.filter((item) => item.locationId === placeId && !item.heldBy);
+}
+
+export function thingsHeldBy(module: PraxisModule, save: Save, characterId: string): Item[] {
+  return playable(module, save.local).items.filter((item) => item.heldBy === characterId);
 }
 
 export interface Scene {
   place: Place;
   // Everyone at the player's place except the player.
   present: Character[];
+  things: Item[];
   exits: Exit[];
   stamp: string;
   date: string;
@@ -118,14 +154,16 @@ export interface Scene {
 }
 
 export function sceneOf(module: PraxisModule, save: Save): Scene {
-  const playerId = playerOf(module);
-  const place = placeOf(module, save, playerId);
+  const world = playable(module, save.local);
+  const playerId = playerOf(world);
+  const place = placeOf(world, save, playerId);
   if (!place) throw new Error('The player character is not anywhere. The save does not match its module.');
-  const calendar = calendarOf(module);
+  const calendar = calendarOf(world);
   return {
     place,
-    present: module.characters.filter((character) => character.id !== playerId && save.positions[character.id] === place.id),
-    exits: exitsFrom(module, save.values, playerId, place.id),
+    present: world.characters.filter((character) => character.id !== playerId && save.positions[character.id] === place.id),
+    things: thingsAt(world, save, place.id),
+    exits: exitsFrom(world, save.values, playerId, place.id),
     stamp: stamp(calendar, save.clock),
     date: datePhrase(calendar, save.clock),
     timeBand: timeBandOf(calendar, save.clock),
@@ -134,10 +172,11 @@ export function sceneOf(module: PraxisModule, save: Save): Scene {
 
 // The player's character travels to a place by the quickest open way, and time passes.
 export function travel(module: PraxisModule, save: Save, toPlaceId: string): ActionResult {
-  const playerId = playerOf(module);
+  const world = playable(module, save.local);
+  const playerId = playerOf(world);
   const from = save.positions[playerId];
   if (!from) return reject('The player character is not anywhere.');
-  const path = findPath(module, save.values, playerId, from, toPlaceId);
+  const path = findPath(world, save.values, playerId, from, toPlaceId);
   if (!path.ok) return reject(path.reason);
   const to = save.clock + path.minutes;
   const entries: LedgerEntry[] = [
@@ -167,9 +206,10 @@ function ownerKindFor(module: PraxisModule, owner: string): 'world' | 'character
 }
 
 export function setState(module: PraxisModule, save: Save, defId: string, owner: string, value: number): ActionResult {
-  const def = stateDefFor(module, defId, owner);
+  const world = playable(module, save.local);
+  const def = stateDefFor(world, defId, owner);
   if (!def) return reject(`There is no state "${defId}".`);
-  const kind = ownerKindFor(module, owner);
+  const kind = ownerKindFor(world, owner);
   if (!kind) return reject(`There is no "${owner}" to hold ${def.name}.`);
   if (!appliesTo(def, kind, owner === playerOf(module))) return reject(`${def.name} does not apply to "${owner}".`);
   if (!Number.isFinite(value)) return reject('A state needs a number.');
@@ -188,9 +228,10 @@ export function setClock(save: Save, minutes: number): ActionResult {
 
 // Puts a character somewhere, or nowhere with null, without travel or time.
 export function placeCharacter(module: PraxisModule, save: Save, characterId: string, placeId: string | null): ActionResult {
-  if (!module.characters.some((character) => character.id === characterId)) return reject(`There is no character "${characterId}".`);
+  const world = playable(module, save.local);
+  if (!world.characters.some((character) => character.id === characterId)) return reject(`There is no character "${characterId}".`);
   if (placeId !== null) {
-    const place = atlasOf(module).places.get(placeId);
+    const place = atlasOf(world).places.get(placeId);
     if (!place) return reject(`There is no place "${placeId}".`);
     if (isArea(place)) return reject(`${place.name} is an area, not somewhere to be.`);
   }

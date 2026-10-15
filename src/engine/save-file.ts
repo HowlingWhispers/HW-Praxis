@@ -7,6 +7,9 @@
 import { z } from 'zod';
 import { isArea, atlasOf } from './world';
 import { loadModule, type PraxisModule } from './module';
+import { optionsSchema } from './options';
+import { journalSchema } from './journal';
+import { localRecordSchema, playable } from './records';
 import { SAVE_FORMAT, playerOf, type Save } from './session';
 
 const id = z.string().min(1).max(200);
@@ -32,6 +35,8 @@ const turnSchema = z.object({
   reply: z.string().max(40_000).nullable(),
   before: z.object(worldState),
   ledgerStart: z.number().int().nonnegative(),
+  // Saves from before 0.8 have no window; they start at the beginning.
+  windowStart: z.number().int().nonnegative().default(0),
 });
 
 export const saveSchema = z.object({
@@ -40,14 +45,27 @@ export const saveSchema = z.object({
   ...worldState,
   ledger: z.array(ledgerEntrySchema).max(200_000),
   turns: z.array(turnSchema).max(50_000),
+  // Added in 0.8. Older saves get an empty journal, no records and default settings.
+  journal: journalSchema.default({ entries: [], coveredTo: 0, pending: null, compressDeclinedAt: 0 }),
+  local: z.array(localRecordSchema).max(5000).default([]),
+  options: optionsSchema.default(optionsSchema.parse({})),
 });
 
 // Problems that make a save unplayable with this module, as readable lines.
 export function checkSave(module: PraxisModule, save: Save): string[] {
   const errors: string[] = [];
   if (save.module.id !== module.id) errors.push(`This save belongs to module "${save.module.id}", not "${module.id}".`);
-  const places = atlasOf(module).places;
-  const characters = new Set(module.characters.map((character) => character.id));
+  const world = playable(module, save.local);
+  const places = atlasOf(world).places;
+  const characters = new Set(world.characters.map((character) => character.id));
+  const localIds = new Set<string>();
+  for (const record of save.local) {
+    if (localIds.has(record.id)) errors.push(`Two of this save's records share the id "${record.id}".`);
+    localIds.add(record.id);
+  }
+  for (const record of save.local) {
+    if (record.type === 'place' && record.parentLocationId && !places.has(record.parentLocationId)) errors.push(`${record.name} is inside "${record.parentLocationId}", which is not in this world.`);
+  }
   for (const [characterId, placeId] of Object.entries(save.positions)) {
     if (!characters.has(characterId)) errors.push(`The save places "${characterId}", who is not in the module.`);
     const place = places.get(placeId);
