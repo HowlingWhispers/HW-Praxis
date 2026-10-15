@@ -19,11 +19,24 @@
   },
   "remoteUser": "node",
   "postCreateCommand": "npm ci",
-  "postStartCommand": "setsid nohup bash scripts/codespace-start.sh > /dev/null 2>&1 &",
-  "forwardPorts": [8791, 5176],
+  "forwardPorts": [
+    8791,
+    5176
+  ],
   "portsAttributes": {
-    "8791": { "label": "Praxis", "onAutoForward": "openBrowser" },
-    "5176": { "label": "Dev server (npm run dev:all)", "onAutoForward": "silent" }
+    "8791": {
+      "label": "Praxis",
+      "onAutoForward": "openBrowser"
+    },
+    "5176": {
+      "label": "Dev server (npm run dev:all)",
+      "onAutoForward": "silent"
+    }
   },
-  "hostRequirements": { "cpus": 2 }
+  "hostRequirements": {
+    "cpus": 2
+  },
+  "postAttachCommand": {
+    "praxis": "bash scripts/codespace-start.sh"
+  }
 }
