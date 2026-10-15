@@ -96,11 +96,44 @@ export async function relayChat(fetchImpl: Fetch, rawToken: string | undefined, 
   const body = await response.json().catch(() => null) as {
     model?: unknown;
     usage?: unknown;
-    choices?: { message?: { content?: unknown }; text?: unknown }[];
+    choices?: { message?: { content?: unknown; reasoning_content?: unknown }; text?: unknown; parsedContent?: unknown; parsed_content?: unknown; finish_reason?: unknown }[];
   } | null;
   const choice = body?.choices?.[0];
   const content = typeof choice?.message?.content === 'string' ? choice.message.content : typeof choice?.text === 'string' ? choice.text : '';
-  if (!content.trim()) return { status: 502, body: { error: 'NovelAI returned an empty reply.' } };
+  if (!content.trim()) {
+    // Structural diagnostics only: never log provider text, prompts, tokens or reasoning.
+    const nonempty = (value: unknown) => typeof value === 'string' && Boolean(value.trim());
+    const usage = body?.usage as Record<string, unknown> | undefined;
+    const count = (value: unknown) => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+    // Fixed field names only; string values are represented by length, never content.
+    const shape = (value: unknown): unknown => {
+      if (value === null) return 'null';
+      if (typeof value === 'string') return { type: 'string', length: value.length };
+      if (Array.isArray(value)) return { type: 'array', length: value.length };
+      return typeof value;
+    };
+    const message = choice?.message as Record<string, unknown> | undefined;
+    const top = body as Record<string, unknown> | null;
+    const choiceRecord = choice as Record<string, unknown> | undefined;
+    const fields = ['content', 'text', 'parsedContent', 'parsed_content', 'reasoning', 'reasoning_content', 'output', 'output_text', 'delta', 'tool_calls'];
+    const describe = (record: Record<string, unknown> | null | undefined) => Object.fromEntries(fields.map(field => [field, shape(record?.[field])]));
+    console.warn('[praxis-novelai] empty-reply', JSON.stringify({
+      hasChoice: Boolean(choice),
+      hasMessageContent: nonempty(choice?.message?.content),
+      hasText: nonempty(choice?.text),
+      hasParsedContent: nonempty(choice?.parsedContent),
+      hasParsedContentSnake: nonempty(choice?.parsed_content),
+      hasReasoningContent: nonempty(choice?.message?.reasoning_content),
+      finishReason: ['stop', 'length', 'content_filter', 'tool_calls', 'function_call'].includes(String(choice?.finish_reason)) ? choice?.finish_reason : 'unknown',
+      promptTokens: count(usage?.prompt_tokens),
+      completionTokens: count(usage?.completion_tokens),
+      requestedMaxTokens: parsed.data.max_tokens,
+      responseFields: describe(top),
+      choiceFields: describe(choiceRecord),
+      messageFields: describe(message),
+    }));
+    return { status: 502, body: { error: 'NovelAI returned an empty reply.' } };
+  }
   return {
     status: 200,
     body: {
