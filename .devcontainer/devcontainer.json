@@ -1,14 +1,6 @@
 {
   "name": "Praxis",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
-  "postCreateCommand": "npm ci",
-  "postStartCommand": "setsid nohup bash scripts/codespace-start.sh > /dev/null 2>&1 &",
-  "forwardPorts": [8791],
-  "portsAttributes": {
-    "8791": { "label": "Praxis", "onAutoForward": "openBrowser" }
-  },
-  "hostRequirements": { "cpus": 2 }
-}
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
@@ -25,7 +17,13 @@
       }
     }
   },
-  "forwardPorts": [5176, 8791],
+  "remoteUser": "node",
   "postCreateCommand": "npm ci",
-  "remoteUser": "node"
+  "postStartCommand": "setsid nohup bash scripts/codespace-start.sh > /dev/null 2>&1 &",
+  "forwardPorts": [8791, 5176],
+  "portsAttributes": {
+    "8791": { "label": "Praxis", "onAutoForward": "openBrowser" },
+    "5176": { "label": "Dev server (npm run dev:all)", "onAutoForward": "silent" }
+  },
+  "hostRequirements": { "cpus": 2 }
 }

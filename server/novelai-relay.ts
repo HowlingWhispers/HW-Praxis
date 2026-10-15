@@ -137,14 +137,21 @@ export async function relayChat(fetchImpl: Fetch, rawToken: string | undefined, 
   const body = await response.json().catch(() => null) as {
     model?: unknown;
     usage?: unknown;
-    choices?: { message?: { content?: unknown; reasoning_content?: unknown; reasoning?: unknown }; text?: unknown; finish_reason?: unknown }[];
+    choices?: {
+      message?: { content?: unknown; reasoning_content?: unknown; reasoning?: unknown };
+      text?: unknown;
+      parsedContent?: unknown;
+      parsed_content?: unknown;
+      finish_reason?: unknown;
+    }[];
   } | null;
   const choice = body?.choices?.[0];
-  const content = typeof choice?.message?.content === 'string' ? choice.message.content : typeof choice?.text === 'string' ? choice.text : '';
+  const firstText = (...values: unknown[]) => (values.find((value) => typeof value === 'string' && value.trim()) as string | undefined) ?? '';
+  const content = firstText(choice?.message?.content, choice?.text, choice?.parsedContent, choice?.parsed_content);
   const reasoningRaw = choice?.message?.reasoning_content ?? choice?.message?.reasoning;
   const reasoning = typeof reasoningRaw === 'string' ? reasoningRaw : '';
   const finishReason = typeof choice?.finish_reason === 'string' ? choice.finish_reason : null;
-  // What the interface's diagnostics panel shows. Never includes the token.
+  // What the interface's diagnostics panel shows the player who made the request. Never includes the token.
   const diagnostics = {
     endpoint,
     mode,
@@ -159,58 +166,48 @@ export async function relayChat(fetchImpl: Fetch, rawToken: string | undefined, 
     rawChoice: describeChoice(choice),
     maxTokens: settings.max_tokens,
     usage: body?.usage && typeof body.usage === 'object' ? body.usage : null,
-    choices?: { message?: { content?: unknown; reasoning_content?: unknown }; text?: unknown; parsedContent?: unknown; parsed_content?: unknown; finish_reason?: unknown }[];
-  } | null;
-  const choice = body?.choices?.[0];
-  const content = typeof choice?.message?.content === 'string' ? choice.message.content : typeof choice?.text === 'string' ? choice.text : '';
-  if (!content.trim()) {
-    // Structural diagnostics only: never log provider text, prompts, tokens or reasoning.
-    const nonempty = (value: unknown) => typeof value === 'string' && Boolean(value.trim());
-    const usage = body?.usage as Record<string, unknown> | undefined;
-    const count = (value: unknown) => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
-    // Fixed field names only; string values are represented by length, never content.
-    const shape = (value: unknown): unknown => {
-      if (value === null) return 'null';
-      if (typeof value === 'string') return { type: 'string', length: value.length };
-      if (Array.isArray(value)) return { type: 'array', length: value.length };
-      return typeof value;
-    };
-    const message = choice?.message as Record<string, unknown> | undefined;
-    const top = body as Record<string, unknown> | null;
-    const choiceRecord = choice as Record<string, unknown> | undefined;
-    const fields = ['content', 'text', 'parsedContent', 'parsed_content', 'reasoning', 'reasoning_content', 'output', 'output_text', 'delta', 'tool_calls'];
-    const describe = (record: Record<string, unknown> | null | undefined) => Object.fromEntries(fields.map(field => [field, shape(record?.[field])]));
-    console.warn('[praxis-novelai] empty-reply', JSON.stringify({
-      hasChoice: Boolean(choice),
-      hasMessageContent: nonempty(choice?.message?.content),
-      hasText: nonempty(choice?.text),
-      hasParsedContent: nonempty(choice?.parsedContent),
-      hasParsedContentSnake: nonempty(choice?.parsed_content),
-      hasReasoningContent: nonempty(choice?.message?.reasoning_content),
-      finishReason: ['stop', 'length', 'content_filter', 'tool_calls', 'function_call'].includes(String(choice?.finish_reason)) ? choice?.finish_reason : 'unknown',
-      promptTokens: count(usage?.prompt_tokens),
-      completionTokens: count(usage?.completion_tokens),
-      requestedMaxTokens: parsed.data.max_tokens,
-      responseFields: describe(top),
-      choiceFields: describe(choiceRecord),
-      messageFields: describe(message),
-    }));
-    return { status: 502, body: { error: 'NovelAI returned an empty reply.' } };
-  }
-  return {
-    status: 200,
-    body: {
-      text: content,
-      model: typeof body?.model === 'string' ? body.model : parsed.data.model,
-      // Passed through for the generation test: prompt and completion sizes, and any cache count.
-      usage: body?.usage && typeof body.usage === 'object' ? body.usage : null,
-    },
   };
-  if (!content.trim()) {
+  if (!content) {
+    logEmptyReply(body, choice, settings.max_tokens, endpoint);
     const why = reasoning && finishReason === 'length'
       ? `The model used its whole allowance (${settings.max_tokens} tokens) thinking and wrote no reply.`
       : body === null ? 'NovelAI sent something that was not JSON.' : 'NovelAI returned an empty reply.';
     return { status: 502, body: { error: why, diagnostics } };
   }
   return { status: 200, body: { text: content, model: diagnostics.model, usage: diagnostics.usage, diagnostics } };
+}
+
+// Server log for an empty reply. Structure only: never provider text, prompts, tokens or reasoning.
+function logEmptyReply(body: unknown, rawChoice: unknown, requestedMaxTokens: number, endpoint: string) {
+  const top = body && typeof body === 'object' ? body as Record<string, unknown> : null;
+  const choice = rawChoice && typeof rawChoice === 'object' ? rawChoice as Record<string, unknown> : undefined;
+  const message = choice?.message && typeof choice.message === 'object' ? choice.message as Record<string, unknown> : undefined;
+  const nonempty = (value: unknown) => typeof value === 'string' && Boolean(value.trim());
+  const usage = top?.usage as Record<string, unknown> | undefined;
+  const count = (value: unknown) => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+  // Fixed field names only; string values are represented by length, never content.
+  const shape = (value: unknown): unknown => {
+    if (value === null) return 'null';
+    if (typeof value === 'string') return { type: 'string', length: value.length };
+    if (Array.isArray(value)) return { type: 'array', length: value.length };
+    return typeof value;
+  };
+  const fields = ['content', 'text', 'parsedContent', 'parsed_content', 'reasoning', 'reasoning_content', 'output', 'output_text', 'delta', 'tool_calls', 'token_ids'];
+  const describe = (record: Record<string, unknown> | null | undefined) => Object.fromEntries(fields.map((field) => [field, shape(record?.[field])]));
+  console.warn('[praxis-novelai] empty-reply', JSON.stringify({
+    endpoint,
+    hasChoice: Boolean(choice),
+    hasMessageContent: nonempty(message?.content),
+    hasText: nonempty(choice?.text),
+    hasParsedContent: nonempty(choice?.parsedContent),
+    hasParsedContentSnake: nonempty(choice?.parsed_content),
+    hasReasoningContent: nonempty(message?.reasoning_content),
+    finishReason: ['stop', 'length', 'content_filter', 'tool_calls', 'function_call'].includes(String(choice?.finish_reason)) ? choice?.finish_reason : 'unknown',
+    promptTokens: count(usage?.prompt_tokens),
+    completionTokens: count(usage?.completion_tokens),
+    requestedMaxTokens,
+    responseFields: describe(top),
+    choiceFields: describe(choice),
+    messageFields: describe(message),
+  }));
 }
