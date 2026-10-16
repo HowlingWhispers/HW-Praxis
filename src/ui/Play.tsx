@@ -454,9 +454,13 @@ function TurnView({ world, save, turn, next, latest, busy, connected, onReroll, 
   onStop: () => void;
   model: Call | undefined;
 }) {
-  // Hidden states (momentum) stay out of the story; the ledger in Settings still has them.
+  // Hidden states (momentum) stay out of the story, and so do people's days elsewhere: only
+  // comings and goings where you were show here. The ledger in Settings has everything.
+  const playerId = world.scenario.playerCharacterId;
+  const places = new Set([turn.before.positions[playerId], (next ? next.before : save).positions[playerId]]);
   const entries = save.ledger.slice(turn.ledgerStart, next ? next.ledgerStart : save.ledger.length)
-    .filter((entry) => entry.kind !== 'state' || world.ruleset.states.find((def) => def.id === entry.defId)?.display !== 'hidden');
+    .filter((entry) => entry.kind !== 'state' || world.ruleset.states.find((def) => def.id === entry.defId)?.display !== 'hidden')
+    .filter((entry) => entry.kind !== 'move' || entry.characterId === playerId || entry.source !== 'rule' || places.has(entry.from ?? '') || places.has(entry.to ?? ''));
   const waiting = latest && busy && !turn.reply;
   return (
     <>

@@ -31,7 +31,8 @@ export const DEFAULT_OPTIONS: Options = optionsSchema.parse({});
 
 // Room the moment (scene notes and the player's words) is assumed to need. Kept as a fixed
 // reserve so the transcript's share does not move with every scene change.
-export const MOMENT_RESERVE = 1500;
+// Present people's dossiers take up to 1,200 of it.
+export const MOMENT_RESERVE = 2500;
 
 export function estimateTokens(text: string, tokensPerChar: number): number {
   return text ? Math.ceil(text.length * tokensPerChar) : 0;

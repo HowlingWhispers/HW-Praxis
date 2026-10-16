@@ -80,12 +80,56 @@ export const memorySchema = z.object({
   description: text(8000).default(''),
 }).passthrough();
 
+// One stop in a day: from this hour until the next stop, the person is here doing this.
+// The last stop runs on past midnight to the first, so someone asleep from 23:00 is still
+// asleep at 01:00. Character Engine's shape.
+export const scheduleRowSchema = z.object({
+  fromHour: z.number().int().min(0).max(23),
+  locationId: id,
+  doing: text(400).default(''),
+});
+
+export const dayPlanSchema = z.object({
+  id,
+  name: z.string().min(1).max(80),
+  rows: z.array(scheduleRowSchema).min(1).max(24),
+});
+
+// When a plan other than the first applies. Every field must match; an absent field matches
+// anything. Weekday, month and day of the month count from zero; fromDay and toDay are
+// absolute days since story zero, for a world with no week.
+export const planRuleSchema = z.object({
+  planId: id,
+  when: z.object({
+    weekday: z.number().int().min(0).optional(),
+    month: z.number().int().min(0).optional(),
+    monthDay: z.number().int().min(0).optional(),
+    fromDay: z.number().int().min(0).optional(),
+    toDay: z.number().int().min(0).optional(),
+  }),
+});
+
+// Where someone is when the story is not watching. The first plan is the ordinary day; the
+// first rule that matches picks another.
+export const scheduleSchema = z.object({
+  plans: z.array(dayPlanSchema).min(1).max(20),
+  rules: z.array(planRuleSchema).max(50).default([]),
+});
+
 export const characterSchema = z.object({
   ...recordBase,
   description: text(8000).default(''),
+  // The dossier. Orbis characters take these as free-form fields; the names follow Orbis's
+  // persona record (appearance, personality, speech) so one shape serves both.
+  role: text(200).optional(),
+  appearance: text(4000).optional(),
+  personality: text(4000).optional(),
+  speech: text(4000).optional(),
   speciesId: id.optional(),
   factionIds: z.array(id).max(50).default([]),
   homeLocationId: id.optional(),
+  workplaceLocationIds: z.array(id).max(20).default([]),
+  schedule: scheduleSchema.optional(),
   // Starting values that differ from a state's own start.
   states: z.record(z.string(), z.number().int()).default({}),
   // This character's own maximum for a state, such as a minion's 2 Health. Bands with a
@@ -93,6 +137,22 @@ export const characterSchema = z.object({
   maxima: z.record(z.string(), z.number().int()).default({}),
   // Four Approaches charges, by approach: trained (+1, +2, +3), practiced (+1, +2), raw (+1).
   charges: z.record(z.string(), z.enum(['trained', 'practiced', 'raw'])).default({}),
+}).passthrough();
+
+// Two people and what lies between them, Character Engine's pair record. Not an Orbis
+// collection yet; part of the Orbis proposal. `bondStateId` names a relationship-scoped
+// state whose bands are the bond's tiers. `states` holds starting values, as on characters.
+export const relationshipSchema = z.object({
+  id,
+  personIds: z.tuple([id, id]),
+  bondStateId: id.optional(),
+  // What the relationship is. Shared by both sides.
+  shape: text(2000).default(''),
+  // What happens in the room when both are there.
+  together: text(1000).default(''),
+  // What each side wants out of it, by character id.
+  wants: z.record(z.string(), text(600)).default({}),
+  states: z.record(z.string(), z.number().int()).default({}),
 }).passthrough();
 
 export const itemSchema = z.object({
@@ -245,6 +305,7 @@ export const moduleSchema = z.object({
   }),
   world: worldSchema,
   characters: z.array(characterSchema).max(5000).default([]),
+  relationships: z.array(relationshipSchema).max(5000).default([]),
   items: z.array(itemSchema).max(5000).default([]),
   ruleset: rulesetSchema.default({ states: [], travel: { walkKph: 4, tiers: [] }, actions: [], approaches: [] }),
   scenario: scenarioSchema,
@@ -381,6 +442,51 @@ export const moduleSchema = z.object({
     }
   });
 
+  module.characters.forEach((character, index) => {
+    character.workplaceLocationIds.forEach((placeId, placeIndex) => {
+      if (!places.has(placeId)) issue(['characters', index, 'workplaceLocationIds', placeIndex], `Unknown place "${placeId}".`);
+    });
+    const schedule = character.schedule;
+    if (!schedule) return;
+    if (character.id === module.scenario.playerCharacterId) issue(['characters', index, 'schedule'], 'The player character keeps no schedule; the player decides where they go.');
+    unique(schedule.plans.map((plan) => plan.id), ['characters', index, 'schedule', 'plans']);
+    const planIds = new Set(schedule.plans.map((plan) => plan.id));
+    schedule.plans.forEach((plan, planIndex) => {
+      const hours = new Set<number>();
+      plan.rows.forEach((row, rowIndex) => {
+        const path = ['characters', index, 'schedule', 'plans', planIndex, 'rows', rowIndex];
+        if (hours.has(row.fromHour)) issue([...path, 'fromHour'], `Two stops start at ${row.fromHour}:00.`);
+        hours.add(row.fromHour);
+        if (!places.has(row.locationId)) issue([...path, 'locationId'], `Unknown place "${row.locationId}".`);
+        else if (isArea(row.locationId)) issue([...path, 'locationId'], `"${row.locationId}" is an area, not somewhere to be.`);
+      });
+    });
+    schedule.rules.forEach((rule, ruleIndex) => {
+      if (!planIds.has(rule.planId)) issue(['characters', index, 'schedule', 'rules', ruleIndex, 'planId'], `Unknown plan "${rule.planId}".`);
+    });
+  });
+
+  unique(module.relationships.map((relationship) => relationship.id), ['relationships']);
+  const pairs = new Set<string>();
+  module.relationships.forEach((relationship, index) => {
+    const [a, b] = relationship.personIds;
+    relationship.personIds.forEach((personId, personIndex) => {
+      if (!characterIds.has(personId)) issue(['relationships', index, 'personIds', personIndex], `Unknown character "${personId}".`);
+    });
+    if (a === b) issue(['relationships', index, 'personIds'], 'A relationship needs two different people.');
+    const pair = a < b ? `${a}|${b}` : `${b}|${a}`;
+    if (pairs.has(pair)) issue(['relationships', index, 'personIds'], 'These two already have a relationship.');
+    pairs.add(pair);
+    const bond = relationship.bondStateId ? states.get(relationship.bondStateId) : undefined;
+    if (relationship.bondStateId && bond?.scope !== 'relationship') issue(['relationships', index, 'bondStateId'], `"${relationship.bondStateId}" is not a relationship state.`);
+    for (const stateId of Object.keys(relationship.states)) {
+      if (states.get(stateId)?.scope !== 'relationship') issue(['relationships', index, 'states', stateId], `"${stateId}" is not a relationship state.`);
+    }
+    for (const personId of Object.keys(relationship.wants)) {
+      if (personId !== a && personId !== b) issue(['relationships', index, 'wants', personId], `"${personId}" is not one of the two.`);
+    }
+  });
+
   const { scenario } = module;
   if (!places.has(scenario.startPlaceId)) issue(['scenario', 'startPlaceId'], `Unknown place "${scenario.startPlaceId}".`);
   else if (isArea(scenario.startPlaceId)) issue(['scenario', 'startPlaceId'], `"${scenario.startPlaceId}" is an area, not somewhere to start.`);
@@ -395,6 +501,10 @@ export type PraxisModule = z.infer<typeof moduleSchema>;
 export type Place = z.infer<typeof placeSchema>;
 export type Route = z.infer<typeof routeSchema>;
 export type Character = z.infer<typeof characterSchema>;
+export type Relationship = z.infer<typeof relationshipSchema>;
+export type Schedule = z.infer<typeof scheduleSchema>;
+export type DayPlan = z.infer<typeof dayPlanSchema>;
+export type ScheduleRow = z.infer<typeof scheduleRowSchema>;
 export type Item = z.infer<typeof itemSchema>;
 export type WorldEntry = z.infer<typeof worldEntrySchema>;
 export type Memory = z.infer<typeof memorySchema>;

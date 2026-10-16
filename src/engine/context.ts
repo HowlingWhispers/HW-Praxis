@@ -25,7 +25,9 @@
 import { calendarOf, exitsFrom } from './world';
 import { timeBandOf } from './clock';
 import { stateDefFor, type Character, type Place, type PraxisModule, type WorldEntry } from './module';
-import { line, read } from './state';
+import { line, pairKey, read } from './state';
+import { doingNow } from './schedule';
+import { pairName } from './relationships';
 import { MOMENT_RESERVE, estimateTokens } from './options';
 import { journalBlock } from './journal';
 import { playable } from './records';
@@ -170,6 +172,65 @@ function dossier(world: PraxisModule, character: Character): string {
   return character.description ? `${head}: ${character.description}` : head;
 }
 
+// The first sentences of a text, up to about `chars` characters.
+function sentencesUpTo(text: string, chars: number): string {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (clean.length <= chars) return clean;
+  const sentences = clean.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? [clean];
+  let out = '';
+  for (const sentence of sentences) {
+    if (out && out.length + sentence.length > chars) break;
+    out += sentence;
+  }
+  return (out || clean.slice(0, chars)).trim();
+}
+
+// Everyone present, each with as much of their dossier as fits: who they are, how they look,
+// carry themselves and speak, and what their day has them doing. A crowded room gives the
+// later people their first line only, so the moment keeps to its share of the window.
+const PRESENT_TOKENS = 1200;
+const DOSSIER_CHARS = 420;
+
+function presentBlock(world: PraxisModule, save: Save, present: readonly Character[]): string {
+  let used = 0;
+  const lines = present.map((character) => {
+    const doing = doingNow(world, save, character);
+    const short = `${dossier(world, character)}${doing ? ` Now: ${/[.!?]$/.test(doing) ? doing : `${doing}.`}` : ''}`;
+    const extras = ([['Looks', character.appearance], ['Manner', character.personality], ['Voice', character.speech]] as const)
+      .filter(([, value]) => typeof value === 'string' && value.trim())
+      .map(([label, value]) => `${label}: ${sentencesUpTo(value as string, DOSSIER_CHARS)}`);
+    const full = extras.length ? `${short}\n  ${extras.join('\n  ')}` : short;
+    const cost = estimateTokens(full, save.options.tokensPerChar);
+    const pick = used + cost <= PRESENT_TOKENS ? full : short;
+    used += estimateTokens(pick, save.options.tokensPerChar);
+    return `- ${pick}`;
+  });
+  return `[Present:\n${lines.join('\n')}]`;
+}
+
+// What lies between people who are both here, the player included.
+function between(world: PraxisModule, save: Save, people: readonly Character[]): string[] {
+  const playerId = playerOf(world);
+  const here = new Set(people.map((person) => person.id));
+  const out: string[] = [];
+  for (const relationship of world.relationships) {
+    if (!relationship.personIds.every((personId) => here.has(personId))) continue;
+    const owner = pairKey(...relationship.personIds);
+    const names = midSentence(pairName(world, owner, playerId));
+    const wants = Object.entries(relationship.wants)
+      .filter(([personId, want]) => personId !== playerId && want.trim())
+      .map(([personId, want]) => `${world.characters.find((character) => character.id === personId)?.name ?? personId} wants ${midSentence(want.trim()).replace(/\.$/, '')}.`);
+    const parts = [relationship.shape.trim(), relationship.together.trim() ? `Together: ${relationship.together.trim()}` : '', ...wants].filter(Boolean);
+    if (parts.length) out.push(`[Between ${names}: ${parts.join(' ')}]`);
+    const def = relationship.bondStateId ? stateDefFor(world, relationship.bondStateId, owner) : undefined;
+    if (def) {
+      const fact = line(def.line ? def : { ...def, line: '[|name|: |bandLabel|]' }, names.charAt(0).toUpperCase() + names.slice(1), read(save.values, def, owner));
+      if (fact) out.push(fact);
+    }
+  }
+  return out;
+}
+
 // Groups and history that bear on a scene: groups its people belong to, groups whose
 // territory or settlements include the place, the societies those groups belong to, and
 // memories tied to the place or its people. Orbis field names throughout.
@@ -219,7 +280,7 @@ export function momentFor(module: PraxisModule, save: Save, turn: Turn): string 
   const notes: string[] = [];
   notes.push(`[Scene: ${placePath(world, place)}${band ? `, ${band}` : ''}. ${place.description}]`.replace(/\s+\]$/, ']'));
   notes.push(`[You are ${inSentence(dossier(world, player))}]`);
-  notes.push(present.length ? `[Present: ${present.map((character) => dossier(world, character)).join(' | ')}]` : '[Nobody else is here.]');
+  notes.push(present.length ? presentBlock(world, save, present) : '[Nobody else is here.]');
 
   const things = thingsAt(world, save, place.id);
   if (things.length) notes.push(`[Here: ${things.map((thing) => (thing.description ? `${thing.name}: ${thing.description}` : thing.name)).join(' | ')}]`);
@@ -229,6 +290,8 @@ export function momentFor(module: PraxisModule, save: Save, turn: Turn): string 
   const bearing = bearingOn(world, place, [player, ...present]);
   if (bearing.groups.length) notes.push(`[Bearing on this scene: ${bearing.groups.map((group) => (group.description ? `${group.name}: ${group.description}` : group.name)).join(' | ')}]`);
   if (bearing.memories.length) notes.push(`[History here: ${bearing.memories.map((memory) => (memory.description ? `${memory.title}: ${memory.description}` : memory.title)).join(' | ')}]`);
+
+  notes.push(...between(world, save, [player, ...present]));
 
   const facts = [
     ...standingFacts(world, save, playerId, player.name, 'character'),

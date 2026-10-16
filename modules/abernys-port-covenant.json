@@ -2,8 +2,8 @@
   "format": "praxis-module/1",
   "id": "abernys-port-covenant",
   "name": "Abernys: Port Covenant",
-  "version": "0.3.0",
-  "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and their Four Approaches tiers (the Arbiter a rival, the guard a minion), and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own.",
+  "version": "0.4.0",
+  "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and their Four Approaches tiers (the Arbiter a rival, the guard a minion), and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own. From 0.4.0, also draft: every dossier field (appearance, personality, speech), every schedule, the four bond kinds and their tiers, and the three relationships between the Governor, the High Arbiter, the garrison captain and the gate staff. The leverage between the Governor and the captain (she knows the last ship carried no orders) is from the societies doc.",
   "source": {
     "kind": "local"
   },
@@ -344,7 +344,40 @@
       "maxima": {
         "health": 5,
         "strain": 4
-      }
+      },
+      "appearance": "A woman in the Arbiters' grey, ink to the second knuckle, hood pushed back despite the fog, a writing board strapped to her left forearm.",
+      "personality": "Patient, exact and unhurried. She treats every arrival as a contract not yet signed, and is not unkind, only uninterested in anything that is not on paper.",
+      "speech": "Short, complete sentences. Repeats terms back word for word, and says 'the Covenant' the way others say 'the weather'.",
+      "workplaceLocationIds": [
+        "pc-landward-gate",
+        "pc-registry"
+      ],
+      "schedule": {
+        "plans": [
+          {
+            "id": "day",
+            "name": "A working day",
+            "rows": [
+              {
+                "fromHour": 6,
+                "locationId": "pc-landward-gate",
+                "doing": "keeping the ledger at the landward gate"
+              },
+              {
+                "fromHour": 19,
+                "locationId": "pc-registry",
+                "doing": "filing the day's signatures at the registry"
+              },
+              {
+                "fromHour": 22,
+                "locationId": "pc-registry",
+                "doing": "asleep in the Arbiters' cells"
+              }
+            ]
+          }
+        ]
+      },
+      "draftNote": "Appearance, personality, speech and schedule are drafts."
     },
     {
       "id": "gate-guard",
@@ -356,7 +389,34 @@
       "maxima": {
         "health": 2,
         "strain": 1
-      }
+      },
+      "appearance": "Helmet strapped tight, cloak dark with fog-wet, leaning on a pike more than he should.",
+      "personality": "Cold, bored and loyal to whoever pays the garrison. Watches the road, not the people on it.",
+      "speech": "As few words as he can manage, most of them to the Arbiter.",
+      "workplaceLocationIds": [
+        "pc-landward-gate"
+      ],
+      "schedule": {
+        "plans": [
+          {
+            "id": "day",
+            "name": "Gate watch",
+            "rows": [
+              {
+                "fromHour": 6,
+                "locationId": "pc-landward-gate",
+                "doing": "standing the gate watch"
+              },
+              {
+                "fromHour": 18,
+                "locationId": "pc-garrison",
+                "doing": "off watch in the barracks"
+              }
+            ]
+          }
+        ]
+      },
+      "draftNote": "Appearance, personality, speech and schedule are drafts."
     },
     {
       "id": "ottavio-marrane",
@@ -365,7 +425,34 @@
       "homeLocationId": "pc-governors-court",
       "canonStatus": "draft",
       "role": "The Governor",
-      "description": "Leads the colony. Wants the homeland's silence kept from the colonists. His commission is the colony's claim to the land, and every document it rests on sits in the Arbiters' keeping."
+      "description": "Leads the colony. Wants the homeland's silence kept from the colonists. His commission is the colony's claim to the land, and every document it rests on sits in the Arbiters' keeping.",
+      "appearance": "A heavy man in a homeland coat gone thin at the cuffs, the Governor's chain worn outside it where it can be seen.",
+      "personality": "Gracious in public and careful in private. He listens for what people know rather than what they say, and never lets a silence go unfilled.",
+      "speech": "Formal homeland courtesy in long sentences that end before they commit to anything.",
+      "workplaceLocationIds": [
+        "pc-governors-court"
+      ],
+      "schedule": {
+        "plans": [
+          {
+            "id": "day",
+            "name": "At court",
+            "rows": [
+              {
+                "fromHour": 8,
+                "locationId": "pc-governors-court",
+                "doing": "holding court and hearing petitions"
+              },
+              {
+                "fromHour": 18,
+                "locationId": "pc-governors-court",
+                "doing": "at supper in his own rooms, not to be disturbed"
+              }
+            ]
+          }
+        ]
+      },
+      "draftNote": "Appearance, personality, speech and schedule are drafts."
     },
     {
       "id": "lucan-abreu",
@@ -377,7 +464,45 @@
       "homeLocationId": "pc-registry",
       "canonStatus": "draft",
       "role": "The High Arbiter",
-      "description": "Heads the Arbiters. Wants every bargain on the coast written in the Pact's hand, and knows the Covenant only binds those who sign it."
+      "description": "Heads the Arbiters. Wants every bargain on the coast written in the Pact's hand, and knows the Covenant only binds those who sign it.",
+      "appearance": "Tall, lean and grey, his forearms tattooed with the contracts he witnessed as a young Arbiter.",
+      "personality": "He believes in the Pact the way others believe in gods. Never raises his voice and never forgets a clause.",
+      "speech": "Quotes terms by number, and asks questions he already knows the answers to.",
+      "workplaceLocationIds": [
+        "pc-registry",
+        "pc-governors-court"
+      ],
+      "schedule": {
+        "plans": [
+          {
+            "id": "day",
+            "name": "A working day",
+            "rows": [
+              {
+                "fromHour": 7,
+                "locationId": "pc-registry",
+                "doing": "at his desk among the colony's contracts"
+              },
+              {
+                "fromHour": 12,
+                "locationId": "pc-governors-court",
+                "doing": "attending the Governor's court"
+              },
+              {
+                "fromHour": 15,
+                "locationId": "pc-registry",
+                "doing": "reviewing the day's contracts"
+              },
+              {
+                "fromHour": 21,
+                "locationId": "pc-registry",
+                "doing": "at prayer and rest in the Arbiters' cells"
+              }
+            ]
+          }
+        ]
+      },
+      "draftNote": "Appearance, personality, speech and schedule are drafts."
     },
     {
       "id": "ines-corvo",
@@ -386,7 +511,50 @@
       "homeLocationId": "pc-garrison",
       "canonStatus": "draft",
       "role": "The garrison captain",
-      "description": "Holds the colony's soldiers and best weapons. Wants the borders held, and keeps losing patrols in the clashes on the downs and in the fen."
+      "description": "Holds the colony's soldiers and best weapons. Wants the borders held, and keeps losing patrols in the clashes on the downs and in the fen.",
+      "appearance": "Short, broad and weathered, in a mended buff coat, the knuckles of her sword hand scarred white.",
+      "personality": "Blunt and tired. She counts her soldiers before she counts anything else, and has stopped pretending the patrol losses are bad luck.",
+      "speech": "Plain soldier's talk, clipped, with homeland saints for oaths.",
+      "workplaceLocationIds": [
+        "pc-garrison",
+        "pc-landward-gate"
+      ],
+      "schedule": {
+        "plans": [
+          {
+            "id": "day",
+            "name": "A garrison day",
+            "rows": [
+              {
+                "fromHour": 5,
+                "locationId": "pc-garrison",
+                "doing": "drilling the morning watch"
+              },
+              {
+                "fromHour": 10,
+                "locationId": "pc-landward-gate",
+                "doing": "inspecting the gate and the road beyond it"
+              },
+              {
+                "fromHour": 11,
+                "locationId": "pc-governors-court",
+                "doing": "reporting to the Governor"
+              },
+              {
+                "fromHour": 13,
+                "locationId": "pc-garrison",
+                "doing": "planning the patrols"
+              },
+              {
+                "fromHour": 22,
+                "locationId": "pc-garrison",
+                "doing": "asleep in her quarters"
+              }
+            ]
+          }
+        ]
+      },
+      "draftNote": "Appearance, personality, speech and schedule are drafts."
     },
     {
       "id": "cadfan",
@@ -394,7 +562,59 @@
       "speciesId": "badgerfolk",
       "homeLocationId": "bogwater",
       "role": "A fen trader",
-      "description": "A weathered badger with a punt and a Caerwyn buyer's mark on his barrels, on the regular trek between Bogwater and Caerwyn. Easier with outsiders than most fen folk, which is why he's useful and why the clusters don't fully trust him."
+      "description": "A weathered badger with a punt and a Caerwyn buyer's mark on his barrels, on the regular trek between Bogwater and Caerwyn. Easier with outsiders than most fen folk, which is why he's useful and why the clusters don't fully trust him.",
+      "appearance": "A grey-muzzled badger in an oilskin, fen mud to the knees, smelling of peat smoke and barrel tar.",
+      "personality": "Easygoing and shrewd about prices, and careful about what he says of the fen clusters.",
+      "speech": "A slow fen drawl. Answers most questions with a price.",
+      "workplaceLocationIds": [
+        "bogwater",
+        "caerwyn"
+      ],
+      "schedule": {
+        "plans": [
+          {
+            "id": "day",
+            "name": "At home in the fen",
+            "rows": [
+              {
+                "fromHour": 6,
+                "locationId": "bogwater",
+                "doing": "loading his punt"
+              },
+              {
+                "fromHour": 20,
+                "locationId": "bogwater",
+                "doing": "at home with the stove lit"
+              }
+            ]
+          },
+          {
+            "id": "market",
+            "name": "Market day in Caerwyn",
+            "rows": [
+              {
+                "fromHour": 6,
+                "locationId": "caerwyn",
+                "doing": "selling fen goods at the Caerwyn market"
+              },
+              {
+                "fromHour": 20,
+                "locationId": "caerwyn",
+                "doing": "drinking his takings in a Caerwyn alehouse"
+              }
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "planId": "market",
+            "when": {
+              "weekday": 4
+            }
+          }
+        ]
+      },
+      "draftNote": "Appearance, personality, speech and schedule are drafts."
     },
     {
       "id": "brond",
@@ -403,7 +623,60 @@
       "homeLocationId": "aurochs-downs",
       "canonStatus": "draft",
       "role": "Head of Clan Aurochs",
-      "description": "Wants war on Port Covenant. Has the most men and the great barrows; his barrow-keepers keep killing colony diggers, and every body brings a patrol."
+      "description": "Wants war on Port Covenant. Has the most men and the great barrows; his barrow-keepers keep killing colony diggers, and every body brings a patrol.",
+      "appearance": "A huge aurochs-folk bull, one horn capped in bronze, a barrow-keeper's ochre handprints on his hide.",
+      "personality": "Proud and grieving, and certain that war is the only answer the colony has left him.",
+      "speech": "Few words, slow and heavy, in the first peoples' tongue when he can.",
+      "draftNote": "Appearance, personality, speech are drafts."
+    }
+  ],
+  "relationships": [
+    {
+      "id": "governor-and-high-arbiter",
+      "personIds": [
+        "ottavio-marrane",
+        "lucan-abreu"
+      ],
+      "bondStateId": "bond-rivals",
+      "canonStatus": "draft",
+      "shape": "The Governor leads the colony and the High Arbiter keeps its paper, and the Governor's commission is only as good as the documents in the Arbiters' keeping. Neither can rule without the other, and each knows which of them could ruin the other first.",
+      "together": "Courteous to the letter in front of witnesses. Each lets the other speak first.",
+      "wants": {
+        "ottavio-marrane": "the commission's papers kept sealed and unread",
+        "lucan-abreu": "the colony's future signed into the Pact's hand, the Governor's included"
+      },
+      "states": {
+        "bond-rivals": 2
+      }
+    },
+    {
+      "id": "governor-and-captain",
+      "personIds": [
+        "ottavio-marrane",
+        "ines-corvo"
+      ],
+      "bondStateId": "bond-uneasy-allies",
+      "canonStatus": "draft",
+      "shape": "She holds the colony's soldiers and he holds its claim to the land. She knows the last ship from the homeland carried no orders, and he knows she knows.",
+      "together": "She reports standing. He does not ask her to sit.",
+      "wants": {
+        "ines-corvo": "men and powder for the borders, and the truth told before someone else finds it out",
+        "ottavio-marrane": "her silence about the last ship"
+      }
+    },
+    {
+      "id": "gate-staff",
+      "personIds": [
+        "gate-arbiter",
+        "gate-guard"
+      ],
+      "bondStateId": "bond-acquaintance",
+      "canonStatus": "draft",
+      "shape": "They keep the landward gate together every day: she writes, he watches the road.",
+      "together": "They talk over a traveller's head as if the traveller were weather.",
+      "states": {
+        "bond-acquaintance": 3
+      }
     }
   ],
   "ruleset": {
@@ -624,6 +897,150 @@
         ],
         "approach": {
           "owner": "finesse",
+          "secondary": []
+        }
+      },
+      {
+        "id": "bond-acquaintance",
+        "name": "Acquaintance",
+        "scope": "relationship",
+        "min": 0,
+        "max": 4,
+        "start": 2,
+        "category": "Bonds",
+        "display": "band",
+        "bands": [
+          {
+            "at": 0,
+            "label": "Each would cross the street to avoid the other."
+          },
+          {
+            "at": 1,
+            "label": "They are wary of each other, and their manners say so."
+          },
+          {
+            "at": 2,
+            "label": "They know each other's names and not much else."
+          },
+          {
+            "at": 3,
+            "label": "Each has done the other a good turn, and both remember it."
+          },
+          {
+            "at": 4,
+            "label": "Each would vouch for the other to someone who mattered."
+          }
+        ],
+        "restBand": 2,
+        "line": "[|name|: |bandLabel|]",
+        "approach": {
+          "owner": "flair",
+          "secondary": []
+        }
+      },
+      {
+        "id": "bond-rivals",
+        "name": "Rivals",
+        "scope": "relationship",
+        "min": 0,
+        "max": 4,
+        "start": 1,
+        "category": "Bonds",
+        "display": "band",
+        "bands": [
+          {
+            "at": 0,
+            "label": "Each will take a loss if it costs the other more."
+          },
+          {
+            "at": 1,
+            "label": "Every exchange is being scored. Courtesy, when it appears, is a move."
+          },
+          {
+            "at": 2,
+            "label": "They measure themselves against each other, and both know the other is doing it."
+          },
+          {
+            "at": 3,
+            "label": "Neither would say it aloud, but each has stopped hoping the other fails."
+          },
+          {
+            "at": 4,
+            "label": "The contest is still running. It has stopped being the point of them."
+          }
+        ],
+        "restBand": 1,
+        "line": "[|name|: |bandLabel|]",
+        "approach": {
+          "owner": "flair",
+          "secondary": []
+        }
+      },
+      {
+        "id": "bond-friends",
+        "name": "Friends",
+        "scope": "relationship",
+        "min": 0,
+        "max": 3,
+        "start": 1,
+        "category": "Bonds",
+        "display": "band",
+        "bands": [
+          {
+            "at": 0,
+            "label": "They are glad to see each other and would not go out of their way for it."
+          },
+          {
+            "at": 1,
+            "label": "The warmth is real and out of practice."
+          },
+          {
+            "at": 2,
+            "label": "They tell each other things first."
+          },
+          {
+            "at": 3,
+            "label": "Their plans assume each other. Neither has checked whether that was ever agreed."
+          }
+        ],
+        "restBand": 1,
+        "line": "[|name|: |bandLabel|]",
+        "approach": {
+          "owner": "flair",
+          "secondary": []
+        }
+      },
+      {
+        "id": "bond-uneasy-allies",
+        "name": "Uneasy allies",
+        "scope": "relationship",
+        "min": 0,
+        "max": 3,
+        "start": 1,
+        "category": "Bonds",
+        "display": "band",
+        "bands": [
+          {
+            "at": 0,
+            "label": "Each is looking for the way out of the arrangement."
+          },
+          {
+            "at": 1,
+            "label": "They work together and watch each other while they do."
+          },
+          {
+            "at": 2,
+            "label": "They have stopped testing each other and started relying on it."
+          },
+          {
+            "at": 3,
+            "label": "Neither could say when it stopped being an arrangement."
+          }
+        ],
+        "restBand": 1,
+        "line": "[|name|: |bandLabel|]",
+        "approach": {
+          "owner": "flair",
           "secondary": []
         }
       }

@@ -14,6 +14,8 @@ import { stateDefFor, type Approach, type Cost, type PraxisModule } from './modu
 import { band, line, read, write, type StateDef, type StateTerminal, type StateValues } from './state';
 import { buildPool, oddsOf, rollPool, type Odds, type Pool } from './dice';
 import { playerOf, type CheckRecord, type LedgerEntry, type Save } from './session';
+import { pairName, relationshipBetween } from './relationships';
+import { pairKey } from './state';
 
 const inSentence = (name: string) => (name.startsWith('The ') ? `the ${name.slice(4)}` : name);
 
@@ -113,6 +115,7 @@ export interface CheckPlan {
 export type PlanResult = CheckPlan | { ok: false; reason: string };
 
 function ownerName(world: PraxisModule, owner: string): string {
+  if (owner.includes('|')) return pairName(world, owner, playerOf(world)).replace(/^the /, 'The ');
   return world.characters.find((entry) => entry.id === owner)?.name ?? world.world.places.find((entry) => entry.id === owner)?.name ?? owner;
 }
 
@@ -317,6 +320,16 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
           change(dice.momentum, playerId, () => next);
         }
       }
+    }
+
+    // A triumph or a despair against someone moves the bond between you a tier, when this
+    // approach owns the bond (Four Approaches: Flair).
+    const swing = (reading.triumph ? 1 : 0) - (reading.despair ? 1 : 0);
+    const relationship = swing ? relationshipBetween(world, playerId, target.owner) : undefined;
+    if (relationship?.bondStateId) {
+      const bondOwner = pairKey(...relationship.personIds);
+      const bondDef = stateDefFor(world, relationship.bondStateId, bondOwner);
+      if (bondDef && claimOf(bondDef, plan.approach.id) === 'owner') change(bondDef.id, bondOwner, (current) => current + swing);
     }
   }
 

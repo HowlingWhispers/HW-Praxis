@@ -1,9 +1,10 @@
 // Scene: where you are, the time, who and what is here, and what you can do.
 import { useState } from 'react';
 import {
-  band, calendarOf, datePhrase, durationWords, line, read, sceneActionsFor, sceneOf, stateDefFor, targetsHere, timeOfDay, weekdayOf,
-  type Character,
+  band, bondBetween, calendarOf, datePhrase, doingNow, durationWords, line, pairName, playerOf, read, sceneActionsFor, sceneOf, stateDefFor,
+  targetsHere, timeOfDay, weekdayOf, whereabouts, type Character,
 } from '../engine';
+import { BondWithYou } from './Bonds';
 import type { PlayApi } from './Play';
 import { ChevronRight, LockIcon } from './icons';
 import { DraftTag, StateBar, YoursTag, characterStates, groupsOf, initials, roleOf, speciesOf, stateColor } from './shared';
@@ -158,6 +159,18 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
   const knows = defs.map((def) => line(stateDefFor(world, def.id, person.id) ?? def, person.name, read(save.values, def, person.id))).filter(Boolean);
   const meta = [roleOf(person), speciesOf(world, person), ...groupsOf(world, person)].filter(Boolean).join(' · ');
   const local = person.origin === 'local';
+  const doing = doingNow(world, save, person);
+  const day = doing ? whereabouts(calendarOf(world), person, save.clock) : null;
+  const dossier = ([['Looks', person.appearance], ['Manner', person.personality], ['Voice', person.speech]] as [string, string | undefined][])
+    .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim() !== '');
+  // Their ties to the others here, and the bond with you, as the narrator reads them.
+  const playerId = playerOf(world);
+  const ties = sceneOf(world, save).present
+    .filter((other) => other.id !== person.id)
+    .map((other) => bondBetween(world, save, person.id, other.id))
+    .filter((bond) => bond !== null);
+  const withYou = bondBetween(world, save, playerId, person.id);
+  const bondFact = withYou?.def ? line({ ...withYou.def, line: withYou.def.line ?? '[|name|: |bandLabel|]' }, pairName(world, withYou.owner, playerId), withYou.value) : '';
 
   return (
     <details open={open}>
@@ -175,6 +188,23 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
       </summary>
       <div className="row-body">
         {person.description && <p className="prose">{person.description}</p>}
+        {doing && (
+          <p className="meta" style={{ lineHeight: 1.45, color: 'var(--text-2)' }}>
+            Now {doing}{day ? `, until ${timeOfDay(day.until)}` : ''}.
+          </p>
+        )}
+        {dossier.length > 0 && (
+          <dl className="dossier">
+            {dossier.map(([label, text]) => (
+              <div key={label}><dt>{label}</dt><dd>{text}</dd></div>
+            ))}
+          </dl>
+        )}
+        {ties.map((tie) => (
+          <p key={tie.relationship.id} className="meta" style={{ lineHeight: 1.45, color: 'var(--text-2)' }}>
+            <b style={{ color: 'var(--text)' }}>With {tie.other.name.replace(/^The /, 'the ').replace(/^A /, 'a ')}:</b> {[tie.def?.name, tie.tier].filter(Boolean).join('. ')}
+          </p>
+        ))}
         {defs.filter((def) => def.bands.length).length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {defs.filter((def) => def.bands.length).map((def) => {
@@ -191,8 +221,9 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
         )}
         <div className="knows">
           <p className="label">The narrator knows</p>
-          <p className="facts">{knows.length ? knows.join(' ') : 'Only their description: nothing about them is out of the ordinary.'}</p>
+          <p className="facts">{[...knows, bondFact, doing ? `Now: ${doing}.` : ''].filter(Boolean).join(' ') || 'Only their description: nothing about them is out of the ordinary.'}</p>
         </div>
+        <BondWithYou api={api} person={person} />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="btn" style={{ flex: 1 }} onClick={() => api.talkTo(person.name)}>Talk to them</button>
           {world.ruleset.approaches.length > 0 && defs.some((def) => def.approach && def.bands.length) && (

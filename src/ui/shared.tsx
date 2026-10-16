@@ -1,6 +1,6 @@
 // Pieces several screens share: how a state, a ledger line or a record is shown.
 import {
-  band, durationWords, inSentence, read, stateDefFor, type Character, type LedgerEntry, type PraxisModule, type StateDef, type StateValues,
+  band, durationWords, inSentence, pairName, read, stateDefFor, type Character, type LedgerEntry, type PraxisModule, type StateDef, type StateValues,
 } from '../engine';
 import { Diamond } from './icons';
 
@@ -118,6 +118,10 @@ export function describeEntry(module: PraxisModule, entry: LedgerEntry): string 
     case 'state': {
       const def = stateDefFor(module, entry.defId, entry.owner);
       const word = def ? band(def, entry.to) : null;
+      if (entry.owner.includes('|')) {
+        const pair = pairName(module, entry.owner, playerId);
+        return `${pair.charAt(0).toUpperCase()}${pair.slice(1)}${word?.banded ? `: ${word.label}` : ` · ${def?.name ?? entry.defId}`} · ${entry.from} → ${entry.to}`;
+      }
       const who = personName(entry.owner);
       if (word?.banded) return `${who} ${entry.owner === playerId ? bandForYou(word.label) : word.label} · ${entry.from} → ${entry.to}`;
       return `${who} · ${def?.name ?? entry.defId} ${entry.from} → ${entry.to}`;

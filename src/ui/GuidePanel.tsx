@@ -3,7 +3,7 @@
 import { useState, type ReactNode, type RefObject } from 'react';
 import { BackIcon, ChevronDown } from './icons';
 
-type Chapter = 'basics' | 'hand' | 'journal' | 'records' | 'approaches' | 'checks' | 'condition' | 'momentum';
+type Chapter = 'basics' | 'hand' | 'journal' | 'records' | 'people' | 'approaches' | 'checks' | 'condition' | 'momentum';
 
 const CHAPTERS: { id: Chapter; title: string; summary: string; body: ReactNode }[] = [
   {
@@ -43,6 +43,16 @@ const CHAPTERS: { id: Chapter; title: string; summary: string; body: ReactNode }
       <>
         <p>When the story brings in someone or something new, add it as a record: a person, a place, a thing, a group or a note. The narrator reads it like the module’s own records, and a place you add can be travelled to.</p>
         <p>Records live in your save. The module stays as it was published. Export yours to keep them or to bring them into another save.</p>
+      </>
+    ),
+  },
+  {
+    id: 'people', title: 'People and bonds', summary: 'Who they are, where their day takes them, what lies between you',
+    body: (
+      <>
+        <p>When someone is in the scene, the narrator reads their dossier: who they are, how they look, how they carry themselves and how they speak. In a crowded room the later arrivals get only their first line, so the story keeps its room.</p>
+        <p>Some people keep a <b>routine</b>. As time passes they go where their day takes them, and the story tells you who left and who came. Put someone somewhere by hand and they stay put until their day next moves them.</p>
+        <p>A <b>bond</b> is what lies between two people, in words: rivals who keep score, friends out of practice. Bonds between people who are both here reach the narrator. Start one with anyone from their row in Scene. A triumph against them with the approach that owns the bond, Flair here, warms it a tier; a despair cools it. You can also set it by hand.</p>
       </>
     ),
   },
