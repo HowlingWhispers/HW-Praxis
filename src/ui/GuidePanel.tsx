@@ -14,6 +14,7 @@ const CHAPTERS: { id: Chapter; title: string; summary: string; body: ReactNode }
         <p>The narrator writes what happens next. It describes the world; it never changes a fact.</p>
         <p>The rules keep the facts: where everyone is, the time, who is hurt, who has signed what. A fact changes only when a rule settles it or you change it by hand, and the ledger records which.</p>
         <p>The narrator reads facts as words, and only the ones out of the ordinary. It learns that someone <b>is strained</b>, never the number behind it.</p>
+        <p>Everything else is under the prompt. Scroll down past it for the scene, you, the map, the world and settings, one section open at a time.</p>
       </>
     ),
   },

@@ -8,6 +8,21 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.9.1 - 2026-10-16
+
+- The menu is back where it was meant to be: in the same scroll as the story, under the
+  prompt. Scroll past the prompt at the end of the story to reach the five sections,
+  all closed until you open one. The header bar and the menu buttons on the prompt row
+  are gone; the Scene heading now carries the place, the time and who is here.
+- A check opens in the prompt's place. The journal, the rules guide and the record form
+  open where the menu was, and going back returns to the section you came from.
+- Opening a save, sending a turn or a reply landing shows the end of the story with the
+  prompt at the foot of the screen. A reply taller than the screen shows from its start.
+- The generation test, in Settings › Testing. It measures by time whether NovelAI reuses
+  a long prompt it has just read, word for word or with a new ending, and whether a call
+  on a second model costs the first its reuse. It reports in words and copies the numbers
+  for pasting back. The relay now reports how long NovelAI took to answer.
+
 ## 0.9.0 - Dice - 2026-10-15
 
 - Checks on the Four Approaches and Genesys dice. Choose what you are trying, against

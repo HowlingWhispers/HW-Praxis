@@ -167,6 +167,9 @@ export function SettingsSection({ api }: { api: PlayApi }) {
             <p className="meta">Estimate: about {(1 / options.tokensPerChar).toFixed(1)} characters per token, corrected from NovelAI’s own counts.</p>
           </div>
         </details>
+        <button type="button" className="lr" style={{ borderTop: '1px solid var(--line)' }} onClick={() => api.open('test')}>
+          <PulseIcon /><span className="name grow">Generation test</span><span className="meta">prompt reuse</span><ChevronRight />
+        </button>
       </div>
 
       <button type="button" className="btn wide" style={{ marginTop: 18 }} onClick={api.leave}>Leave for the title screen</button>
