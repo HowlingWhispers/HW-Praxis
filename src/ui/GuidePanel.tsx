@@ -3,7 +3,7 @@
 import { useState, type ReactNode, type RefObject } from 'react';
 import { BackIcon, ChevronDown } from './icons';
 
-type Chapter = 'basics' | 'hand' | 'journal' | 'records' | 'people' | 'approaches' | 'checks' | 'condition' | 'momentum';
+type Chapter = 'basics' | 'hand' | 'journal' | 'records' | 'people' | 'approaches' | 'focus' | 'checks' | 'condition' | 'momentum';
 
 const CHAPTERS: { id: Chapter; title: string; summary: string; body: ReactNode }[] = [
   {
@@ -67,6 +67,13 @@ const CHAPTERS: { id: Chapter; title: string; summary: string; body: ReactNode }
           <div className="legend"><b style={{ width: 74, color: 'var(--focus)' }}>Focus</b><span className="w">pays in time</span></div>
           <div className="legend"><b style={{ width: 74, color: 'var(--flair)' }}>Flair</b><span className="w">pays in Strain</span></div>
         </div>
+        <p>Anyone or anything in a scene can be acted on, with no setup:</p>
+        <div className="card">
+          <div className="legend"><b style={{ width: 74, color: 'var(--force)' }}>Force</b><span className="w">A person: hurt or overpower (Health). A thing: break it or force it (Integrity).</span></div>
+          <div className="legend"><b style={{ width: 74, color: 'var(--finesse)' }}>Finesse</b><span className="w">A person: lift, slip past or plant something, a deed that simply works or fails. A thing: pick it, work it loose, take it (Security). The place: lie low (Alert).</span></div>
+          <div className="legend"><b style={{ width: 74, color: 'var(--focus)' }}>Focus</b><span className="w">A person: read them for Leverage. A thing or the place: study it until you’re Prepared.</span></div>
+          <div className="legend"><b style={{ width: 74, color: 'var(--flair)' }}>Flair</b><span className="w">A person: persuade, charm, bluff or intimidate (Strain).</span></div>
+        </div>
         <ul>
           <li><b>Owner:</b> moves a state normally.</li>
           <li><b>Secondary:</b> adds one setback die, and failure costs what the owner pays.</li>
@@ -78,10 +85,33 @@ const CHAPTERS: { id: Chapter; title: string; summary: string; body: ReactNode }
     ),
   },
   {
+    id: 'focus', title: 'Focus, Leverage and Prepared', summary: 'Building an edge for your other approaches',
+    body: (
+      <>
+        <p>Focus rarely wins on its own. It builds an edge against one person, thing or place, and your other approaches spend it.</p>
+        <ul>
+          <li><b>Leverage</b>, on a person: each point makes the next check against them by another approach <b>one step easier</b>. Up to two.</li>
+          <li><b>Prepared</b>, on a thing or the place: each point adds a <b>boost die</b> to the next check against it by another approach. Up to two.</li>
+        </ul>
+        <p>A success builds one point, two with an extra success. The next check against the same target spends all of it, unless you switch it off on the check. Failing a Focus check costs time, not blood.</p>
+        <p>What a point is worth, as the chance to succeed against Average difficulty:</p>
+        <div className="card">
+          <div className="legend"><b style={{ width: 74 }}>Rating</b><span className="w" style={{ flex: 1 }}>Plain · Leverage 1 · Leverage 2 · Prepared 1</span></div>
+          <div className="legend"><b style={{ width: 74 }}>3</b><span className="w mono" style={{ flex: 1 }}>60% · 73% · 88% · 67%</span></div>
+          <div className="legend"><b style={{ width: 74 }}>2</b><span className="w mono" style={{ flex: 1 }}>44% · 58% · 75% · 53%</span></div>
+          <div className="legend"><b style={{ width: 74 }}>1</b><span className="w mono" style={{ flex: 1 }}>23% · 34% · 50% · 35%</span></div>
+        </div>
+        <p>A specialist with Focus 3 and Flair 3 reads someone first: a 60% chance of Leverage, a 34% chance of two points. Leaning on it lifts their Flair from 60% to about 73% overall, for one more turn. A broader build with Focus 3 and two approaches at 2 spends the same edge to bring a 44% approach up toward 58%.</p>
+      </>
+    ),
+  },
+  {
     id: 'checks', title: 'Checks and dice', summary: 'Building a pool and reading the result',
     body: (
       <>
-        <p>Take your approach rating and the charge you spend. <b>The higher number is how many dice you roll; the lower is how many of them are upgraded</b> from green to yellow. Difficulty is Average, two purple dice, unless the action or an opponent sets it.</p>
+        <p>Take your approach rating and the charge you spend. <b>The higher number is how many dice you roll; the lower is how many of them are upgraded</b> from green to yellow.</p>
+        <p>Difficulty is one purple die per step: Simple 0, Easy 1, Average 2, Hard 3, Daunting 4, Formidable 5. A person or thing can set its own for each approach, or roll one at random that stays fixed for your save. Otherwise people take it from their tier (a minion is Easy, a rival Average, a nemesis Hard) and everything else is Average.</p>
+        <p>If the story brings in a door, a crowd or two guards that aren’t records yet, choose <b>Something in the story</b> on the check. Name it, say how hard it is, and it joins your records, here, ready to aim at.</p>
         <div className="card">
           <div className="legend"><span className="die ability" aria-hidden="true" /><span><b>Ability</b><span className="w">Green. Your approach.</span></span></div>
           <div className="legend"><span className="die proficiency" aria-hidden="true" /><span><b>Proficiency</b><span className="w">Yellow. Upgraded by charges and Story Points.</span></span></div>

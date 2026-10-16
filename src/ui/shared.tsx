@@ -1,6 +1,6 @@
 // Pieces several screens share: how a state, a ledger line or a record is shown.
 import {
-  band, durationWords, inSentence, pairName, read, stateDefFor, type Character, type LedgerEntry, type PraxisModule, type StateDef, type StateValues,
+  band, durationWords, inSentence, pairName, read, render, stateDefFor, type Character, type LedgerEntry, type PraxisModule, type StateDef, type StateValues,
 } from '../engine';
 import { Diamond } from './icons';
 
@@ -108,7 +108,11 @@ export function SourceTag({ source }: { source: 'rule' | 'player' }) {
 export function describeEntry(module: PraxisModule, entry: LedgerEntry): string {
   const playerId = module.scenario.playerCharacterId;
   const placeName = (id: string | null) => (id === null ? 'nowhere' : module.world.places.find((place) => place.id === id)?.name ?? id);
-  const personName = (id: string) => (id === playerId ? 'You' : module.characters.find((character) => character.id === id)?.name ?? id);
+  const personName = (id: string) => (id === playerId ? 'You' : module.characters.find((character) => character.id === id)?.name
+    ?? module.items.find((item) => item.id === id)?.name
+    ?? module.world.places.find((place) => place.id === id)?.name
+    ?? module.world.factions.find((group) => group.id === id)?.name
+    ?? id);
   switch (entry.kind) {
     case 'move':
       if (entry.to === null) return `${personName(entry.characterId)} left the story`;
@@ -123,6 +127,8 @@ export function describeEntry(module: PraxisModule, entry: LedgerEntry): string 
         return `${pair.charAt(0).toUpperCase()}${pair.slice(1)}${word?.banded ? `: ${word.label}` : ` · ${def?.name ?? entry.defId}`} · ${entry.from} → ${entry.to}`;
       }
       const who = personName(entry.owner);
+      // A state with its own sentence ("You have studied the door.") reads best as that.
+      if (def?.line && word?.banded) return `${render(def, who, entry.to).replace(/^\[|\]$/g, '')} · ${entry.from} → ${entry.to}`;
       if (word?.banded) return `${who} ${entry.owner === playerId ? bandForYou(word.label) : word.label} · ${entry.from} → ${entry.to}`;
       return `${who} · ${def?.name ?? entry.defId} ${entry.from} → ${entry.to}`;
     }

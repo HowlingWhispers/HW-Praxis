@@ -2,8 +2,8 @@
   "format": "praxis-module/1",
   "id": "abernys-port-covenant",
   "name": "Abernys: Port Covenant",
-  "version": "0.4.0",
-  "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and their Four Approaches tiers (the Arbiter a rival, the guard a minion), and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own. From 0.4.0, also draft: every dossier field (appearance, personality, speech), every schedule, the four bond kinds and their tiers, and the three relationships between the Governor, the High Arbiter, the garrison captain and the gate staff. The leverage between the Governor and the captain (she knows the last ship carried no orders) is from the societies doc.",
+  "version": "0.5.0",
+  "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and their Four Approaches tiers (the Arbiter a rival, the guard a minion), and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own. From 0.4.0, also draft: every dossier field (appearance, personality, speech), every schedule, the four bond kinds and their tiers, and the three relationships between the Governor, the High Arbiter, the garrison captain and the gate staff. The leverage between the Governor and the captain (she knows the last ship carried no orders) is from the societies doc. From 0.5.0 the ruleset extends the standard Four Approaches ruleset (four-approaches/1) for Leverage, Prepared, Integrity, Security, the person deed and the tiers; the tiers given to each character and the registry strongroom door are draft.",
   "source": {
     "kind": "local"
   },
@@ -377,7 +377,8 @@
           }
         ]
       },
-      "draftNote": "Appearance, personality, speech and schedule are drafts."
+      "draftNote": "Appearance, personality, speech and schedule are drafts.",
+      "tier": "rival"
     },
     {
       "id": "gate-guard",
@@ -416,7 +417,8 @@
           }
         ]
       },
-      "draftNote": "Appearance, personality, speech and schedule are drafts."
+      "draftNote": "Appearance, personality, speech and schedule are drafts.",
+      "tier": "minion"
     },
     {
       "id": "ottavio-marrane",
@@ -452,7 +454,8 @@
           }
         ]
       },
-      "draftNote": "Appearance, personality, speech and schedule are drafts."
+      "draftNote": "Appearance, personality, speech and schedule are drafts.",
+      "tier": "rival"
     },
     {
       "id": "lucan-abreu",
@@ -502,7 +505,8 @@
           }
         ]
       },
-      "draftNote": "Appearance, personality, speech and schedule are drafts."
+      "draftNote": "Appearance, personality, speech and schedule are drafts.",
+      "tier": "rival"
     },
     {
       "id": "ines-corvo",
@@ -554,7 +558,8 @@
           }
         ]
       },
-      "draftNote": "Appearance, personality, speech and schedule are drafts."
+      "draftNote": "Appearance, personality, speech and schedule are drafts.",
+      "tier": "rival"
     },
     {
       "id": "cadfan",
@@ -614,7 +619,8 @@
           }
         ]
       },
-      "draftNote": "Appearance, personality, speech and schedule are drafts."
+      "draftNote": "Appearance, personality, speech and schedule are drafts.",
+      "tier": "minion"
     },
     {
       "id": "brond",
@@ -627,7 +633,8 @@
       "appearance": "A huge aurochs-folk bull, one horn capped in bronze, a barrow-keeper's ochre handprints on his hide.",
       "personality": "Proud and grieving, and certain that war is the only answer the colony has left him.",
       "speech": "Few words, slow and heavy, in the first peoples' tongue when he can.",
-      "draftNote": "Appearance, personality, speech are drafts."
+      "draftNote": "Appearance, personality, speech are drafts.",
+      "tier": "nemesis"
     }
   ],
   "relationships": [
@@ -679,7 +686,21 @@
       }
     }
   ],
+  "items": [
+    {
+      "id": "registry-strongroom",
+      "name": "The registry strongroom door",
+      "canonStatus": "draft",
+      "description": "Iron-strapped oak at the back of the registry, where the colony's contracts are kept. Two locks, and an Arbiter's seal across the jamb.",
+      "locationId": "pc-registry",
+      "difficulty": {
+        "force": 4,
+        "finesse": 3
+      }
+    }
+  ],
   "ruleset": {
+    "extends": "four-approaches/1",
     "travel": {
       "walkKph": 4,
       "tiers": [
@@ -768,7 +789,8 @@
           "owner": "force",
           "secondary": []
         },
-        "bandBasis": "share"
+        "bandBasis": "share",
+        "verb": "Hurt or overpower"
       },
       {
         "id": "strain",
@@ -810,7 +832,8 @@
             "force"
           ]
         },
-        "bandBasis": "share"
+        "bandBasis": "share",
+        "verb": "Persuade, charm, bluff or intimidate"
       },
       {
         "id": "edge",
@@ -898,7 +921,8 @@
         "approach": {
           "owner": "finesse",
           "secondary": []
-        }
+        },
+        "verb": "Lie low, cover your tracks"
       },
       {
         "id": "bond-acquaintance",

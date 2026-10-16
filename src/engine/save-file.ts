@@ -26,7 +26,8 @@ const worldState = {
 const checkSchema = z.object({
   approach: id,
   approachName: z.string().max(60),
-  target: z.object({ owner: id, defId: id, label: z.string().max(200) }),
+  // defId is null for a deed: an act with no state to wear down.
+  target: z.object({ owner: id, defId: id.nullable(), label: z.string().max(200) }),
   charge: z.number().int(),
   push: z.boolean(),
   storyPoint: z.boolean(),
@@ -70,6 +71,7 @@ export const saveSchema = z.object({
   journal: journalSchema.default({ entries: [], coveredTo: 0, pending: null, compressDeclinedAt: 0 }),
   local: z.array(localRecordSchema).max(5000).default([]),
   options: optionsSchema.default(optionsSchema.parse({})),
+  seed: z.number().int().nonnegative().default(0),
 });
 
 // Problems that make a save unplayable with this module, as readable lines.

@@ -68,7 +68,7 @@ export const stateDefSchema = z.object({
   bandBasis: z.enum(['value', 'share']).default('value'),
   // An index into bands, not a value, so moving a threshold does not change which band rests.
   restBand: z.number().int().nonnegative().default(0),
-  // The standing-fact template. Macros: |name| |defName| |bandLabel| |value|
+  // The standing-fact template. Macros: |name| |nameMid| |defName| |bandLabel| |value|
   line: z.string().max(400).optional(),
   // Purely for grouping on screen.
   category: z.string().max(80).optional(),
@@ -80,6 +80,14 @@ export const stateDefSchema = z.object({
     owner: id,
     secondary: z.array(id).max(8).default([]),
   }).optional(),
+  // A check builds this up instead of wearing it down (Focus's Leverage and Prepared).
+  grows: z.boolean().default(false),
+  // Held by a check's target, each point helps a check against that target by another
+  // approach, and is spent there: 'easier' lowers the difficulty a step, 'boost' adds a
+  // boost die.
+  aids: z.enum(['easier', 'boost']).optional(),
+  // What acting on it is, in a few words, for the check screen: "Hurt or overpower".
+  verb: z.string().max(80).optional(),
 });
 
 export type StateBand = z.infer<typeof stateBandSchema>;
@@ -224,13 +232,20 @@ export function nudge(values: StateValues, def: StateDef, owner: string, delta: 
 // The only place a state becomes words for the model.
 export function line(def: StateDef, ownerName: string, value: number): string {
   if (!speaks(def, value)) return '';
+  return render(def, ownerName, value);
+}
+
+// The same sentence whether or not it would reach the model, for the player's own screens.
+export function render(def: StateDef, ownerName: string, value: number): string {
   const b = band(def, value);
   const template = def.line?.trim() || DEFAULT_STATE_LINE;
   const macros: Record<string, string> = {
     name: ownerName,
+    // The name as it reads inside a sentence: "The harbour" becomes "the harbour".
+    nameMid: ownerName.replace(/^(The|A|An) /, (word) => word.toLowerCase()),
     defName: def.name,
     bandLabel: b.label,
     value: String(clamp(def, value)),
   };
-  return template.replace(/\|(name|defName|bandLabel|value)\|/g, (_, key: string) => macros[key] ?? '').replace(/\s+/g, ' ').trim();
+  return template.replace(/\|(name|nameMid|defName|bandLabel|value)\|/g, (_, key: string) => macros[key] ?? '').replace(/\s+/g, ' ').trim();
 }

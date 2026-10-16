@@ -14,6 +14,7 @@
 import { z } from 'zod';
 import { calendarSchema } from './clock';
 import { appliesTo, forOwner, stateDefSchema, type StateDef } from './state';
+import { STANDARD_RULESET_ID, withStandard } from './standard';
 
 export const MODULE_FORMAT = 'praxis-module/1';
 
@@ -38,12 +39,20 @@ export const PLACE_KINDS = [
 // are never a destination, and nobody walks through one to reach a sibling.
 export const AREA_KINDS: readonly string[] = ['continent', 'major region', 'region', 'subregion', 'territory'];
 
+// How hard something is to act on: the Genesys ladder from Simple (0) to Formidable (5), or
+// 'random', rolled once per save. By approach, or 'all' for every approach.
+export const DIFFICULTY_NAMES = ['Simple', 'Easy', 'Average', 'Hard', 'Daunting', 'Formidable'] as const;
+export const levelSchema = z.union([z.number().int().min(0).max(5), z.literal('random')]);
+export const difficultySchema = z.record(z.string(), levelSchema).default({});
+export const TIERS = ['minion', 'rival', 'nemesis'] as const;
+
 export const placeSchema = z.object({
   id,
   name: z.string().min(1).max(120),
   description: text(8000).default(''),
   kind: z.enum(PLACE_KINDS).default('other'),
   parentLocationId: id.nullable().default(null),
+  difficulty: difficultySchema,
 }).passthrough();
 
 // A condition on the player's character for using a route.
@@ -137,6 +146,10 @@ export const characterSchema = z.object({
   maxima: z.record(z.string(), z.number().int()).default({}),
   // Four Approaches charges, by approach: trained (+1, +2, +3), practiced (+1, +2), raw (+1).
   charges: z.record(z.string(), z.enum(['trained', 'practiced', 'raw'])).default({}),
+  // The Four Approaches tier: sets how hard they are to act against and, unless `maxima`
+  // says otherwise, their Health and Strain.
+  tier: z.enum(TIERS).optional(),
+  difficulty: difficultySchema,
 }).passthrough();
 
 // Two people and what lies between them, Character Engine's pair record. Not an Orbis
@@ -162,6 +175,7 @@ export const itemSchema = z.object({
   // names Praxis's own records use.
   locationId: id.optional(),
   heldBy: id.optional(),
+  difficulty: difficultySchema,
 }).passthrough();
 
 export const worldSchema = z.object({
@@ -274,7 +288,22 @@ export const restSchema = z.object({
   resetCharges: z.boolean().default(true),
 });
 
+// An act with no state to wear down: it works or it fails, and fails at the approach's cost.
+// Four Approaches: Finesse against a person (lift, slip past, plant).
+export const deedSchema = z.object({
+  kind: z.enum(['person', 'thing', 'place']),
+  approach: id,
+  label: z.string().min(1).max(120),
+});
+
+export const tierSchema = z.object({
+  difficulty: z.number().int().min(0).max(5),
+  maxima: z.record(z.string(), z.number().int()).default({}),
+});
+
 export const rulesetSchema = z.object({
+  // "four-approaches/1" lays the standard ruleset beneath this one (standard.ts).
+  extends: z.literal(STANDARD_RULESET_ID).optional(),
   states: z.array(stateDefSchema).max(500).default([]),
   // Absent means the real calendar (DEFAULT_CALENDAR).
   calendar: calendarSchema.optional(),
@@ -283,6 +312,8 @@ export const rulesetSchema = z.object({
   approaches: z.array(approachSchema).max(12).default([]),
   dice: diceSchema.optional(),
   rest: restSchema.optional(),
+  deeds: z.array(deedSchema).max(40).default([]),
+  tiers: z.object({ minion: tierSchema.optional(), rival: tierSchema.optional(), nemesis: tierSchema.optional() }).optional(),
 });
 
 export const scenarioSchema = z.object({
@@ -311,7 +342,7 @@ export const moduleSchema = z.object({
   characters: z.array(characterSchema).max(5000).default([]),
   relationships: z.array(relationshipSchema).max(5000).default([]),
   items: z.array(itemSchema).max(5000).default([]),
-  ruleset: rulesetSchema.default({ states: [], travel: { walkKph: 4, tiers: [] }, actions: [], approaches: [] }),
+  ruleset: rulesetSchema.default({ states: [], travel: { walkKph: 4, tiers: [] }, actions: [], approaches: [], deeds: [] }),
   scenario: scenarioSchema,
 }).superRefine((module, context) => {
   const issue = (path: (string | number)[], message: string) => context.addIssue({ code: 'custom', path, message });
@@ -416,6 +447,18 @@ export const moduleSchema = z.object({
     for (const approachId of Object.keys(character.charges)) {
       if (!approachIds.has(approachId)) issue(['characters', index, 'charges', approachId], `Unknown approach "${approachId}".`);
     }
+    if (character.tier && !module.ruleset.tiers?.[character.tier]) issue(['characters', index, 'tier'], `The ruleset has no "${character.tier}" tier.`);
+  });
+  const checkDifficulty = (difficulty: Record<string, unknown>, path: (string | number)[]) => {
+    for (const key of Object.keys(difficulty)) {
+      if (key !== 'all' && !approachIds.has(key)) issue([...path, 'difficulty', key], `Unknown approach "${key}".`);
+    }
+  };
+  module.characters.forEach((character, index) => checkDifficulty(character.difficulty, ['characters', index]));
+  module.items.forEach((item, index) => checkDifficulty(item.difficulty, ['items', index]));
+  module.world.places.forEach((place, index) => checkDifficulty(place.difficulty, ['world', 'places', index]));
+  module.ruleset.deeds.forEach((deed, index) => {
+    if (!approachIds.has(deed.approach)) issue(['ruleset', 'deeds', index, 'approach'], `Unknown approach "${deed.approach}".`);
   });
   unique(module.ruleset.actions.map((action) => action.id), ['ruleset', 'actions']);
   module.ruleset.actions.forEach((action, index) => {
@@ -519,13 +562,17 @@ export type WorldEntry = z.infer<typeof worldEntrySchema>;
 export type Memory = z.infer<typeof memorySchema>;
 export type SceneAction = z.infer<typeof sceneActionSchema>;
 export type Approach = z.infer<typeof approachSchema>;
+export type Deed = z.infer<typeof deedSchema>;
+export type Level = z.infer<typeof levelSchema>;
+export type Tier = (typeof TIERS)[number];
 export type Cost = z.infer<typeof costSchema>;
 
 // A state's definition as it applies to one owner, with that character's own maximum.
 export function stateDefFor(module: PraxisModule, defId: string, ownerId: string): StateDef | undefined {
   const def = module.ruleset.states.find((state) => state.id === defId);
   if (!def) return undefined;
-  const maximum = module.characters.find((character) => character.id === ownerId)?.maxima[defId];
+  const character = module.characters.find((entry) => entry.id === ownerId);
+  const maximum = character?.maxima[defId] ?? (character?.tier ? module.ruleset.tiers?.[character.tier]?.maxima[defId] : undefined);
   return forOwner(def, maximum);
 }
 
@@ -535,7 +582,7 @@ export type ModuleLoadResult =
 
 // Parses and validates a module. Errors come back as readable lines with their location.
 export function loadModule(raw: unknown): ModuleLoadResult {
-  const parsed = moduleSchema.safeParse(raw);
+  const parsed = moduleSchema.safeParse(withStandard(raw));
   if (parsed.success) return { ok: true, module: parsed.data };
   return {
     ok: false,

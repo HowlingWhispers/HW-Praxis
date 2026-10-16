@@ -1,19 +1,26 @@
 // Checks: the Four Approaches on Genesys dice, settled by the rules.
 //
-// A check moves one state on one owner (someone's Strain, a place's Alert) down by the net
-// successes. The approach that owns the state moves it normally; a secondary approach adds a
-// setback die and pays the owner's costs on failure; an approach with no claim cannot move
-// it. Failure and two or more threat cost what the module's approach table says. The model
-// never decides any of this: it is told the outcome as one directive.
+// A check is aimed at someone or something in the scene: a person, a thing, or the place
+// itself. With a given approach it does one of three things:
+//   - wears a state down by the net successes (Force on Health, Flair on Strain);
+//   - builds a state up, for the states marked `grows` (Focus's Leverage and Prepared),
+//     which then help a later check against the same target and are spent there;
+//   - or is a deed: an act with no state behind it, which simply works or fails (Finesse
+//     against a person: lift, slip past, plant).
+// The approach that owns a state moves it normally; a secondary approach adds a setback die
+// and pays the owner's costs on failure; an approach with no claim cannot move it. Failure
+// and two or more threat cost what the module's approach table says. How hard it is comes
+// from the target: its own difficulty, its tier, or the module's default. The model never
+// decides any of this: it is told the outcome as one directive.
 //
 // Randomness is passed in. A player may also settle a check without rolling: it succeeds
 // once, costs nothing, and the ledger records that the player decided.
 
 import { playable } from './records';
-import { stateDefFor, type Approach, type Cost, type PraxisModule } from './module';
+import { DIFFICULTY_NAMES, stateDefFor, type Approach, type Cost, type Deed, type PraxisModule } from './module';
 import { band, line, read, write, type StateDef, type StateTerminal, type StateValues } from './state';
 import { buildPool, oddsOf, rollPool, type Odds, type Pool } from './dice';
-import { playerOf, type CheckRecord, type LedgerEntry, type Save } from './session';
+import { playerOf, thingsAt, type CheckRecord, type LedgerEntry, type Save } from './session';
 import { pairName, relationshipBetween } from './relationships';
 import { pairKey } from './state';
 
@@ -50,40 +57,121 @@ export function chargesOf(module: PraxisModule, save: Save, characterId: string)
   });
 }
 
-export interface Target {
-  owner: string;
-  defId: string;
+export type SubjectKind = 'person' | 'thing' | 'place';
+
+// Someone or something a check can be aimed at: the people here, the things here, the place.
+export interface Subject {
+  id: string;
+  name: string;
+  kind: SubjectKind;
+  local: boolean;
 }
 
-export interface TargetInfo extends Target {
-  ownerName: string;
-  def: StateDef;
-  value: number;
-  word: string;
-}
-
-// Every state a check could wear down here: banded states with an owning approach, on the
-// people present and on the place itself.
-export function targetsHere(module: PraxisModule, save: Save): TargetInfo[] {
+export function subjectsHere(module: PraxisModule, save: Save): Subject[] {
   const world = playable(module, save.local);
   const playerId = playerOf(world);
   const placeId = save.positions[playerId];
   const place = world.world.places.find((entry) => entry.id === placeId);
-  const out: TargetInfo[] = [];
-  const add = (owner: string, ownerName: string, kind: 'person' | 'place') => {
-    for (const base of world.ruleset.states) {
-      if (!base.approach || !base.bands.length || base.display === 'hidden') continue;
-      if (kind === 'place' ? base.scope !== 'place' : !(base.scope === 'char' || base.scope === 'npc')) continue;
-      const def = stateDefFor(world, base.id, owner) ?? base;
-      const value = read(save.values, def, owner);
-      out.push({ owner, defId: def.id, ownerName, def, value, word: band(def, value).label });
-    }
-  };
-  for (const person of world.characters) {
-    if (person.id !== playerId && save.positions[person.id] === placeId) add(person.id, person.name, 'person');
+  const local = (entry: object) => (entry as { origin?: unknown }).origin === 'local';
+  return [
+    ...world.characters.filter((person) => person.id !== playerId && save.positions[person.id] === placeId).map((person) => ({ id: person.id, name: person.name, kind: 'person' as const, local: local(person) })),
+    ...(placeId ? thingsAt(world, save, placeId) : []).map((thing) => ({ id: thing.id, name: thing.name, kind: 'thing' as const, local: local(thing) })),
+    ...(place ? [{ id: place.id, name: place.name, kind: 'place' as const, local: local(place) }] : []),
+  ];
+}
+
+// Which states belong on which kind of target.
+export function fitsSubject(def: StateDef, kind: SubjectKind): boolean {
+  if (kind === 'person') return def.scope === 'char' || def.scope === 'npc';
+  if (kind === 'thing') return def.scope === 'item';
+  return def.scope === 'place';
+}
+
+const actable = (def: StateDef) => Boolean(def.approach) && def.bands.length > 0 && def.display !== 'hidden';
+
+// How hard it is to act on a target with an approach, from Simple (0) to Formidable (5): the
+// target's own difficulty for that approach or for all, a random one fixed by the save's
+// seed, its tier, or the module's default.
+export function difficultyFor(module: PraxisModule, save: Save, ownerId: string, approachId: string): number {
+  const world = playable(module, save.local);
+  const person = world.characters.find((entry) => entry.id === ownerId);
+  const record = person ?? world.items.find((entry) => entry.id === ownerId) ?? world.world.places.find((entry) => entry.id === ownerId);
+  const set = record?.difficulty?.[approachId] ?? record?.difficulty?.all;
+  if (typeof set === 'number') return Math.max(0, Math.min(5, set));
+  if (set === 'random') return randomDifficulty(save.seed ?? 0, ownerId, approachId);
+  const tier = person?.tier ? world.ruleset.tiers?.[person.tier] : undefined;
+  if (tier) return tier.difficulty;
+  return world.ruleset.dice?.difficulty ?? 2;
+}
+
+// Easy to Daunting, most often Average, the same every time for one save, target and approach.
+export function randomDifficulty(seed: number, ownerId: string, approachId: string): number {
+  let hash = 2166136261 ^ seed;
+  for (const char of `${ownerId}:${approachId}`) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
   }
-  if (place) add(place.id, place.name, 'place');
-  return out;
+  return [1, 2, 2, 2, 3, 3, 4][(hash >>> 0) % 7]!;
+}
+
+// One thing an approach can do to a target.
+export type Act =
+  | { kind: 'state'; def: StateDef; claim: Exclude<Claim, 'none'>; value: number; word: string }
+  | { kind: 'deed'; deed: Deed };
+
+export interface ApproachActs {
+  approach: Approach;
+  acts: Act[];
+  difficulty: number;
+}
+
+// For each approach, what it can do to this target: the states it owns, then those it can
+// reach as a secondary, then any deed. An empty list is no claim.
+export function actsOn(module: PraxisModule, save: Save, subject: Subject): ApproachActs[] {
+  const world = playable(module, save.local);
+  return world.ruleset.approaches.map((approach) => {
+    const states: Act[] = [];
+    for (const base of world.ruleset.states) {
+      if (!actable(base) || !fitsSubject(base, subject.kind)) continue;
+      const def = stateDefFor(world, base.id, subject.id) ?? base;
+      const claim = claimOf(def, approach.id);
+      if (claim === 'none') continue;
+      const value = read(save.values, def, subject.id);
+      states.push({ kind: 'state', def, claim, value, word: band(def, value).label });
+    }
+    states.sort((a, b) => (a.kind === 'state' && b.kind === 'state' ? (a.claim === b.claim ? 0 : a.claim === 'owner' ? -1 : 1) : 0));
+    const deeds: Act[] = world.ruleset.deeds.filter((deed) => deed.kind === subject.kind && deed.approach === approach.id).map((deed) => ({ kind: 'deed', deed }));
+    return { approach, acts: [...states, ...deeds], difficulty: difficultyFor(world, save, subject.id, approach.id) };
+  });
+}
+
+// A check's aim: a target, and the state to move, or null for a deed.
+export interface Target {
+  owner: string;
+  defId: string | null;
+}
+
+export interface TargetInfo {
+  owner: string;
+  ownerName: string;
+  kind: SubjectKind;
+  // The state moved, or null for a deed.
+  def: StateDef | null;
+  deed: Deed | null;
+  value: number;
+  word: string;
+}
+
+// Every state a check could move here, on every target. Kept for the guide and tests.
+export function targetsHere(module: PraxisModule, save: Save): (TargetInfo & { def: StateDef; defId: string })[] {
+  const world = playable(module, save.local);
+  return subjectsHere(world, save).flatMap((subject) => world.ruleset.states
+    .filter((base) => actable(base) && fitsSubject(base, subject.kind))
+    .map((base) => {
+      const def = stateDefFor(world, base.id, subject.id) ?? base;
+      const value = read(save.values, def, subject.id);
+      return { owner: subject.id, ownerName: subject.name, kind: subject.kind, def, defId: def.id, deed: null, value, word: band(def, value).label };
+    }));
 }
 
 export interface CheckChoice {
@@ -94,6 +182,8 @@ export interface CheckChoice {
   push?: boolean;
   // Spend the player's Story Point to upgrade a die.
   storyPoint?: boolean;
+  // Spend what Focus built against this target (Leverage, Prepared). On unless turned off.
+  useAids?: boolean;
 }
 
 export interface CheckPlan {
@@ -108,15 +198,22 @@ export interface CheckPlan {
   odds: Odds;
   // Why each die beyond the approach and charge is there.
   reasons: string[];
+  // The difficulty before and after what helps, and its name on the Genesys ladder.
+  difficulty: { base: number; final: number; name: string };
   stakes: { success: string; failure: string[]; threat: string[] };
-  uses: { edge: boolean; storyPoint: boolean; rulesStoryPoint: boolean; push: boolean };
+  uses: { edge: boolean; storyPoint: boolean; rulesStoryPoint: boolean; push: boolean; aids: { defId: string; value: number }[] };
+  // What Focus has built against this target, whether or not this check spends it.
+  aids: { def: StateDef; value: number }[];
 }
 
 export type PlanResult = CheckPlan | { ok: false; reason: string };
 
 function ownerName(world: PraxisModule, owner: string): string {
   if (owner.includes('|')) return pairName(world, owner, playerOf(world)).replace(/^the /, 'The ');
-  return world.characters.find((entry) => entry.id === owner)?.name ?? world.world.places.find((entry) => entry.id === owner)?.name ?? owner;
+  return world.characters.find((entry) => entry.id === owner)?.name
+    ?? world.items.find((entry) => entry.id === owner)?.name
+    ?? world.world.places.find((entry) => entry.id === owner)?.name
+    ?? owner;
 }
 
 function describeCost(world: PraxisModule, save: Save, cost: Cost, targetOwner: string, times: number): string {
@@ -138,13 +235,26 @@ function costLines(world: PraxisModule, save: Save, costs: readonly Cost[], minu
 export function planCheck(module: PraxisModule, save: Save, target: Target, choice: CheckChoice): PlanResult {
   const world = playable(module, save.local);
   const playerId = playerOf(world);
-  const info = targetsHere(world, save).find((entry) => entry.owner === target.owner && entry.defId === target.defId);
-  if (!info) return { ok: false, reason: 'That is not something a check can move here.' };
+  const subject = subjectsHere(world, save).find((entry) => entry.id === target.owner);
+  if (!subject) return { ok: false, reason: 'That is not here.' };
   const approach = world.ruleset.approaches.find((entry) => entry.id === choice.approach);
   if (!approach) return { ok: false, reason: 'There is no such approach.' };
-  const claim = claimOf(info.def, approach.id);
-  if (claim === 'none') return { ok: false, reason: `${approach.name} cannot move ${info.def.name}.` };
-  const paying = claim === 'owner' ? approach : world.ruleset.approaches.find((entry) => entry.id === info.def.approach?.owner) ?? approach;
+  let info: TargetInfo;
+  let claim: Claim;
+  if (target.defId) {
+    const def = stateDefFor(world, target.defId, subject.id);
+    if (!def || !actable(def) || !fitsSubject(def, subject.kind)) return { ok: false, reason: 'That is not something a check can move here.' };
+    claim = claimOf(def, approach.id);
+    if (claim === 'none') return { ok: false, reason: `${approach.name} cannot move ${def.name}.` };
+    const value = read(save.values, def, subject.id);
+    info = { owner: subject.id, ownerName: subject.name, kind: subject.kind, def, deed: null, value, word: band(def, value).label };
+  } else {
+    const deed = world.ruleset.deeds.find((entry) => entry.kind === subject.kind && entry.approach === approach.id);
+    if (!deed) return { ok: false, reason: `${approach.name} has nothing to do to ${inSentence(subject.name)} on its own.` };
+    claim = 'owner';
+    info = { owner: subject.id, ownerName: subject.name, kind: subject.kind, def: null, deed, value: 0, word: '' };
+  }
+  const paying = claim === 'owner' ? approach : world.ruleset.approaches.find((entry) => entry.id === info.def?.approach?.owner) ?? approach;
 
   const ratingDef = stateDefFor(world, approach.id, playerId);
   const rating = ratingDef ? read(save.values, ratingDef, playerId) : 0;
@@ -190,6 +300,25 @@ export function planCheck(module: PraxisModule, save: Save, target: Target, choi
       reasons.push(`${rule.reason}: one setback die`);
     }
   }
+  // What Focus built against this target helps any other approach, and is spent on it.
+  const base = difficultyFor(world, save, subject.id, approach.id);
+  let difficulty = base;
+  let boost = useEdge ? 1 : 0;
+  const aids = world.ruleset.states
+    .filter((def) => def.aids && fitsSubject(def, subject.kind))
+    .map((def) => ({ def, value: read(save.values, def, subject.id) }))
+    .filter((entry) => entry.value > 0);
+  const usable = choice.useAids === false ? [] : aids.filter((entry) => entry.def.approach?.owner !== approach.id);
+  for (const { def, value } of usable) {
+    if (def.aids === 'easier') {
+      const steps = Math.min(value, difficulty);
+      difficulty -= steps;
+      reasons.push(`Your ${def.name}: ${steps === 1 ? 'one step' : `${steps} steps`} easier`);
+    } else {
+      boost += value;
+      reasons.push(`${def.name}: ${value === 1 ? 'one boost die' : `${value} boost dice`}`);
+    }
+  }
   if (useEdge) reasons.push('Edge: one boost die');
   if (spendStoryPoint) reasons.push('Your Story Point: one die upgraded');
   if (rulesStoryPoint) reasons.push('The rules spend their Story Point: one difficulty die upgraded');
@@ -199,8 +328,8 @@ export function planCheck(module: PraxisModule, save: Save, target: Target, choi
     rating,
     charge,
     upgrades: spendStoryPoint ? 1 : 0,
-    boost: useEdge ? 1 : 0,
-    difficulty: dice.difficulty,
+    boost,
+    difficulty,
     difficultyUpgrades: rulesStoryPoint ? 1 : 0,
     setback,
   });
@@ -215,12 +344,18 @@ export function planCheck(module: PraxisModule, save: Save, target: Target, choi
     pool,
     odds: oddsOf(pool),
     reasons,
+    difficulty: { base, final: difficulty, name: DIFFICULTY_NAMES[difficulty] ?? 'Average' },
     stakes: {
-      success: `${info.ownerName}’s ${info.def.name} drops by one, and one more for each extra success.`,
+      success: !info.def
+        ? 'What you are trying works.'
+        : info.def.grows
+          ? `Your ${info.def.name} against ${inSentence(info.ownerName)} rises by one, and one more for each extra success. It helps a later check against them by another approach.`
+          : `${info.ownerName}’s ${info.def.name} drops by one, and one more for each extra success.`,
       failure: costLines(world, save, paying.failure, paying.failureMinutes, info.owner),
       threat: costLines(world, save, paying.threat, paying.threatMinutes, info.owner),
     },
-    uses: { edge: useEdge, storyPoint: spendStoryPoint, rulesStoryPoint, push },
+    uses: { edge: useEdge, storyPoint: spendStoryPoint, rulesStoryPoint, push, aids: usable.map((entry) => ({ defId: entry.def.id, value: entry.value })) },
+    aids,
   };
 }
 
@@ -277,8 +412,9 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
   let bad: CheckRecord['bad'] = [];
   let reading = { netSuccess: 1, netAdvantage: 0, succeeded: true, triumph: false, despair: false };
 
+  const def = plan.target.def;
   if (auto) {
-    change(target.defId, target.owner, (current) => current - 1, 'player');
+    if (def) change(def.id, target.owner, (current) => current + (def.grows ? 1 : -1), 'player');
   } else {
     // What the roll uses up.
     if (plan.uses.push && dice.push) change(dice.push.stateId, playerId, (current) => current + dice.push!.add);
@@ -290,6 +426,7 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
     }
     if (plan.uses.edge && dice.edge) change(dice.edge, playerId, () => 0);
     if (plan.uses.storyPoint && dice.storyPoints) change(dice.storyPoints, playerId, (current) => current - 1);
+    for (const aid of plan.uses.aids) change(aid.defId, target.owner, () => 0);
 
     const roll = rollPool(plan.pool, random!);
     good = roll.good;
@@ -297,7 +434,8 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
     reading = roll.reading;
 
     if (reading.succeeded) {
-      change(target.defId, target.owner, (current) => current - reading.netSuccess - (reading.triumph ? 1 : 0));
+      const amount = reading.netSuccess + (reading.triumph ? 1 : 0);
+      if (def) change(def.id, target.owner, (current) => current + (def.grows ? amount : -amount));
     } else {
       pay(plan.paying.failure, plan.paying.failureMinutes, reading.despair ? 2 : 1);
     }
@@ -339,20 +477,23 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
   const targetTerminal = terminals.find((entry) => entry.owner === target.owner);
   if (reading.succeeded) {
     parts.push(`${plan.approach.name} succeeds${reading.triumph ? ', better than hoped' : ''}.`);
-    if (targetTerminal) parts.push(`${name(target.owner)}: ${targetTerminal.terminal.note}`);
+    if (!def) parts.push('What the player tried works.');
+    else if (targetTerminal) parts.push(`${name(target.owner)}: ${targetTerminal.terminal.note}`);
     else {
-      const fact = line(plan.target.def, name(target.owner), read(values, plan.target.def, target.owner));
-      parts.push(fact ? fact.replace(/^\[|\]$/g, '') : `It tells on ${inSentence(name(target.owner))}, though it does not show yet.`);
+      const fact = line(def, name(target.owner), read(values, def, target.owner));
+      parts.push(fact ? fact.replace(/^\[|\]$/g, '') : def.grows ? `The player learns something about ${inSentence(name(target.owner))}.` : `It tells on ${inSentence(name(target.owner))}, though it does not show yet.`);
     }
   } else {
     parts.push(`${plan.approach.name} fails${reading.despair ? ', and it goes badly wrong' : ''}.`);
+    if (!def) parts.push('What the player tried does not work.');
   }
-  for (const { owner, def } of changed.values()) {
-    if (owner === target.owner && def.id === target.defId) continue;
-    if (dice.momentum === def.id || dice.edge === def.id || dice.storyPoints === def.id) continue;
+  for (const { owner, def: changedDef } of changed.values()) {
+    if (owner === target.owner && changedDef.id === target.defId) continue;
+    if (plan.uses.aids.some((aid) => aid.defId === changedDef.id) && owner === target.owner) continue;
+    if (dice.momentum === changedDef.id || dice.edge === changedDef.id || dice.storyPoints === changedDef.id) continue;
     const terminal = terminals.find((entry) => entry.owner === owner && entry.terminal);
     if (terminal && owner !== target.owner) { parts.push(`${name(owner)}: ${terminal.terminal.note}`); continue; }
-    const fact = line(def, name(owner), read(values, def, owner));
+    const fact = line(changedDef, name(owner), read(values, changedDef, owner));
     if (fact) parts.push(fact.replace(/^\[|\]$/g, ''));
   }
   if (clock !== save.clock && !reading.succeeded) parts.push('It takes time.');
@@ -364,7 +505,7 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
   const record: CheckRecord = {
     approach: plan.approach.id,
     approachName: plan.approach.name,
-    target: { owner: target.owner, defId: target.defId, label: `${plan.target.ownerName} · ${plan.target.def.name}` },
+    target: { owner: target.owner, defId: def?.id ?? null, label: `${plan.target.ownerName} · ${def ? def.name : plan.target.deed?.label ?? 'a deed'}` },
     charge: auto ? 0 : Math.max(0, Math.round(choice.charge)),
     push: !auto && plan.uses.push,
     storyPoint: !auto && plan.uses.storyPoint,

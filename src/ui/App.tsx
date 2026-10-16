@@ -41,7 +41,7 @@ export function App() {
   function newGame(raw: unknown) {
     const loaded = loadModule(raw);
     if (!loaded.ok) { setErrors(loaded.errors); return; }
-    void begin(loaded.module, startSave(loaded.module), loaded.module.name);
+    void begin(loaded.module, startSave(loaded.module, Math.floor(Math.random() * 2 ** 31)), loaded.module.name);
   }
 
   async function onModuleFile(event: ChangeEvent<HTMLInputElement>) {
