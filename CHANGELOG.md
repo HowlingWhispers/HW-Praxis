@@ -8,6 +8,11 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.10.1 - 2026-10-16
+
+- `deploy/deploy.sh` deploys the newest `main` in one command on the server, following
+  the owner's steps, and stops before the restart if any check fails. The README says how.
+
 ## 0.10.0 - Living World - 2026-10-16
 
 - Dossiers. People can carry how they look, how they carry themselves and how they speak

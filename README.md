@@ -6,7 +6,7 @@ The scope, architecture and release plan are in *Praxis — Charter* in the Howl
 
 ## Status
 
-`0.10.0`. The engine has the state primitive, the clock and calendar, places and travel, scene presence, dossiers, schedules, relationships with bond tiers, authored scene actions, checks on the Four Approaches and Genesys dice, the save with its ledger, turns with reroll and undo, the journal, local records, and a context compiler sized to the model's window. The first module, *Abernys: Port Covenant*, is in `modules/`. The interface plays it with narration through NovelAI on the player's own key; saves stay in the browser and can be exported and imported. The Java prototype that preceded this is in the history at `d3b13ee`.
+`0.10.1`. The engine has the state primitive, the clock and calendar, places and travel, scene presence, dossiers, schedules, relationships with bond tiers, authored scene actions, checks on the Four Approaches and Genesys dice, the save with its ledger, turns with reroll and undo, the journal, local records, and a context compiler sized to the model's window. The first module, *Abernys: Port Covenant*, is in `modules/`. The interface plays it with narration through NovelAI on the player's own key; saves stay in the browser and can be exported and imported. The Java prototype that preceded this is in the history at `d3b13ee`.
 
 ## Layout
 
@@ -48,7 +48,15 @@ The interface sends narration requests to `/api/novelai/models` and `/api/novela
 
 ## Deploy
 
-Requires Node 22.
+To update the live server, sign in to it and run:
+
+```
+bash /srv/howling-whispers/praxis/deploy/deploy.sh
+```
+
+It fetches `main`, shows what is running and what is new, pulls, installs dependencies if the lockfile changed, runs the tests, type checks and build, restarts `praxis.service`, and checks that port 8791 answers. It stops at the first failure, before the running service is touched. `--force` rebuilds and restarts even when nothing is new.
+
+Setting up a server from scratch requires Node 22.
 
 1. `npm ci && npm run build`. The interface lands in `dist/`, the server in `dist-server/`.
 2. Run `node dist-server/server/index.js` with `NODE_ENV=production` and `PORT=8791`; `deploy/praxis.service.example` is a systemd unit for it. The server binds to localhost and, in production, also serves `dist/`.
