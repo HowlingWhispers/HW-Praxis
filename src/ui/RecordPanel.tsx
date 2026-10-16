@@ -21,6 +21,7 @@ const READS: Record<RecordType, string> = {
   thing: 'The narrator reads this when it is where you are, or when you carry it.',
   group: 'Named in the world notes, and read in full when one of its people is in the scene.',
   note: 'Sent with every turn, in the world notes.',
+  bond: 'The narrator reads it whenever both of them are in the scene.',
 };
 
 export function RecordPanel({ api, target, headRef, onDone }: { api: PlayApi; target: RecordTarget; headRef: RefObject<HTMLDivElement>; onDone: () => void }) {

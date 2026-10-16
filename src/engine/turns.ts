@@ -12,8 +12,9 @@ import { durationWords } from './clock';
 import { stateDefFor, type PraxisModule, type SceneAction } from './module';
 import { read, write, type StateTerminal } from './state';
 import { playable } from './records';
-import { windowStartFor } from './context';
+import { midSentence, windowStartFor } from './context';
 import { restEffects, settleCheck, type CheckChoice, type Target } from './checks';
+import { followSchedules } from './schedule';
 import { playerOf, travel, wait, type ActionResult, type CheckRecord, type LedgerEntry, type Save, type Turn, type WorldState } from './session';
 
 export type TurnResult =
@@ -94,6 +95,26 @@ function resolveScene(module: PraxisModule, save: Save, action: SceneAction): Ac
   return { ok: true, save: { ...save, values, ledger: [...save.ledger, ...entries] }, entries, terminals };
 }
 
+// After the rules have moved the clock: everyone whose day takes them elsewhere goes, and
+// the narrator hears who left or came, when the player stayed where they were.
+function passTime(world: PraxisModule, before: Save, after: Save, entries: LedgerEntry[], directive: string): { save: Save; entries: LedgerEntry[]; directive: string } {
+  const followed = followSchedules(world, after, before.clock, after.clock);
+  if (!followed.entries.length) return { save: after, entries, directive };
+  const playerId = playerOf(world);
+  const stayed = before.positions[playerId] === after.positions[playerId];
+  const places = atlasOf(world).places;
+  const news = stayed ? [
+    ...followed.left.map(({ character, to }) => `${midSentence(character.name)} leaves for ${inSentence(places.get(to)?.name ?? to)}`),
+    ...followed.arrived.map((character) => `${midSentence(character.name)} arrives`),
+    ...followed.passed.map(({ character, to }) => `${midSentence(character.name)} comes by and goes on to ${inSentence(places.get(to)?.name ?? to)}`),
+  ] : [];
+  return {
+    save: followed.save,
+    entries: [...entries, ...followed.entries],
+    directive: news.length ? `${directive} Meanwhile: ${news.join('; ')}.` : directive,
+  };
+}
+
 export function act(module: PraxisModule, save: Save, id: string, action: Action): TurnResult {
   const world = playable(module, save.local);
   let result: ActionResult;
@@ -104,7 +125,8 @@ export function act(module: PraxisModule, save: Save, id: string, action: Action
     if (!settled.ok) return settled;
     const { outcome } = settled;
     const input = action.input.trim() || `I try ${outcome.record.approachName.toLowerCase()} on ${inSentence(outcome.record.target.label.split(' · ')[0] ?? 'it')}.`;
-    return open(world, save, outcome.save, { id, kind: 'action', input, directive: outcome.directive, check: outcome.record }, outcome.entries, outcome.terminals);
+    const timed = passTime(world, save, outcome.save, outcome.entries, outcome.directive);
+    return open(world, save, timed.save, { id, kind: 'action', input, directive: timed.directive, check: outcome.record }, timed.entries, outcome.terminals);
   }
   if (action.type === 'scene') {
     const chosen = world.ruleset.actions.find((entry) => entry.id === action.actionId);
@@ -112,7 +134,8 @@ export function act(module: PraxisModule, save: Save, id: string, action: Action
     if (!offered(world, save, chosen)) return { ok: false, reason: `${chosen.name} is not possible here and now.` };
     result = resolveScene(world, save, chosen);
     if (!result.ok) return result;
-    return open(world, save, result.save, { id, kind: 'action', input: chosen.input, directive: chosen.outcome }, result.entries, result.terminals);
+    const timed = passTime(world, save, result.save, result.entries, chosen.outcome);
+    return open(world, save, timed.save, { id, kind: 'action', input: chosen.input, directive: timed.directive }, timed.entries, result.terminals);
   }
   if (action.type === 'travel') {
     const place = atlasOf(world).places.get(action.to);
@@ -136,7 +159,8 @@ export function act(module: PraxisModule, save: Save, id: string, action: Action
       directive = `The player rests for ${roughDuration(action.minutes)} and wakes refreshed. Describe what changes, if anything.`;
     }
   }
-  return open(world, save, result.save, { id, kind: 'action', input, directive }, result.entries, result.terminals);
+  const timed = passTime(world, save, result.save, result.entries, directive);
+  return open(world, save, timed.save, { id, kind: 'action', input, directive: timed.directive }, timed.entries, result.terminals);
 }
 
 export function lastTurn(save: Save): Turn | null {

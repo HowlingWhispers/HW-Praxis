@@ -1,9 +1,10 @@
-// You: condition, the journal, approaches, momentum, standing and what you carry.
+// You: condition, the journal, approaches, momentum, standing, bonds and what you carry.
 import { activeEntries, band, chargesOf, discardPending, keepPending, playerOf, read, thingsHeldBy, type StateDef } from '../engine';
 import type { PlayApi } from './Play';
 import { ChevronRight, PenIcon } from './icons';
 import { DraftTag, Pips, StateBar, bandForYou, characterStates, initials, newId } from './shared';
 import { ValueEditor } from './ValueEditor';
+import { BondsSummary } from './Bonds';
 
 export function YouSection({ api }: { api: PlayApi }) {
   const { world, save, prefs } = api;
@@ -112,6 +113,8 @@ export function YouSection({ api }: { api: PlayApi }) {
           </div>
         </>
       )}
+
+      <BondsSummary api={api} />
 
       <div className="sub"><p className="label">On hand</p><span className="meta">{carried.length || 'none recorded'}</span></div>
       <div className="card clip rows">

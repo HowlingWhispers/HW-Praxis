@@ -353,6 +353,10 @@ button.lr:hover:not(:disabled), a.lr:hover { background: var(--hover); }
 .fact .big.word { font: 600 18px/1.15 var(--read); }
 .fact .meta { line-height: 1.35; color: var(--text-2); }
 
+.dossier { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.dossier div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; }
+.dossier dt { font: 600 12px/1.6 var(--ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.dossier dd { margin: 0; font: 15px/1.5 var(--read); color: var(--text-2); }
 .knows { padding: 10px 12px; border-radius: 10px; background: var(--ground); border: 1px solid var(--line); }
 .knows .facts { margin-top: 6px; }
 

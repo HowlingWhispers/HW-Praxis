@@ -94,7 +94,7 @@ describe('overrides', () => {
   });
 
   it('set the clock', () => {
-    const save = ok(setClock(startSave(module), 20 * 60));
+    const save = ok(setClock(module, startSave(module), 20 * 60));
     expect(sceneOf(module, save).timeBand).toBe('the evening');
     expect(save.ledger[0]).toMatchObject({ kind: 'clock', source: 'player' });
   });

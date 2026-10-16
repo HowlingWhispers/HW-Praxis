@@ -1,4 +1,5 @@
-// Local records: people, places, things, groups and notes the player adds during play.
+// Local records: people, places, things, groups and notes the player adds during play, and
+// bonds the player starts between two people.
 //
 // They live in the save, never in the module, which stays as it was published. Fields use
 // Orbis names (description, speciesId, factionIds, parentLocationId, kind), so a record can
@@ -6,11 +7,12 @@
 // treats them like canon: a local person can be present, a local place can be travelled to.
 
 import { z } from 'zod';
-import { AREA_KINDS, PLACE_KINDS, type Character, type Item, type Memory, type Place, type PraxisModule, type WorldEntry } from './module';
+import { AREA_KINDS, PLACE_KINDS, type Character, type Item, type Memory, type Place, type PraxisModule, type Relationship, type WorldEntry } from './module';
+import { pairKey } from './state';
 import { atlasOf, isArea } from './world';
 import type { LedgerEntry, Save } from './session';
 
-export const RECORD_TYPES = ['person', 'place', 'thing', 'group', 'note'] as const;
+export const RECORD_TYPES = ['person', 'place', 'thing', 'group', 'note', 'bond'] as const;
 export type RecordType = typeof RECORD_TYPES[number];
 
 const id = z.string().min(1).max(200);
@@ -34,6 +36,10 @@ export const localRecordSchema = z.object({
   // Things: where it lies, or who carries it.
   locationId: id.optional(),
   heldBy: id.optional(),
+  // Bonds: the two people, and the relationship state that holds its tiers. The
+  // description is the relationship's shape.
+  personIds: z.array(id).max(2).default([]),
+  bondStateId: id.optional(),
   // The story minute it was added.
   createdAt: z.number().int().nonnegative(),
 });
@@ -72,6 +78,7 @@ export function playable(module: PraxisModule, local: readonly LocalRecord[]): P
     description: record.description,
     speciesId: record.speciesId,
     factionIds: record.factionIds,
+    workplaceLocationIds: [],
     states: {},
     maxima: {},
     charges: {},
@@ -100,6 +107,17 @@ export function playable(module: PraxisModule, local: readonly LocalRecord[]): P
     description: record.description || record.summary,
     origin: 'local',
   }));
+  const bonds: Relationship[] = of('bond').filter((record) => record.personIds.length === 2).map((record) => ({
+    id: record.id,
+    name: record.name,
+    personIds: [record.personIds[0]!, record.personIds[1]!],
+    bondStateId: record.bondStateId,
+    shape: record.description,
+    together: '',
+    wants: {},
+    states: {},
+    origin: 'local',
+  }));
   const notes: Memory[] = of('note').map((record) => ({
     id: record.id,
     title: record.name,
@@ -117,6 +135,7 @@ export function playable(module: PraxisModule, local: readonly LocalRecord[]): P
       memories: [...base.world.memories, ...notes],
     },
     characters: [...base.characters, ...people],
+    relationships: [...base.relationships, ...bonds],
     items: [...base.items, ...things],
     [LAYERED]: base,
   };
@@ -131,7 +150,7 @@ export type RecordResult =
 function knownIds(module: PraxisModule): Set<string> {
   const { world } = module;
   return new Set([
-    ...world.places, ...world.species, ...world.factions, ...world.societies, ...world.families, ...module.characters, ...module.items,
+    ...world.places, ...world.species, ...world.factions, ...world.societies, ...world.families, ...module.characters, ...module.items, ...module.relationships,
   ].map((entry) => entry.id).concat(world.memories.map((memory) => memory.id)));
 }
 
@@ -158,6 +177,17 @@ function problemWith(module: PraxisModule, save: Save, record: LocalRecord, repl
         if (at === record.id) return 'A place cannot be inside itself.';
         at = places.get(at)?.parentLocationId ?? null;
       }
+    }
+  }
+  if (record.type === 'bond') {
+    const [a, b] = record.personIds;
+    if (!a || !b || a === b) return 'A bond needs two different people.';
+    if (![a, b].every((personId) => world.characters.some((character) => character.id === personId))) return 'That person does not exist.';
+    const key = pairKey(a, b);
+    if (world.relationships.some((relationship) => relationship.id !== replacing && pairKey(...relationship.personIds) === key)) return 'These two already have a bond.';
+    if (record.bondStateId) {
+      const def = world.ruleset.states.find((state) => state.id === record.bondStateId);
+      if (!def || def.scope !== 'relationship') return 'That is not a kind of bond.';
     }
   }
   if (record.type === 'thing') {
@@ -212,8 +242,9 @@ export function removeRecord(module: PraxisModule, save: Save, recordId: string)
     entries.push({ kind: 'move', at: save.clock, characterId: recordId, from: positions[recordId] ?? null, to: null, minutes: 0, source: 'player' });
     delete positions[recordId];
   }
+  // A person's bonds go with them.
   const local = save.local
-    .filter((entry) => entry.id !== recordId)
+    .filter((entry) => entry.id !== recordId && !(record.type === 'person' && entry.type === 'bond' && entry.personIds.includes(recordId)))
     .map((entry) => (entry.heldBy === recordId ? { ...entry, heldBy: undefined } : entry));
   return { ok: true, save: { ...save, local, positions, ledger: [...save.ledger, ...entries] }, record, entries };
 }

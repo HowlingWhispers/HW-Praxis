@@ -86,7 +86,7 @@ describe('the narrator\'s context', () => {
     expect(messages[2]!.content).toBe('I hold out my hand for the pen.');
     const moment = messages[4]!.content;
     expect(moment).toMatch(/^\[Scene: The landward gate, Nospier Point, Abernys, early morning\./);
-    expect(moment).toMatch(/\[Present: The gate Arbiter/);
+    expect(moment).toMatch(/\[Present:\n- The gate Arbiter/);
     expect(moment).toMatch(/Port Covenant \(closed: No one enters the port without signing the Covenant\.\)/);
     expect(moment.endsWith('\n\nI sign.')).toBe(true);
   });

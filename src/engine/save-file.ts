@@ -86,6 +86,7 @@ export function checkSave(module: PraxisModule, save: Save): string[] {
   }
   for (const record of save.local) {
     if (record.type === 'place' && record.parentLocationId && !places.has(record.parentLocationId)) errors.push(`${record.name} is inside "${record.parentLocationId}", which is not in this world.`);
+    if (record.type === 'bond' && (record.personIds.length !== 2 || record.personIds.some((personId) => !characters.has(personId)))) errors.push(`The bond "${record.name}" names someone who is not in this world.`);
   }
   for (const [characterId, placeId] of Object.entries(save.positions)) {
     if (!characters.has(characterId)) errors.push(`The save places "${characterId}", who is not in the module.`);

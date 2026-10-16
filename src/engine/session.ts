@@ -10,10 +10,11 @@
 import { calendarOf, findPath, isArea, atlasOf, exitsFrom, type Exit } from './world';
 import { stamp, timeBandOf, safeMinutes, datePhrase } from './clock';
 import { stateDefFor, type Character, type Item, type Place, type PraxisModule } from './module';
-import { appliesTo, clamp, write, type ChangeSource, type StateTerminal, type StateValues, WORLD_OWNER } from './state';
+import { appliesTo, clamp, pairKey, write, type ChangeSource, type StateTerminal, type StateValues, WORLD_OWNER } from './state';
 import { DEFAULT_OPTIONS, calibrate, optionsSchema, type Options } from './options';
 import { emptyJournal, type Journal } from './journal';
 import { playable, type LocalRecord } from './records';
+import { followSchedules, scheduledPositions } from './schedule';
 
 export const SAVE_FORMAT = 'praxis-save/1';
 
@@ -101,7 +102,8 @@ export function playerOf(module: PraxisModule): string {
 }
 
 // A fresh save at the scenario's start. Characters the scenario names are at the starting
-// place; everyone else is at home if their home is somewhere a person can be.
+// place; everyone else is where their day puts them, or at home if their home is somewhere
+// a person can be.
 export function startSave(module: PraxisModule): Save {
   const atlas = atlasOf(module);
   const { scenario } = module;
@@ -110,6 +112,7 @@ export function startSave(module: PraxisModule): Save {
     const home = character.homeLocationId;
     if (home && !isArea(atlas.places.get(home))) positions[character.id] = home;
   }
+  Object.assign(positions, scheduledPositions(module, safeMinutes(scenario.startAt)));
   for (const characterId of [scenario.playerCharacterId, ...scenario.presentCharacterIds]) {
     positions[characterId] = scenario.startPlaceId;
   }
@@ -124,6 +127,14 @@ export function startSave(module: PraxisModule): Save {
       return def ? [[defId, clamp(def, value)] as const] : [];
     });
     if (entries.length) values[character.id] = Object.fromEntries(entries);
+  }
+  for (const relationship of module.relationships) {
+    const owner = pairKey(...relationship.personIds);
+    const entries = Object.entries(relationship.states).flatMap(([defId, value]) => {
+      const def = stateDefFor(module, defId, owner);
+      return def ? [[defId, clamp(def, value)] as const] : [];
+    });
+    if (entries.length) values[owner] = Object.fromEntries(entries);
   }
 
   return {
@@ -223,8 +234,9 @@ export function wait(save: Save, minutes: number): ActionResult {
 
 // --- Overrides: the player sets something directly. ---
 
-function ownerKindFor(module: PraxisModule, owner: string): 'world' | 'character' | 'place' | 'faction' | 'item' | null {
+function ownerKindFor(module: PraxisModule, owner: string): 'world' | 'character' | 'place' | 'faction' | 'item' | 'relationship' | null {
   if (owner === WORLD_OWNER) return 'world';
+  if (module.relationships.some((relationship) => pairKey(...relationship.personIds) === owner)) return 'relationship';
   if (module.characters.some((character) => character.id === owner)) return 'character';
   if (module.world.places.some((place) => place.id === owner)) return 'place';
   if (module.world.factions.some((faction) => faction.id === owner)) return 'faction';
@@ -246,11 +258,15 @@ export function setState(module: PraxisModule, save: Save, defId: string, owner:
   return commit(save, { values: result.values }, [entry], result.terminal ? [result.terminal] : []);
 }
 
-export function setClock(save: Save, minutes: number): ActionResult {
+// Setting the clock forward by hand moves people along their day like any other passing time.
+export function setClock(module: PraxisModule, save: Save, minutes: number): ActionResult {
   if (!Number.isFinite(minutes)) return reject('The clock needs a number.');
   const to = safeMinutes(minutes);
   if (to === save.clock) return commit(save, {}, []);
-  return commit(save, { clock: to }, [{ kind: 'clock', at: save.clock, from: save.clock, to, source: 'player', reason: 'set by hand' }]);
+  const set = commit(save, { clock: to }, [{ kind: 'clock', at: save.clock, from: save.clock, to, source: 'player', reason: 'set by hand' }]);
+  if (!set.ok) return set;
+  const followed = followSchedules(playable(module, save.local), set.save, save.clock, to);
+  return { ...set, save: followed.save, entries: [...set.entries, ...followed.entries] };
 }
 
 // Puts a character somewhere, or nowhere with null, without travel or time.

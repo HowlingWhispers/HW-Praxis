@@ -8,6 +8,36 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.10.0 - Living World - 2026-10-16
+
+- Dossiers. People can carry how they look, how they carry themselves and how they speak
+  (Orbis's `appearance`, `personality` and `speech`). Everyone present reaches the
+  narrator with theirs, within a fixed share of the window: a crowded room gives the
+  later arrivals their first line only. The moment's reserve grows to 2,500 tokens.
+- Schedules, in Character Engine's shape: a day of stops by the hour, other days picked by
+  weekday, month, day of the month or a span of days. People follow their day as the
+  clock moves, and a wait tells the narrator who left, who arrived and who came by and
+  went on. Someone put somewhere by hand stays until their day next moves them. A new
+  save starts everyone where their day has them. The Scene shows what each person is
+  doing and until when.
+- Relationships, one record per pair: what it is, what happens when both are in the
+  room, and what each side wants. Its bond is a relationship state whose tiers are words.
+  Relationships between people who are both present reach the narrator, and a tier off
+  its resting band does too.
+- Bonds in play. Start one with anyone from their row in Scene, write what lies between
+  you, set its tier by hand or end it; it lives in your records and exports with them.
+  A triumph against someone with the approach that owns the bond (Flair) warms it a
+  tier, and a despair cools it. You lists your bonds.
+- The turn's changes show comings and goings where you were; everyone's days elsewhere
+  stay in the ledger.
+- The rules guide has a chapter on people and bonds.
+- *Abernys: Port Covenant* 0.4.0: dossiers and days for the gate staff, the Governor, the
+  High Arbiter, the garrison captain, Cadfan (with a market day in Caerwyn) and Brond;
+  four bond kinds (Acquaintance, Rivals, Friends, Uneasy allies); relationships between
+  the Governor and the High Arbiter, the Governor and the captain, and the gate staff.
+  All draft.
+- Not yet: the evaluator, which waits on the generation test.
+
 ## 0.9.1 - 2026-10-16
 
 - The menu is back where it was meant to be: in the same scroll as the story, under the
