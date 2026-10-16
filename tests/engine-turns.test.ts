@@ -27,7 +27,7 @@ describe('turns', () => {
   it('resolve an action first and carry its outcome', () => {
     const { save, turn } = must(act(module, signed(), 't1', { type: 'travel', to: 'pc-harbour' }));
     expect(turn.input).toBe('I head for the harbour.');
-    expect(turn.directive).toMatch(/just arrived at the harbour after a short walk/);
+    expect(turn.directive).toMatch(/^You have just arrived at the harbour after a short walk/);
     expect(sceneOf(module, save).place.id).toBe('pc-harbour');
   });
 
@@ -75,34 +75,38 @@ describe('reroll and undo', () => {
 });
 
 describe('the narrator\'s context', () => {
-  it('puts the stable parts first and the moment last', () => {
+  it('puts the stable parts first, the game\'s notes next, and the player\'s words last', () => {
     let save = must(say(module, startSave(module), 't1', 'I hold out my hand for the pen.')).save;
     save = must(setReply(save, 't1', '*She hands it over.*')).save;
     save = must(say(module, save, 't2', 'I sign.')).save;
     const messages = compileContext(module, save);
-    expect(messages.map((message) => message.role)).toEqual(['system', 'assistant', 'user', 'assistant', 'user']);
+    expect(messages.map((message) => message.role)).toEqual(['system', 'assistant', 'user', 'assistant', 'system', 'user']);
     expect(messages[0]!.content).toMatch(/^You narrate a text adventure\. The player plays the traveller/);
     expect(messages[0]!.content).toMatch(/Established facts:/);
+    expect(messages[0]!.content).toMatch(/Speech is plain text, with no quotation marks\. Thoughts go in \(parentheses\)/);
     expect(messages[2]!.content).toBe('I hold out my hand for the pen.');
-    const moment = messages[4]!.content;
-    expect(moment).toMatch(/^<scene>\nPlace: The landward gate, Nospier Point, Abernys\. Early morning\./);
-    expect(moment).toMatch(/\nPresent:\n- The gate Arbiter/);
-    expect(moment).toMatch(/\n<\/scene>\n\nI sign\.$/);
-    expect(moment).toMatch(/Port Covenant \(closed: No one enters the port without signing the Covenant\.\)/);
-    expect(moment.endsWith('\n\nI sign.')).toBe(true);
+    const notes = messages[4]!.content;
+    // Slowest first: lore, then the scene. Every note is one bracketed line.
+    expect(notes.split('\n').every((entry) => /^\[ (Lore|Scene|Outcome): .* \]$/.test(entry))).toBe(true);
+    expect(notes.indexOf('[ Lore:')).toBeLessThan(notes.indexOf('[ Scene:'));
+    expect(notes).toMatch(/\[ Scene: The landward gate, Nospier Point, Abernys, early morning\. /);
+    expect(notes).toContain('The gate Arbiter is here, keeping the ledger at the landward gate.');
+    expect(notes).toContain('The way to Port Covenant is closed to you. No one enters the port without signing the Covenant.');
+    // The player's turn holds only what the player wrote.
+    expect(messages[5]!.content).toBe('I sign.');
   });
 
   it('carries standing facts only off their resting band, and the outcome once', () => {
     let save = must(setState(module, signed(), 'health', 'gate-guard', 1)).save;
     save = must(say(module, save, 't1', 'I look at the guard.')).save;
-    const moment = compileContext(module, save).at(-1)!.content;
-    expect(moment).toMatch(/\nFacts:\n(- .*\n)*- A garrison guard is hurt\.\n/);
-    expect(moment).toMatch(/\n- The traveller has signed the Covenant\.\n/);
-    expect(moment).not.toMatch(/is unhurt/);
-    expect(moment).not.toMatch(/Outcome/);
+    const notes = compileContext(module, save).at(-2)!.content;
+    expect(notes).toMatch(/\[ Scene: .* The garrison guard is hurt\./);
+    expect(notes).toMatch(/\[ Scene: .* You have signed the Covenant\./);
+    expect(notes).not.toMatch(/is unhurt/);
+    expect(notes).not.toMatch(/Outcome/);
     save = must(act(module, save, 't2', { type: 'travel', to: 'pc-outside-walls' })).save;
     const next = compileContext(module, save);
-    expect(next.at(-1)!.content).toMatch(/\nOutcome: The player has just arrived at the outer lanes/);
+    expect(next.at(-2)!.content).toMatch(/\n\[ Outcome: You have just arrived at the outer lanes after .*\. Show the arrival and what you find\. \]$/);
     expect(next.filter((message) => message.content.includes('Outcome:'))).toHaveLength(1);
   });
 

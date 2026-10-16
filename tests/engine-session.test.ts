@@ -77,7 +77,7 @@ describe('overrides', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.entries[0]).toMatchObject({ kind: 'state', defId: 'health', from: 8, to: 0, source: 'player' });
-    expect(result.terminals[0]?.note).toMatch(/go down/);
+    expect(result.terminals[0]?.note).toMatch(/take no further part in this scene/);
   });
 
   it('hold to the owner\'s own maximum', () => {

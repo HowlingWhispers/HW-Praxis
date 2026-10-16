@@ -12,7 +12,8 @@ import { durationWords } from './clock';
 import { stateDefFor, type PraxisModule, type SceneAction } from './module';
 import { read, write, type StateTerminal } from './state';
 import { playable } from './records';
-import { midSentence, windowStartFor } from './context';
+import { windowStartFor } from './context';
+import { midSentence } from './words';
 import { restEffects, settleCheck, type CheckChoice, type Target } from './checks';
 import { followSchedules } from './schedule';
 import { playerOf, travel, wait, type ActionResult, type CheckRecord, type LedgerEntry, type Save, type Turn, type WorldState } from './session';
@@ -111,7 +112,7 @@ function passTime(world: PraxisModule, before: Save, after: Save, entries: Ledge
   return {
     save: followed.save,
     entries: [...entries, ...followed.entries],
-    directive: news.length ? `${directive} Meanwhile: ${news.join('; ')}.` : directive,
+    directive: news.length ? `${directive} Meanwhile, ${news.join('; ')}.` : directive,
   };
 }
 
@@ -147,18 +148,18 @@ export function act(module: PraxisModule, save: Save, id: string, action: Action
     const minutes = move?.minutes ?? 0;
     const name = inSentence(place?.name ?? action.to);
     input = `I head for ${name}.`;
-    directive = `The player has just arrived at ${name} after ${roughDuration(minutes)}. Describe the arrival and what they find.`;
+    directive = `You have just arrived at ${name} after ${roughDuration(minutes)}. Show the arrival and what you find.`;
   } else {
     result = wait(save, action.minutes);
     if (!result.ok) return result;
     input = `I wait for ${durationWords(action.minutes)}.`;
-    directive = `Time passes where the player is: ${roughDuration(action.minutes).replace('a short walk', 'a little while')}. Describe what changes, if anything.`;
+    directive = `Time passes where you are: ${roughDuration(action.minutes).replace('a short walk', 'a little while')}. Show what changes, if anything.`;
     const rest = world.ruleset.rest;
     if (rest && action.minutes >= rest.minutes) {
       const rested = restEffects(world, result.save);
       result = { ...result, save: rested.save, entries: [...result.entries, ...rested.entries] };
       input = `I rest for ${durationWords(action.minutes)}.`;
-      directive = `The player rests for ${roughDuration(action.minutes)} and wakes refreshed. Describe what changes, if anything.`;
+      directive = `You rest for ${roughDuration(action.minutes)} and wake refreshed. Show what changes, if anything.`;
     }
   }
   const timed = passTime(world, save, result.save, result.entries, directive);
@@ -188,12 +189,15 @@ export function undoLastTurn(save: Save): { ok: true; save: Save; turn: Turn } |
   };
 }
 
-// Tidies a model reply: drops a speaker label the model added and an echo of the player's words.
+// Tidies a model reply: drops a speaker label the model added, a game note it copied, and an
+// echo of the player's words.
 export function cleanReply(reply: string, input: string): string {
   let text = reply.replace(/\r\n/g, '\n');
   // A reasoning model may leave its thinking in the reply.
   text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/^[\s\S]*?<\/think>/i, '').trim();
   text = text.replace(/^(?:narrator|assistant|gm)\s*:\s*/i, '');
+  // A note the model copied from what it was sent: a whole line of [ Lore ], [ Scene ] or [ Outcome ].
+  text = text.replace(/^[ \t]*\[\s*(?:lore|scene|outcome)\s*:[^\n]*\][ \t]*$/gim, '').trim();
   const echo = input.trim();
   if (echo && text.startsWith(echo)) text = text.slice(echo.length).trim();
   return text.replace(/\n{3,}/g, '\n\n');

@@ -2,8 +2,8 @@
   "format": "praxis-module/1",
   "id": "abernys-port-covenant",
   "name": "Abernys: Port Covenant",
-  "version": "0.5.0",
-  "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and their Four Approaches tiers (the Arbiter a rival, the guard a minion), and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own. From 0.4.0, also draft: every dossier field (appearance, personality, speech), every schedule, the four bond kinds and their tiers, and the three relationships between the Governor, the High Arbiter, the garrison captain and the gate staff. The leverage between the Governor and the captain (she knows the last ship carried no orders) is from the societies doc. From 0.5.0 the ruleset extends the standard Four Approaches ruleset (four-approaches/1) for Leverage, Prepared, Integrity, Security, the person deed and the tiers; the tiers given to each character and the registry strongroom door are draft.",
+  "version": "0.6.0",
+  "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and their Four Approaches tiers (the Arbiter a rival, the guard a minion), and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own. From 0.4.0, also draft: every dossier field (appearance, personality, speech), every schedule, the four bond kinds and their tiers, and the three relationships between the Governor, the High Arbiter, the garrison captain and the gate staff. The leverage between the Governor and the captain (she knows the last ship carried no orders) is from the societies doc. From 0.5.0 the ruleset extends the standard Four Approaches ruleset (four-approaches/1) for Leverage, Prepared, Integrity, Security, the person deed and the tiers; the tiers given to each character and the registry strongroom door are draft. From 0.6.0 the module takes the approach ratings, Health, Strain, Alert, the dice and rest from the standard ruleset instead of repeating them, and its opening and outcomes follow the house format: you, present tense, speech without quotation marks.",
   "source": {
     "kind": "local"
   },
@@ -712,158 +712,6 @@
     },
     "states": [
       {
-        "id": "force",
-        "name": "Force",
-        "scope": "char",
-        "min": 1,
-        "max": 4,
-        "start": 1,
-        "category": "Approaches"
-      },
-      {
-        "id": "finesse",
-        "name": "Finesse",
-        "scope": "char",
-        "min": 1,
-        "max": 4,
-        "start": 1,
-        "category": "Approaches"
-      },
-      {
-        "id": "focus",
-        "name": "Focus",
-        "scope": "char",
-        "min": 1,
-        "max": 4,
-        "start": 1,
-        "category": "Approaches"
-      },
-      {
-        "id": "flair",
-        "name": "Flair",
-        "scope": "char",
-        "min": 1,
-        "max": 4,
-        "start": 1,
-        "category": "Approaches"
-      },
-      {
-        "id": "health",
-        "name": "Health",
-        "scope": "char",
-        "min": 0,
-        "max": 8,
-        "start": 8,
-        "category": "Condition",
-        "display": "band",
-        "bands": [
-          {
-            "at": 0,
-            "label": "is down"
-          },
-          {
-            "at": 1,
-            "label": "is badly hurt"
-          },
-          {
-            "at": 34,
-            "label": "is hurt"
-          },
-          {
-            "at": 60,
-            "label": "is bruised"
-          },
-          {
-            "at": 85,
-            "label": "is unhurt"
-          }
-        ],
-        "restBand": 4,
-        "terminals": [
-          {
-            "at": "min",
-            "note": "They go down with an injury and take no further part in this scene."
-          }
-        ],
-        "approach": {
-          "owner": "force",
-          "secondary": []
-        },
-        "bandBasis": "share",
-        "verb": "Hurt or overpower"
-      },
-      {
-        "id": "strain",
-        "name": "Strain",
-        "scope": "char",
-        "min": 0,
-        "max": 6,
-        "start": 6,
-        "category": "Condition",
-        "display": "band",
-        "bands": [
-          {
-            "at": 0,
-            "label": "is spent"
-          },
-          {
-            "at": 1,
-            "label": "is badly strained"
-          },
-          {
-            "at": 34,
-            "label": "is strained"
-          },
-          {
-            "at": 75,
-            "label": "is steady"
-          }
-        ],
-        "restBand": 3,
-        "terminals": [
-          {
-            "at": "min",
-            "note": "They are spent: they give way, or can push no further."
-          }
-        ],
-        "approach": {
-          "owner": "flair",
-          "secondary": [
-            "force"
-          ]
-        },
-        "bandBasis": "share",
-        "verb": "Persuade, charm, bluff or intimidate"
-      },
-      {
-        "id": "edge",
-        "name": "Edge",
-        "scope": "protagonist",
-        "min": 0,
-        "max": 1,
-        "start": 0,
-        "category": "Momentum"
-      },
-      {
-        "id": "story-points",
-        "name": "Story Points",
-        "scope": "protagonist",
-        "min": 0,
-        "max": 2,
-        "start": 1,
-        "category": "Momentum"
-      },
-      {
-        "id": "momentum",
-        "name": "Momentum",
-        "scope": "protagonist",
-        "min": -3,
-        "max": 3,
-        "start": 0,
-        "category": "Momentum",
-        "display": "hidden"
-      },
-      {
         "id": "signed-covenant",
         "name": "Signed the Covenant",
         "scope": "protagonist",
@@ -883,46 +731,6 @@
           }
         ],
         "restBand": 0
-      },
-      {
-        "id": "alert",
-        "name": "Alert",
-        "scope": "place",
-        "min": 0,
-        "max": 3,
-        "start": 0,
-        "category": "Scene",
-        "display": "band",
-        "bands": [
-          {
-            "at": 0,
-            "label": "is quiet"
-          },
-          {
-            "at": 1,
-            "label": "is uneasy"
-          },
-          {
-            "at": 2,
-            "label": "is watchful"
-          },
-          {
-            "at": 3,
-            "label": "is roused"
-          }
-        ],
-        "restBand": 0,
-        "terminals": [
-          {
-            "at": "max",
-            "note": "The scene is roused: everyone present is alert and looking for trouble."
-          }
-        ],
-        "approach": {
-          "owner": "finesse",
-          "secondary": []
-        },
-        "verb": "Lie low, cover your tracks"
       },
       {
         "id": "bond-acquaintance",
@@ -1090,128 +898,10 @@
           }
         ],
         "input": "I sign the Covenant.",
-        "outcome": "The player signs the Covenant in the Arbiter’s ledger. It binds them from this moment, and the landward gate is open to them.",
+        "outcome": "You sign the Covenant in the Arbiter’s ledger. It binds you from this moment, and the landward gate is open to you.",
         "canonStatus": "draft"
       }
-    ],
-    "approaches": [
-      {
-        "id": "force",
-        "name": "Force",
-        "failure": [
-          {
-            "stateId": "health",
-            "who": "player",
-            "add": -1
-          },
-          {
-            "stateId": "alert",
-            "who": "place",
-            "add": 1
-          }
-        ],
-        "threat": [
-          {
-            "stateId": "alert",
-            "who": "place",
-            "add": 1
-          }
-        ],
-        "canonStatus": "draft"
-      },
-      {
-        "id": "finesse",
-        "name": "Finesse",
-        "failure": [
-          {
-            "stateId": "alert",
-            "who": "place",
-            "add": 1
-          }
-        ],
-        "threat": [
-          {
-            "stateId": "alert",
-            "who": "place",
-            "add": 1
-          }
-        ],
-        "canonStatus": "draft"
-      },
-      {
-        "id": "focus",
-        "name": "Focus",
-        "failureMinutes": 30,
-        "threatMinutes": 15,
-        "canonStatus": "draft"
-      },
-      {
-        "id": "flair",
-        "name": "Flair",
-        "failure": [
-          {
-            "stateId": "strain",
-            "who": "player",
-            "add": -1
-          }
-        ],
-        "threat": [
-          {
-            "stateId": "strain",
-            "who": "player",
-            "add": -1
-          }
-        ],
-        "canonStatus": "draft"
-      }
-    ],
-    "dice": {
-      "difficulty": 2,
-      "edge": "edge",
-      "storyPoints": "story-points",
-      "momentum": "momentum",
-      "setbacks": [
-        {
-          "stateId": "health",
-          "who": "player",
-          "atMost": 4,
-          "reason": "You are hurt"
-        },
-        {
-          "stateId": "alert",
-          "who": "place",
-          "atLeast": 2,
-          "approaches": [
-            "finesse"
-          ],
-          "reason": "Someone is watching"
-        },
-        {
-          "stateId": "alert",
-          "who": "place",
-          "atLeast": 3,
-          "reason": "The scene is roused"
-        }
-      ],
-      "push": {
-        "stateId": "strain",
-        "add": -2
-      }
-    },
-    "rest": {
-      "minutes": 480,
-      "effects": [
-        {
-          "stateId": "health",
-          "add": 1
-        },
-        {
-          "stateId": "strain",
-          "toMax": true
-        }
-      ],
-      "resetCharges": true
-    }
+    ]
   },
   "scenario": {
     "title": "At the landward gate",
@@ -1222,6 +912,6 @@
       "gate-arbiter",
       "gate-guard"
     ],
-    "opening": "*Fog lies over Nospier Point. The headland road ends at a wall of dressed stone and a gate standing half open, a garrison guard leaning in its shadow. Under the arch an Arbiter has laid out ink, a pen and a ledger on a narrow table, and doesn't look up.*\n\n\"Name,\" she says, \"and whether you can write it. No one goes through without signing.\""
+    "opening": "*Fog lies over Nospier Point. The headland road ends at a wall of dressed stone and a gate standing half open, a garrison guard leaning in its shadow. Under the arch an Arbiter has laid out ink, a pen and a ledger on a narrow table, and doesn't look up.*\n\nName, and whether you can write it. *Her pen waits above the page.* No one goes through without signing."
   }
 }

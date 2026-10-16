@@ -10,7 +10,7 @@ const CHAPTERS: { id: Chapter; title: string; summary: string; body: ReactNode }
     id: 'basics', title: 'How a turn works', summary: 'You write, the narrator answers, the rules keep the facts',
     body: (
       <>
-        <p>You write what your character says and does: <b>"speech"</b> in double quotes, <b>*actions*</b> in asterisks and <b>[thoughts]</b> in square brackets.</p>
+        <p>You write what your character says and does: speech as it is, with no quotation marks, <b>*actions*</b> in asterisks and <b>(thoughts)</b> in parentheses. Nobody in the story hears your thoughts. A <b>[note]</b> in square brackets speaks to the narrator from outside the story, and the narrator takes it as true.</p>
         <p>The narrator writes what happens next. It describes the world; it never changes a fact.</p>
         <p>The rules keep the facts: where everyone is, the time, who is hurt, who has signed what. A fact changes only when a rule settles it or you change it by hand, and the ledger records which.</p>
         <p>The narrator reads facts as words, and only the ones out of the ordinary. It learns that someone <b>is strained</b>, never the number behind it.</p>

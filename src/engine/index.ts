@@ -6,6 +6,7 @@ export * from './world';
 export * from './session';
 export * from './turns';
 export * from './context';
+export * from './words';
 export * from './save-file';
 export * from './options';
 export * from './records';

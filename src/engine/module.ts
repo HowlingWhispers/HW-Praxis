@@ -408,6 +408,9 @@ export const moduleSchema = z.object({
     if (state.bands.length > 0 && state.restBand >= state.bands.length) {
       issue(['ruleset', 'states', index, 'restBand'], `Resting band ${state.restBand} does not exist.`);
     }
+    if (state.npcLabels && state.npcLabels.length !== state.bands.length) {
+      issue(['ruleset', 'states', index, 'npcLabels'], `There are ${state.bands.length} bands but ${state.npcLabels.length} labels for other people.`);
+    }
   });
 
   const playerState = (state: StateDef | undefined) => Boolean(state && appliesTo(state, 'character', true));

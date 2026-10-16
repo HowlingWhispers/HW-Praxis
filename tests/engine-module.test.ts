@@ -25,6 +25,14 @@ describe('module loading', () => {
     expect(result.module.world.places[1]).toMatchObject({ terrain: 'shingle' });
   });
 
+  it('wants one label for other people per band', () => {
+    const errors = errorsFor((m) => {
+      const banded = m.ruleset.states.find((state: { bands?: unknown[] }) => (state.bands ?? []).length > 1);
+      banded.npcLabels = ['only one'];
+    });
+    expect(errors.some((error) => /npcLabels: There are \d+ bands but 1 labels for other people\./.test(error))).toBe(true);
+  });
+
   it('rejects another format', () => {
     expect(errorsFor((m) => { m.format = 'orbis-authoring/1'; })[0]).toMatch(/^format/);
   });

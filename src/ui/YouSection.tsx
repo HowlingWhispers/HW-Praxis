@@ -1,5 +1,5 @@
 // You: condition, the journal, approaches, momentum, standing, bonds and what you carry.
-import { activeEntries, band, chargesOf, discardPending, keepPending, playerOf, read, thingsHeldBy, type StateDef } from '../engine';
+import { activeEntries, band, chargesOf, discardPending, keepPending, playerOf, read, thingsHeldBy, toYou, type StateDef } from '../engine';
 import type { PlayApi } from './Play';
 import { ChevronRight, PenIcon } from './icons';
 import { DraftTag, Pips, StateBar, bandForYou, characterStates, initials, newId } from './shared';
@@ -49,7 +49,7 @@ export function YouSection({ api }: { api: PlayApi }) {
                 </summary>
                 <div className="row-body">
                   <ValueEditor def={def} value={value(def)} onSet={(next) => api.setValue(def.id, playerId, next)} />
-                  {def.terminals.length > 0 && <p className="meta" style={{ lineHeight: 1.45 }}>{def.terminals.map((terminal) => terminal.note).join(' ')}</p>}
+                  {def.terminals.length > 0 && <p className="meta" style={{ lineHeight: 1.45 }}>{def.terminals.map((terminal) => terminal.playerNote ?? toYou(terminal.note)).join(' ')}</p>}
                   <p className="meta" style={{ lineHeight: 1.45, color: 'var(--text-2)' }}>A change you make here is recorded in the ledger as yours, not the rules’.</p>
                 </div>
               </details>
