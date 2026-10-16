@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 're
 import {
   act, cleanReply, cleanSuggestion, compressRequest, compressionDue, contextPlan, durationWords, entryRequest, inSentence,
   journalDue, lastTurn, placeCharacter, playable, playerOf, promptChars, recordPromptSize, say, sceneActionsFor, sceneOf,
-  setPending, setReply, setState, targetsHere, timeOfDay, uncoveredTurns, undoLastTurn,
+  setPending, setReply, setState, timeOfDay, uncoveredTurns, undoLastTurn,
   type Action, type ContextPlan, type PraxisModule, type Save, type Turn,
 } from '../engine';
 import type { Connection } from './Connect';
@@ -321,7 +321,8 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
   // Quick ways out for the chips: open, and under an hour.
   const openExits = scene.exits.filter((exit) => !exit.blocked && exit.edge.minutes <= 60).slice(0, 2);
   const pendingSuggestion = save.journal.pending;
-  const canCheck = world.ruleset.approaches.length > 0 && targetsHere(world, save).length > 0;
+  // Someone or something is always here to aim at: at the least, the place itself.
+  const canCheck = world.ruleset.approaches.length > 0;
 
   return (
     <div className="play">

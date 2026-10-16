@@ -8,6 +8,30 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.12.0 - Four Ways - 2026-10-16
+
+- Every person, thing and place in a scene can be acted on with the Four Approaches, with
+  nothing authored. People: Force hurts or overpowers (Health), Flair persuades, charms,
+  bluffs or intimidates (Strain), Finesse lifts, slips past or plants (a deed: it works or
+  it fails, and failure raises Alert), Focus reads them for Leverage. Things: Force breaks
+  them (Integrity), Finesse picks or takes them (Security), Focus studies them (Prepared).
+  The place: Finesse lies low (Alert), Focus searches it (Prepared).
+- Focus builds an edge for the other approaches. Leverage on a person makes the next
+  check against them one step easier per point; Prepared on a thing or place adds a boost
+  die per point. Both go up to two and are spent on the next check by another approach,
+  unless switched off on the check. The rules guide has a chapter with the odds.
+- Difficulty comes from the target: its own, by approach or for all; a random one fixed by
+  the save's seed; its tier (minion Easy, rival Average, nemesis Hard); or the module's.
+- Something in the story: on the check screen, name a door, a crowd or two guards, say
+  how hard it is, and it joins your records, here, aimed at.
+- The check screen is rebuilt around who or what you aim at, with what each approach does
+  to it and how hard. Things in the Scene show their state and offer a check.
+- The standard ruleset, `four-approaches/1`: a module that extends it gets the Four
+  Approaches states, costs, dice, rest, tiers and deeds beneath its own, so a world with
+  no rules of its own is playable.
+- *Abernys: Port Covenant* 0.5.0 extends the standard ruleset, gives its people tiers, and
+  adds the registry strongroom door (Daunting to force, Hard to pick). All draft.
+
 ## 0.11.0 - The Narrator's Notes - 2026-10-16
 
 - The narrator's instructions are rewritten for GLM-4.6 as what to do rather than what

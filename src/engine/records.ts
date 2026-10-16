@@ -7,7 +7,7 @@
 // treats them like canon: a local person can be present, a local place can be travelled to.
 
 import { z } from 'zod';
-import { AREA_KINDS, PLACE_KINDS, type Character, type Item, type Memory, type Place, type PraxisModule, type Relationship, type WorldEntry } from './module';
+import { AREA_KINDS, PLACE_KINDS, TIERS, difficultySchema, type Level, type Tier, type Character, type Item, type Memory, type Place, type PraxisModule, type Relationship, type WorldEntry } from './module';
 import { pairKey } from './state';
 import { atlasOf, isArea } from './world';
 import type { LedgerEntry, Save } from './session';
@@ -40,6 +40,9 @@ export const localRecordSchema = z.object({
   // description is the relationship's shape.
   personIds: z.array(id).max(2).default([]),
   bondStateId: id.optional(),
+  // People and things: how hard they are to act on, by approach or 'all', and a person's tier.
+  difficulty: difficultySchema,
+  tier: z.enum(TIERS).optional(),
   // The story minute it was added.
   createdAt: z.number().int().nonnegative(),
 });
@@ -82,6 +85,8 @@ export function playable(module: PraxisModule, local: readonly LocalRecord[]): P
     states: {},
     maxima: {},
     charges: {},
+    tier: record.tier,
+    difficulty: record.difficulty,
     origin: 'local',
   }));
   const places: Place[] = of('place').map((record) => ({
@@ -90,6 +95,7 @@ export function playable(module: PraxisModule, local: readonly LocalRecord[]): P
     description: record.description || record.summary,
     kind: record.kind ?? 'other',
     parentLocationId: record.parentLocationId ?? null,
+    difficulty: record.difficulty,
     origin: 'local',
   }));
   const things: Item[] = of('thing').map((record) => ({
@@ -99,6 +105,7 @@ export function playable(module: PraxisModule, local: readonly LocalRecord[]): P
     description: record.description,
     locationId: record.locationId,
     heldBy: record.heldBy,
+    difficulty: record.difficulty,
     origin: 'local',
   }));
   const groups: WorldEntry[] = of('group').map((record) => ({
@@ -308,4 +315,26 @@ export function importRecords(module: PraxisModule, save: Save, records: readonl
     }
   }
   return { save: next, added, skipped };
+}
+
+// Something the story brought in, added on the spot so a check can be aimed at it: a person
+// or a group of people standing here, or a thing lying here, with a difficulty for every
+// approach (or 'random') and, for people, a tier.
+export interface ObstacleInput {
+  id: string;
+  kind: 'person' | 'thing';
+  name: string;
+  summary?: string;
+  difficulty?: Level;
+  tier?: Tier;
+}
+
+export function addObstacle(module: PraxisModule, save: Save, input: ObstacleInput): RecordResult {
+  const here = save.positions[module.scenario.playerCharacterId];
+  if (!here) return { ok: false, reason: 'You are not anywhere.' };
+  const difficulty: Record<string, Level> = input.difficulty === undefined ? {} : { all: input.difficulty };
+  if (input.kind === 'person') {
+    return addRecord(module, save, { id: input.id, type: 'person', name: input.name, summary: input.summary ?? '', description: '', difficulty, tier: input.tier }, here);
+  }
+  return addRecord(module, save, { id: input.id, type: 'thing', name: input.name, summary: input.summary ?? '', description: '', difficulty, locationId: here });
 }

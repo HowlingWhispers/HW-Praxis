@@ -48,7 +48,8 @@ describe('checks', () => {
   it('know who may move what', () => {
     const start = startSave(module);
     expect(targetsHere(module, start).map((target) => `${target.owner}:${target.defId}`)).toEqual([
-      'gate-arbiter:health', 'gate-arbiter:strain', 'gate-guard:health', 'gate-guard:strain', 'pc-landward-gate:alert',
+      'gate-arbiter:health', 'gate-arbiter:strain', 'gate-arbiter:leverage', 'gate-guard:health', 'gate-guard:strain', 'gate-guard:leverage',
+      'pc-landward-gate:alert', 'pc-landward-gate:prepared-place',
     ]);
     const flair = must(planCheck(module, start, arbiterStrain, { approach: 'flair', charge: 2 }));
     expect(flair).toMatchObject({ claim: 'owner', rating: 3, pool: { good: ['proficiency', 'proficiency', 'ability'], bad: ['difficulty', 'difficulty'] } });

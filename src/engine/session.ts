@@ -38,7 +38,8 @@ export interface WorldState {
 export interface CheckRecord {
   approach: string;
   approachName: string;
-  target: { owner: string; defId: string; label: string };
+  // defId is null for a deed: an act with no state to wear down.
+  target: { owner: string; defId: string | null; label: string };
   charge: number;
   push: boolean;
   storyPoint: boolean;
@@ -85,6 +86,8 @@ export interface Save extends WorldState {
   // People, places, things, groups and notes the player added. See records.ts.
   local: readonly LocalRecord[];
   options: Options;
+  // Fixes this save's random difficulties, so a door that rolled Hard stays Hard.
+  seed: number;
 }
 
 export type ActionResult =
@@ -104,7 +107,7 @@ export function playerOf(module: PraxisModule): string {
 // A fresh save at the scenario's start. Characters the scenario names are at the starting
 // place; everyone else is where their day puts them, or at home if their home is somewhere
 // a person can be.
-export function startSave(module: PraxisModule): Save {
+export function startSave(module: PraxisModule, seed = 0): Save {
   const atlas = atlasOf(module);
   const { scenario } = module;
   const positions: Record<string, string> = {};
@@ -149,6 +152,7 @@ export function startSave(module: PraxisModule): Save {
     journal: emptyJournal(),
     local: [],
     options: { ...DEFAULT_OPTIONS },
+    seed: Math.abs(Math.round(seed)) % 2 ** 31,
   };
 }
 

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import {
   band, bondBetween, calendarOf, datePhrase, doingNow, durationWords, line, pairName, playerOf, read, sceneActionsFor, sceneOf, stateDefFor,
-  targetsHere, timeOfDay, weekdayOf, whereabouts, type Character,
+  timeOfDay, weekdayOf, whereabouts, type Character, type Item,
 } from '../engine';
 import { BondWithYou } from './Bonds';
 import type { PlayApi } from './Play';
@@ -62,20 +62,7 @@ export function SceneSection({ api }: { api: PlayApi }) {
 
       <div className="sub"><p className="label">Things here</p><span className="meta">{scene.things.length || 'none recorded'}</span></div>
       <div className="card clip rows">
-        {scene.things.map((thing) => (
-          <details key={thing.id}>
-            <summary className="row">
-              <span className="av place" aria-hidden="true">{initials(thing.name)}</span>
-              <span className="row-text"><span className="name">{thing.name}</span>{typeof thing.summary === 'string' && thing.summary && <span className="meta">{thing.summary}</span>}</span>
-              <YoursTag record={thing} />
-              <ChevronRight />
-            </summary>
-            <div className="row-body">
-              {thing.description && <p className="prose">{thing.description}</p>}
-              <button type="button" className="btn" onClick={() => api.editRecord({ mode: 'edit', id: thing.id })}>Edit</button>
-            </div>
-          </details>
-        ))}
+        {scene.things.map((thing) => <ThingRow key={thing.id} api={api} thing={thing} />)}
         <div className="lr" style={{ paddingTop: 14, paddingBottom: 14 }}>
           <p className="grow meta" style={{ lineHeight: 1.45, color: 'var(--text-2)' }}>
             {scene.things.length ? 'Add anything else the story brings in.' : 'Things the story mentions are only description until you add them. Add one and it stays with your story.'}
@@ -95,7 +82,7 @@ export function SceneSection({ api }: { api: PlayApi }) {
             <button type="button" className="btn primary" disabled={busy} onClick={() => api.perform({ type: 'scene', actionId: action.id })}>Do it</button>
           </div>
         ))}
-        {world.ruleset.approaches.length > 0 && targetsHere(world, save).length > 0 && (
+        {world.ruleset.approaches.length > 0 && (
           <div className="lr">
             <span className="grow">
               <span className="name" style={{ display: 'block' }}>Make a check</span>
@@ -226,7 +213,7 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
         <BondWithYou api={api} person={person} />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="btn" style={{ flex: 1 }} onClick={() => api.talkTo(person.name)}>Talk to them</button>
-          {world.ruleset.approaches.length > 0 && defs.some((def) => def.approach && def.bands.length) && (
+          {world.ruleset.approaches.length > 0 && (
             <button type="button" className="btn" style={{ flex: 1 }} onClick={() => api.openCheck(person.id)}>Make a check</button>
           )}
           <button type="button" className="btn quiet" onClick={() => api.lookUp(person.name)}>Look up</button>
@@ -237,6 +224,56 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
             <summary className="meta" style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>Set their values by hand</summary>
             <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {defs.map((def) => <ValueEditor key={def.id} def={def} value={read(save.values, def, person.id)} onSet={(value) => api.setValue(def.id, person.id, value)} />)}
+            </div>
+          </details>
+        )}
+      </div>
+    </details>
+  );
+}
+
+// A thing here: what it is, what state it is in, and a check against it.
+function ThingRow({ api, thing }: { api: PlayApi; thing: Item }) {
+  const { world, save, prefs } = api;
+  const defs = world.ruleset.states.filter((def) => def.scope === 'item' && def.bands.length && def.display !== 'hidden');
+  const offRest = defs
+    .map((def) => ({ def, value: read(save.values, def, thing.id) }))
+    .map((entry) => ({ ...entry, reading: band(entry.def, entry.value) }))
+    .filter((entry) => !entry.reading.atRest);
+  const local = thing.origin === 'local';
+  return (
+    <details>
+      <summary className="row">
+        <span className="av place" aria-hidden="true">{initials(thing.name)}</span>
+        <span className="row-text"><span className="name">{thing.name}</span>{typeof thing.summary === 'string' && thing.summary && <span className="meta">{thing.summary}</span>}</span>
+        {offRest.slice(0, 2).map(({ def, reading }) => (
+          <span key={def.id} className="pill"><span className="dot" style={{ background: stateColor(def) }} />{reading.label.replace(/^is /, '')}</span>
+        ))}
+        <YoursTag record={thing} />
+        <ChevronRight />
+      </summary>
+      <div className="row-body">
+        {thing.description && <p className="prose">{thing.description}</p>}
+        {offRest.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {offRest.map(({ def, value, reading }) => (
+              <div key={def.id} className="state-line">
+                <span className="what">{def.name}</span>
+                <StateBar def={def} value={value} />
+                <span className="word">{reading.label}{prefs.showNumbers ? ` · ${value}` : ''}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {world.ruleset.approaches.length > 0 && <button type="button" className="btn" style={{ flex: 1 }} onClick={() => api.openCheck(thing.id)}>Make a check</button>}
+          {local && <button type="button" className="btn quiet" onClick={() => api.editRecord({ mode: 'edit', id: thing.id })}>Edit</button>}
+        </div>
+        {defs.length > 0 && (
+          <details>
+            <summary className="meta" style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>Set its values by hand</summary>
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {defs.map((def) => <ValueEditor key={def.id} def={def} value={read(save.values, def, thing.id)} onSet={(value) => api.setValue(def.id, thing.id, value)} />)}
             </div>
           </details>
         )}
