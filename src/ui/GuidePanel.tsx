@@ -61,12 +61,13 @@ const CHAPTERS: { id: Chapter; title: string; summary: string; body: ReactNode }
           <li><b>Secondary:</b> adds one setback die, and failure costs what the owner pays.</li>
           <li><b>No claim:</b> cannot move it. Charming a gate does nothing to its lock.</li>
         </ul>
-        <p><b>Charges</b> are one-use bonuses held per approach: one Trained approach (+1, +2, +3), two Practiced (+1, +2) and one Raw (+1). They arrive with the dice.</p>
+        <p><b>Charges</b> are one-use bonuses held per approach: one Trained approach (+1, +2, +3), two Practiced (+1, +2) and one Raw (+1). Spend one on a roll. They come back once every charge on that approach is used, or after a full rest. To <b>push</b>, take 2 Strain and reuse a spent charge.</p>
+        <p>A <b>full rest</b> is waiting eight hours or more: 1 Health back, Strain restored, charges fresh.</p>
       </>
     ),
   },
   {
-    id: 'checks', title: 'Checks and dice', summary: 'Arriving in the next update',
+    id: 'checks', title: 'Checks and dice', summary: 'Building a pool and reading the result',
     body: (
       <>
         <p>Take your approach rating and the charge you spend. <b>The higher number is how many dice you roll; the lower is how many of them are upgraded</b> from green to yellow. Difficulty is Average, two purple dice, unless the action or an opponent sets it.</p>
@@ -83,7 +84,7 @@ const CHAPTERS: { id: Chapter; title: string; summary: string; body: ReactNode }
           <li><b>One net advantage or threat</b> adds a small opening or complication. Two or more: advantage gives you Edge; threat triggers the approach’s cost.</li>
           <li><b>A triumph</b> on a success or <b>a despair</b> on a failure makes the outcome bigger.</li>
         </ul>
-        <p>You will always be able to succeed without rolling. The ledger records that you decided.</p>
+        <p>You can always succeed without rolling: the target moves by one and nothing is spent. The ledger records that you decided, and Settings can make that the default.</p>
       </>
     ),
   },

@@ -19,7 +19,27 @@ const worldState = {
   clock: z.number().int().nonnegative(),
   positions: z.record(z.string(), z.string()),
   values: stateValues,
+  // Added in 0.9.
+  spent: z.record(z.string(), z.record(z.string(), z.array(z.number().int()).max(12))).default({}),
 };
+
+const checkSchema = z.object({
+  approach: id,
+  approachName: z.string().max(60),
+  target: z.object({ owner: id, defId: id, label: z.string().max(200) }),
+  charge: z.number().int(),
+  push: z.boolean(),
+  storyPoint: z.boolean(),
+  auto: z.boolean(),
+  good: z.array(z.object({ kind: z.string().max(20), face: z.string().max(8) })).max(20),
+  bad: z.array(z.object({ kind: z.string().max(20), face: z.string().max(8) })).max(20),
+  netSuccess: z.number().int(),
+  netAdvantage: z.number().int(),
+  succeeded: z.boolean(),
+  triumph: z.boolean(),
+  despair: z.boolean(),
+  chance: z.number().min(0).max(1),
+});
 
 const ledgerEntrySchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('state'), at: z.number(), defId: id, owner: id, from: z.number(), to: z.number(), source }),
@@ -35,6 +55,7 @@ const turnSchema = z.object({
   reply: z.string().max(40_000).nullable(),
   before: z.object(worldState),
   ledgerStart: z.number().int().nonnegative(),
+  check: checkSchema.optional(),
   // Saves from before 0.8 have no window; they start at the beginning.
   windowStart: z.number().int().nonnegative().default(0),
 });

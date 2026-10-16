@@ -1,5 +1,5 @@
 // You: condition, the journal, approaches, momentum, standing and what you carry.
-import { activeEntries, band, discardPending, keepPending, playerOf, read, thingsHeldBy, type StateDef } from '../engine';
+import { activeEntries, band, chargesOf, discardPending, keepPending, playerOf, read, thingsHeldBy, type StateDef } from '../engine';
 import type { PlayApi } from './Play';
 import { ChevronRight, PenIcon } from './icons';
 import { DraftTag, Pips, StateBar, bandForYou, characterStates, initials, newId } from './shared';
@@ -19,6 +19,7 @@ export function YouSection({ api }: { api: PlayApi }) {
   const condition = defs.filter((def) => !known.has(def.id));
   const value = (def: StateDef) => read(save.values, def, playerId);
   const carried = thingsHeldBy(world, save, playerId);
+  const charges = chargesOf(world, save, playerId);
 
   return (
     <>
@@ -67,7 +68,11 @@ export function YouSection({ api }: { api: PlayApi }) {
                 <summary className="row" style={{ minHeight: 60 }}>
                   <span className="appr-name" style={{ color: `var(--${def.id}, var(--text))` }}>{def.name}</span>
                   <Pips def={def} value={value(def)} />
-                  <span style={{ marginLeft: 'auto' }} />
+                  <span style={{ marginLeft: 'auto', display: 'flex', gap: 5 }}>
+                    {(charges.find((entry) => entry.approach === def.id)?.slots ?? []).map((slot) => (
+                      <span key={slot.value} className={`charge${slot.spent ? ' spent' : ''}`} aria-label={`+${slot.value} charge${slot.spent ? ', spent' : ''}`}>+{slot.value}</span>
+                    ))}
+                  </span>
                   <ChevronRight />
                 </summary>
                 <div className="row-body">
@@ -76,7 +81,7 @@ export function YouSection({ api }: { api: PlayApi }) {
               </details>
             ))}
             <p className="meta" style={{ padding: '12px 14px 14px', lineHeight: 1.5, color: 'var(--text-2)' }}>
-              Force pays in Health and noise, Finesse in Alert, Focus in time, Flair in Strain. Charges and rolls arrive with the dice.
+              Force pays in Health and noise, Finesse in Alert, Focus in time, Flair in Strain. A spent charge comes back when every charge on that approach is used, or after a full rest.
             </p>
           </div>
         </>

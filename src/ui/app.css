@@ -417,7 +417,46 @@ button.lr:hover:not(:disabled), a.lr:hover { background: var(--hover); }
 .ledger li:first-child { border-top: 0; }
 .ledger li .what { flex: 1; min-width: 0; }
 
-.die { position: relative; width: 32px; height: 32px; flex: none; display: inline-block; }
+.die { position: relative; width: 34px; height: 34px; flex: none; display: inline-flex; align-items: center; justify-content: center; font: 600 12px/1 var(--mono); }
+.die.ability { color: #06140a; } .die.proficiency { color: #1a1405; } .die.difficulty { color: #f7f3ff; } .die.challenge { color: #fff3f1; } .die.boost { color: #06131c; } .die.setback { color: #f2f2f2; }
+.dice-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dice-row .vs { margin: 0 6px; font-size: 12px; color: var(--text-3); }
+
+.check-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 11px; }
+.check-head { display: flex; align-items: center; gap: 10px; }
+.check-target { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.appr-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 6px; border-radius: 6px; background: var(--surface-2); font: 700 12px var(--ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-2); }
+.appr-tag.force { background: #2a1d18; color: var(--force); }
+.appr-tag.finesse { background: #15282a; color: var(--finesse); }
+.appr-tag.focus { background: #211d33; color: var(--focus); }
+.appr-tag.flair { background: #2a2418; color: var(--flair); }
+.verdict-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.verdict-row strong { font-size: 17px; }
+
+.appr-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.appr { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 70px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); color: var(--text); text-align: left; }
+.appr .top { display: flex; align-items: baseline; justify-content: space-between; width: 100%; }
+.appr .an { font: 700 15px var(--ui); }
+.appr .ar { font: 500 15px var(--mono); }
+.appr .ac { font: 600 13px var(--ui); }
+.appr .ax { font: 13px var(--ui); color: var(--text-3); }
+.appr.force .an { color: var(--force); } .appr.finesse .an { color: var(--finesse); } .appr.focus .an { color: var(--focus); } .appr.flair .an { color: var(--flair); }
+.appr.on { border-color: var(--text-2); background: var(--surface-2); }
+.appr.force.on { border-color: var(--force); background: #241a16; }
+.appr.finesse.on { border-color: var(--finesse); background: #142224; }
+.appr.focus.on { border-color: var(--focus); background: #1d1a2c; }
+.appr.flair.on { border-color: var(--flair); background: #241f15; }
+.cchip { min-width: 56px; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); color: var(--text-2); font: 500 14px var(--mono); }
+.cchip.on { background: var(--text); border-color: var(--text); color: #12151b; }
+.cchip.spent:not(.on) { border-style: dashed; color: #8a909c; }
+.charge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 6px; border: 1px solid var(--line-2); font: 500 12px/1.3 var(--mono); color: var(--text-2); }
+.charge.spent { color: #666d7a; text-decoration: line-through; border-style: dashed; }
+.stat { padding: 8px 10px; border-radius: 10px; background: var(--ground); border: 1px solid var(--line); }
+.stat b { display: block; font: 600 16px var(--mono); color: var(--text); }
+.stat span { font-size: 12px; color: var(--text-3); }
+.lr.target .radio { flex: none; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line-2); }
+.lr.target.on .radio { border-color: var(--text); box-shadow: inset 0 0 0 4px var(--ground), inset 0 0 0 10px var(--text); }
+.lr.target.on { background: var(--surface-2); }
 .die.ability { background: #4faf6a; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
 .die.proficiency { background: #e2c044; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
 .die.difficulty { background: #7b5cc6; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }

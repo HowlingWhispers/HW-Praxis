@@ -8,6 +8,28 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.9.0 - Dice - 2026-10-15
+
+- Checks on the Four Approaches and Genesys dice. Choose what you are trying, against
+  whom or what, the approach and a charge; see the dice and the exact odds, and what
+  success and failure would do; then roll, or succeed without rolling.
+- The rules settle every check. Success wears the target down by the net successes.
+  Failure, and two or more threat, cost what the module's approach table says: Force in
+  Health and noise, Finesse in Alert, Focus in time, Flair in Strain. A secondary approach
+  adds a setback die and pays the owner's cost. An approach with no claim cannot move it.
+- Charges spend and come back when all on an approach are used or after a full rest;
+  pushing reuses a spent one for 2 Strain. Edge, Story Points on both sides, and the
+  hidden momentum count work as the proposal says. Wounds and watchful scenes add
+  setback dice.
+- Waiting eight hours or more is a full rest: Health +1, Strain restored, charges fresh.
+- Each check leaves a receipt in the story: the dice as rolled, the verdict and the
+  chance it had. Settling without a roll is recorded as the player's choice, and
+  Settings can make that the default.
+- The narrator gets one outcome line per check, with the target's new band.
+- *Abernys: Port Covenant* 0.3.0: the approach table, the traveller's charges (Flair
+  trained), setbacks and the rest rule, all draft.
+- Saves from 0.8 open with nothing spent.
+
 ## 0.8.0 - Play Screen - 2026-10-15
 
 - A new interface. The story and the composer fill the screen. The menu is one scroll
