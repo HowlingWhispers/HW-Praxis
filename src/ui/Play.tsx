@@ -1,6 +1,7 @@
-// Playing a save. The story and the composer on one side; the menu, and the screens it
-// opens, over the story on a phone and beside it on a wide screen. Every change goes through
-// the engine: this file decides what to show and when to ask NovelAI.
+// Playing a save. One scroll, top to bottom: the story, the prompt at its end, and the menu
+// below the prompt. A check opens in the prompt's place; the journal, the rules guide and
+// the record form open in the menu's. Every change goes through the engine: this file
+// decides what to show and when to ask NovelAI.
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import {
   act, cleanReply, cleanSuggestion, compressRequest, compressionDue, contextPlan, durationWords, entryRequest, inSentence,
@@ -10,18 +11,20 @@ import {
 } from '../engine';
 import type { Connection } from './Connect';
 import { RichText } from './RichText';
-import { Menu, type Section } from './Menu';
+import { Menu, sectionAnchor, type Section } from './Menu';
 import { JournalPanel } from './JournalPanel';
 import { GuidePanel } from './GuidePanel';
 import { RecordPanel, type RecordTarget } from './RecordPanel';
 import { CheckPanel } from './CheckPanel';
 import { CheckCard } from './CheckCard';
-import { DiamondIcon, MenuIcon, PlusIcon, RerollIcon, SendIcon, StopIcon, UndoIcon } from './icons';
+import { DiamondIcon, RerollIcon, SendIcon, StopIcon, UndoIcon } from './icons';
 import { SourceTag, describeEntry, newId } from './shared';
 import { NarrationError, narrate, promptTokensOf, type Diagnostics } from './novelai';
 import type { Prefs } from './prefs';
 
-export type View = 'story' | 'menu' | 'journal' | 'guide' | 'record' | 'check';
+// Where the player can be taken: the prompt, or the menu space and what it is showing.
+export type View = 'story' | 'menu' | 'journal' | 'guide' | 'record';
+type Page = 'menu' | 'journal' | 'guide' | 'record';
 
 export interface Call {
   at: string;
@@ -84,19 +87,19 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
   const [journalBusy, setJournalBusy] = useState(false);
   const [lastPlan, setLastPlan] = useState<ContextPlan | null>(null);
   const [calls, setCalls] = useState<Call[]>([]);
-  const [view, setView] = useState<View>('story');
-  const [section, setSection] = useState<Section>('scene');
+  const [page, setPage] = useState<Page>('menu');
+  const [section, setSection] = useState<Section>('none');
   const [worldQuery, setWorldQuery] = useState('');
   const [recordTarget, setRecordTarget] = useState<RecordTarget>({ mode: 'new' });
-  const [checkOwner, setCheckOwner] = useState<string | undefined>(undefined);
-  const [checkFrom, setCheckFrom] = useState<View>('story');
+  // The check form, which takes the prompt's place while it is open.
+  const [check, setCheck] = useState<{ owner?: string; fromMenu: boolean } | null>(null);
   const pending = useRef<AbortController | null>(null);
   const suggesting = useRef(false);
   // The turn count when a suggestion last failed, so a failure is not retried every render.
   const failedAt = useRef(-1);
-  const logEnd = useRef<HTMLDivElement | null>(null);
   const composer = useRef<HTMLTextAreaElement | null>(null);
-  const panelHead = useRef<HTMLDivElement>(null);
+  const pageHead = useRef<HTMLDivElement>(null);
+  const checkHead = useRef<HTMLDivElement>(null);
 
   const world = playable(module, save.local);
   const playerId = playerOf(world);
@@ -104,9 +107,22 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
   const latest = lastTurn(save);
 
   useEffect(() => { onChange(save); }, [save, onChange]);
-  useEffect(() => { logEnd.current?.scrollIntoView({ block: 'end' }); }, [save.turns.length, latest?.reply, busy]);
   useEffect(() => () => pending.current?.abort(), []);
-  useEffect(() => { if (view !== 'story') panelHead.current?.focus(); }, [view]);
+  // A new turn, an undo, or opening the save: show the end of the story with the prompt.
+  useEffect(() => { showLatest(); }, [save.turns.length]);
+  // A reply landing or the narrator starting: the same, unless the player has gone down
+  // into the menu to read something while they wait.
+  useEffect(() => { if (!readingMenu()) showLatest(); }, [latest?.reply, busy]);
+  useEffect(() => {
+    if (page === 'menu') return;
+    pageHead.current?.focus({ preventScroll: true });
+    bringToTop('menu-space');
+  }, [page]);
+  useEffect(() => {
+    if (!check) return;
+    checkHead.current?.focus({ preventScroll: true });
+    bringToTop('prompt');
+  }, [check]);
 
   const logCall = useCallback((call: Call) => setCalls((list) => [call, ...list].slice(0, 10)), []);
 
@@ -200,10 +216,22 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
     const result = act(module, save, newId('t'), action);
     if (!result.ok) { setNotice(result.reason); return; }
     setSave(result.save);
-    setView('story');
+    setCheck(null);
     const terminal = result.terminals[0];
     setNotice(terminal ? terminal.note : '');
     void runNarration(result.save);
+  }
+
+  // Back from a screen in the menu space to the menu, with the open section in view.
+  function backToMenu() {
+    setPage('menu');
+    if (section !== 'none') bringToTop(sectionAnchor(section));
+  }
+
+  function closeCheck() {
+    const fromMenu = check?.fromMenu;
+    setCheck(null);
+    if (fromMenu && section !== 'none') bringToTop(sectionAnchor(section));
   }
 
   function undo() {
@@ -250,19 +278,27 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
       const result = placeCharacter(module, save, playerId, placeId);
       if (!result.ok) { setNotice(result.reason); return; }
       setSave(result.save);
-      setView('story');
+      showLatest();
       const place = world.world.places.find((entry) => entry.id === placeId);
       setNotice(`You are at ${inSentence(place?.name ?? placeId)}, by your own hand. The narrator will see it on your next turn.`);
     },
     talkTo: (person) => {
       setDraft((current) => current || `I turn to ${inSentence(person)}. `);
-      setView('story');
-      setTimeout(() => composer.current?.focus(), 0);
+      setCheck(null);
+      setTimeout(() => { composer.current?.focus({ preventScroll: true }); showLatest(); }, 0);
     },
-    lookUp: (query) => { setWorldQuery(query); setSection('world'); setView('menu'); },
-    open: (next, nextSection) => { if (nextSection) setSection(nextSection); setView(next); },
-    editRecord: (target) => { setRecordTarget(target); setView('record'); },
-    openCheck: (owner) => { setCheckOwner(owner); setCheckFrom(view); setView('check'); },
+    lookUp: (query) => { setWorldQuery(query); setSection('world'); setPage('menu'); bringToTop(sectionAnchor('world')); },
+    open: (next, nextSection) => {
+      if (next === 'story') { setCheck(null); showLatest(); return; }
+      if (nextSection) setSection(nextSection);
+      setPage(next);
+      if (next === 'menu') bringToTop(nextSection ? sectionAnchor(nextSection) : 'menu-space');
+    },
+    editRecord: (target) => { setRecordTarget(target); setPage('record'); },
+    openCheck: (owner) => {
+      const menu = document.getElementById('menu-space');
+      setCheck({ owner, fromMenu: Boolean(menu && menu.getBoundingClientRect().top < window.innerHeight / 2) });
+    },
     draft,
     clearDraft: () => setDraft(''),
     suggestEntry: () => {
@@ -284,51 +320,42 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
   // Quick ways out for the chips: open, and under an hour.
   const openExits = scene.exits.filter((exit) => !exit.blocked && exit.edge.minutes <= 60).slice(0, 2);
   const pendingSuggestion = save.journal.pending;
-  const panelOpen = view !== 'story';
   const canCheck = world.ruleset.approaches.length > 0 && targetsHere(world, save).length > 0;
 
   return (
     <div className="play">
-      <section className="story" aria-label="Story">
-        <header className="topbar">
-          <button type="button" className="place-button" onClick={() => api.open('menu', 'scene')} aria-label={`${scene.place.name}, ${scene.timeBand}. Open the scene.`}>
-            <span className="place-path">{placePathOf(world, scene.place.parentLocationId)}</span>
-            <span className="place-name">{scene.place.name}</span>
-            <span className="place-time">
-              <span className="mono">{timeOfDay(save.clock)}</span>
-              <span>{scene.timeBand}</span>
-              <span aria-hidden="true" style={{ color: 'var(--line-2)' }}>|</span>
-              <span>{scene.present.length ? `${scene.present.length} here` : 'nobody else here'}</span>
-            </span>
-          </button>
-          <button type="button" className="iconbtn only-narrow" aria-label="Open the menu" onClick={() => api.open('menu')}><MenuIcon /></button>
-        </header>
-
-        <div className="log" aria-live="polite">
-          <div className="log-inner">
-            {module.scenario.opening && <article aria-label="Narrator"><RichText text={module.scenario.opening} /></article>}
-            {save.turns.map((turn, index) => (
-              <TurnView
-                key={turn.id}
-                world={world}
-                save={save}
-                turn={turn}
-                next={save.turns[index + 1]}
-                latest={turn === latest}
-                busy={busy}
-                connected={connection.connected}
-                onReroll={() => void runNarration(save)}
-                onUndo={undo}
-                onStop={stop}
-                model={calls.find((call) => call.purpose === 'narration' && call.ok)}
-              />
-            ))}
-            <div ref={logEnd} />
+      <section className="log" aria-label="Story" aria-live="polite">
+        {module.scenario.opening && <article aria-label="Narrator"><RichText text={module.scenario.opening} /></article>}
+        {save.turns.map((turn, index) => (
+          <div key={turn.id} className="turn" id={turn === latest ? 'latest-turn' : undefined}>
+            <TurnView
+              world={world}
+              save={save}
+              turn={turn}
+              next={save.turns[index + 1]}
+              latest={turn === latest}
+              busy={busy}
+              connected={connection.connected}
+              onReroll={() => void runNarration(save)}
+              onUndo={undo}
+              onStop={stop}
+              model={calls.find((call) => call.purpose === 'narration' && call.ok)}
+            />
           </div>
-        </div>
+        ))}
+      </section>
 
-        <footer className="composer">
-          <div className="composer-inner">
+      <section
+        id="prompt"
+        className={`prompt${check ? ' checking' : ''}`}
+        aria-label="Your turn"
+        onKeyDown={(event: KeyboardEvent<HTMLElement>) => { if (event.key === 'Escape' && check) closeCheck(); }}
+      >
+        {notice && <p className="notice" role="status">{notice}</p>}
+        {check ? (
+          <CheckPanel key={check.owner ?? 'any'} api={api} owner={check.owner} headRef={checkHead} onCancel={closeCheck} />
+        ) : (
+          <>
             {pendingSuggestion && (
               <button type="button" className="ready-bar" onClick={() => api.open('journal')}>
                 <span aria-hidden="true" className="dot" style={{ width: 8, height: 8, background: 'var(--you)' }} />
@@ -336,7 +363,6 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
                 <b>Review</b>
               </button>
             )}
-            {notice && <p className="notice" role="status">{notice}</p>}
             <div className="chips" aria-label="Things you can do here">
               {actions.map((action) => (
                 <button key={action.id} type="button" className="chip" disabled={busy} onClick={() => perform({ type: 'scene', actionId: action.id })}>{action.name}</button>
@@ -354,7 +380,6 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
               ))}
             </div>
             <div className="compose-row">
-              <button type="button" className="iconbtn" aria-label="More you can do here" onClick={() => api.open('menu', 'scene')}><PlusIcon /></button>
               <label htmlFor="turn-input" className="sr">Your turn</label>
               <textarea
                 id="turn-input"
@@ -369,36 +394,49 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
               />
               <button type="button" className="send" aria-label="Send" onClick={send} disabled={busy || !draft.trim()}><SendIcon /></button>
             </div>
-          </div>
-        </footer>
+          </>
+        )}
       </section>
 
-      <aside
-        className="panel"
-        data-open={panelOpen ? 'true' : 'false'}
+      <section
+        id="menu-space"
+        className={`menu-space${page === 'menu' ? '' : ' paged'}`}
         aria-label="Menu"
-        onKeyDown={(event: KeyboardEvent<HTMLElement>) => { if (event.key === 'Escape' && panelOpen) setView('story'); }}
+        onKeyDown={(event: KeyboardEvent<HTMLElement>) => { if (event.key === 'Escape' && page !== 'menu') backToMenu(); }}
       >
-        {view === 'journal' ? <JournalPanel api={api} headRef={panelHead} onBack={() => setView('menu')} />
-          : view === 'guide' ? <GuidePanel headRef={panelHead} onBack={() => setView('menu')} />
-          : view === 'check' ? <CheckPanel key={checkOwner ?? 'any'} api={api} owner={checkOwner} headRef={panelHead} onCancel={() => setView(checkFrom === 'check' ? 'story' : checkFrom)} />
-          : view === 'record' ? <RecordPanel key={JSON.stringify(recordTarget)} api={api} target={recordTarget} headRef={panelHead} onDone={() => setView('menu')} />
-          : <Menu api={api} section={section} setSection={setSection} worldQuery={worldQuery} setWorldQuery={setWorldQuery} headRef={panelHead} onClose={() => setView('story')} />}
-      </aside>
+        {page === 'journal' ? <JournalPanel api={api} headRef={pageHead} onBack={backToMenu} />
+          : page === 'guide' ? <GuidePanel headRef={pageHead} onBack={backToMenu} />
+          : page === 'record' ? <RecordPanel key={JSON.stringify(recordTarget)} api={api} target={recordTarget} headRef={pageHead} onDone={backToMenu} />
+          : <Menu api={api} section={section} setSection={setSection} worldQuery={worldQuery} setWorldQuery={setWorldQuery} />}
+      </section>
     </div>
   );
 }
 
-function placePathOf(world: PraxisModule, parentId: string | null): string {
-  const names: string[] = [];
-  let at = parentId;
-  while (at !== null && names.length < 3) {
-    const place = world.world.places.find((entry) => entry.id === at);
-    if (!place) break;
-    names.push(place.name);
-    at = place.parentLocationId;
-  }
-  return names.join(' · ');
+// Scrolls so the element with this id starts at the top of the screen, once it has rendered.
+function bringToTop(id: string) {
+  setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'start' }), 0);
+}
+
+// Whether the player has scrolled down into the menu: its top is in the upper half.
+function readingMenu(): boolean {
+  const menu = document.getElementById('menu-space');
+  return Boolean(menu && menu.getBoundingClientRect().top < window.innerHeight / 2);
+}
+
+// Shows the end of the story: the prompt at the foot of the screen, unless the latest turn
+// is taller than the screen, in which case the turn's start, so it reads from the top.
+function showLatest() {
+  setTimeout(() => {
+    const prompt = document.getElementById('prompt');
+    if (!prompt) return;
+    const y = window.scrollY;
+    const view = window.innerHeight;
+    let top = y + prompt.getBoundingClientRect().bottom - view + 12;
+    const turn = document.getElementById('latest-turn');
+    if (turn) top = Math.min(top, y + turn.getBoundingClientRect().top - 16);
+    window.scrollTo({ top: Math.max(0, top) });
+  }, 0);
 }
 
 function TurnView({ world, save, turn, next, latest, busy, connected, onReroll, onUndo, onStop, model }: {

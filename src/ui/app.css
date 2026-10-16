@@ -248,30 +248,14 @@ button.lr:hover:not(:disabled), a.lr:hover { background: var(--hover); }
 
 /* ---------- Play ---------- */
 
-.play { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100dvh; }
-
-.story { display: flex; flex-direction: column; height: 100dvh; min-width: 0; }
-
-.topbar {
-  flex: none; display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px 10px 16px;
-  background: var(--bar); border-bottom: 1px solid var(--line);
+/* One scroll: the story, the prompt at its end, and the menu under the prompt. */
+.play {
+  width: 100%; max-width: 720px; min-height: 100dvh; margin: 0 auto;
+  padding-bottom: calc(48px + env(safe-area-inset-bottom));
 }
-.place-button {
-  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;
-  padding: 2px 0; border: 0; background: none; color: var(--text); text-align: left;
-}
-.place-path { font: 600 12px/1.2 var(--ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.place-name { font: 600 20px/1.2 var(--read); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.place-time { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
-.place-time .mono { font-size: 12px; color: var(--text); }
 
-.log {
-  flex: 1; min-height: 0; overflow-y: auto;
-  display: flex; flex-direction: column; gap: 18px;
-  padding: 18px 18px 12px;
-}
-.log-inner { width: 100%; max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.log { display: flex; flex-direction: column; gap: 18px; padding: 22px 18px 4px; }
+.turn { display: flex; flex-direction: column; gap: 18px; }
 
 .rp { font: var(--story-size)/1.62 var(--story-face); color: #cec8bb; }
 .rp p { margin: 0 0 10px; }
@@ -309,12 +293,13 @@ button.lr:hover:not(:disabled), a.lr:hover { background: var(--hover); }
 .turn-tools .ghost:hover:not(:disabled) { background: var(--surface); color: var(--text); }
 .turn-tools .meta { margin-left: auto; font: 12px var(--mono); }
 
-.composer {
-  flex: none; display: flex; flex-direction: column; gap: 10px;
-  padding: 10px 12px calc(14px + env(safe-area-inset-bottom));
-  background: var(--bar); border-top: 1px solid var(--line);
+.prompt {
+  display: flex; flex-direction: column; gap: 10px; margin-top: 14px;
+  padding: 12px 12px 14px;
+  background: var(--bar); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
 }
-.composer-inner { width: 100%; max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.prompt.checking { padding: 0; gap: 0; }
+.prompt.checking > .notice { margin: 12px 12px 0; }
 .compose-row { display: flex; align-items: flex-end; gap: 8px; }
 .compose-row textarea {
   flex: 1; min-width: 0; min-height: 52px; max-height: 40vh; resize: none;
@@ -333,10 +318,10 @@ button.lr:hover:not(:disabled), a.lr:hover { background: var(--hover); }
 }
 .ready-bar b { color: var(--you); font-weight: 600; }
 
-/* The panel: the menu and the screens it opens. Over the story on a phone, beside it on a
-   wide screen. */
-.panel { display: none; background: var(--ground); }
-.panel[data-open='true'] { display: block; position: fixed; inset: 0; z-index: 20; overflow-y: auto; }
+/* The menu space under the prompt: the menu, or a screen it opened. */
+.menu-space { margin-top: 8px; }
+/* A screen opened here can always scroll up to the top of the screen. */
+.menu-space.paged { min-height: 100dvh; border-top: 1px solid var(--line); }
 .panel-head {
   position: sticky; top: 0; z-index: 2;
   display: flex; align-items: center; gap: 8px; min-height: 60px; padding: 6px 12px;
@@ -347,7 +332,7 @@ button.lr:hover:not(:disabled), a.lr:hover { background: var(--hover); }
 .panel-head .spacer { width: 74px; flex: none; }
 .panel-body { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
 
-.acc { border-bottom: 1px solid var(--line); scroll-margin-top: 61px; }
+.acc { border-bottom: 1px solid var(--line); }
 .acchead {
   width: 100%; display: flex; align-items: center; gap: 12px;
   min-height: 76px; padding: 14px 18px;
@@ -482,17 +467,9 @@ button.lr:hover:not(:disabled), a.lr:hover { background: var(--hover); }
 
 .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 
-/* Wide screens: the story in the middle, the panel always open beside it. */
-@media (min-width: 1100px) {
-  .play { grid-template-columns: minmax(0, 1fr) 420px; }
-  .topbar { justify-content: center; }
-  .place-button { max-width: 680px; }
-  .panel, .panel[data-open='true'] {
-    display: block; position: sticky; top: 0; inset: auto; z-index: auto;
-    height: 100dvh; overflow-y: auto; border-left: 1px solid var(--line);
-  }
-  .only-narrow { display: none !important; }
-}
-@media (max-width: 1099.98px) {
-  .only-wide { display: none !important; }
+/* Wider than a phone: the prompt reads as a card in the column. */
+@media (min-width: 760px) {
+  .prompt { margin: 14px 12px 0; border: 1px solid var(--line); border-radius: 18px; }
+  .prompt.checking { overflow: clip; }
+  .menu-space { margin-top: 18px; border-top: 1px solid var(--line); }
 }
