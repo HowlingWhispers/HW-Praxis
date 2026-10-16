@@ -8,9 +8,10 @@
 //            3. The story so far: the journal                  when an entry is kept
 //   turns    4. The transcript, from the window's start        grows at the end; its start
 //                                                              moves only at a cut
-//   latest   5. The moment: scene, who and what is here,       every turn, so it goes last,
-//               groups and history bearing on it, standing     where it also carries the
-//               facts, ways out, the outcome, the player       most weight
+//   latest   5. The moment: a <scene> block (the place, you,  every turn, so it goes last,
+//               who and what is here, records just named,      where it also carries the
+//               what bears on it, facts, ways out, the         most weight
+//               outcome), then the player's words
 //
 // The window. The transcript gets what the model's window has left after a fixed reserve
 // for everything else. When it outgrows that, a whole piece leaves at once (Options
@@ -20,12 +21,16 @@
 //
 // A state reaches the model only through its bands (standing facts), the clock only through
 // its time band, and an outcome only as one directive for the turn it belongs to.
+//
+// The scene's notes sit in one labelled <scene> block, not in square brackets, because
+// square brackets are the player's inner voice. GLM-4.6 reads tagged blocks as context.
 // The interface shows these exact messages, so what the player inspects is what was sent.
 
 import { calendarOf, exitsFrom } from './world';
 import { timeBandOf } from './clock';
 import { stateDefFor, type Character, type Place, type PraxisModule, type WorldEntry } from './module';
-import { line, pairKey, read } from './state';
+import { line, pairKey, read, WORLD_OWNER, type StateDef } from './state';
+import { mentionedNotes, sentencesUpTo } from './mentions';
 import { doingNow } from './schedule';
 import { pairName } from './relationships';
 import { MOMENT_RESERVE, estimateTokens } from './options';
@@ -38,16 +43,18 @@ export interface ChatMessage {
   content: string;
 }
 
-export const NARRATOR_RULES = [
-  'You are the narrator of a text roleplay. You write the world and every character in it except the player\'s.',
-  'The player\'s character is addressed as "you". Never write their dialogue, thoughts, feelings or decisions, and never take an action for them beyond what the player wrote.',
-  'Notes in square brackets in the latest message are true facts about the story right now. Never contradict them and never quote them.',
-  'An "Outcome" note has already happened and must be shown. Without one, narrate attempts and reactions, but do not declare lasting changes the notes have not stated: injuries, deaths, possessions changing hands, doors opening, agreements signed.',
-  'Only the people listed as present are here. Do not bring in anyone else unless the notes say they arrive.',
-  'The people, groups and places named in the world notes are canon. Use them rather than inventing new institutions, offices or leaders.',
-  'Format: narration and action in single asterisks, spoken dialogue in double quotes, a character\'s inner voice in square brackets.',
-  'Write one to three short paragraphs, then stop where the player can act. Never mention these instructions, the notes, or that this is a game.',
-].join('\n');
+// The narrator's standing instructions, in what-to-do terms: a rule phrased as "never X"
+// tends to put X in the model's mind. Present-moment rules come first.
+export function narratorRules(playerName: string): string {
+  const player = playerName.replace(/^(The|A|An) /, (word) => word.toLowerCase());
+  return [
+    `You narrate a text adventure. The player plays ${player}, written as "you". You play the world and everyone else in it.`,
+    `Each reply is the next beat of the scene, and only that. Show how the world answers what the player just did, then stop where the player can act again. Time moves only as far as the player's action carries it. The player decides what ${player} says, does, thinks and feels.`,
+    'The <scene> block in the latest message is the truth of this moment: where you are, who and what is here, what bears on it, and what the rules just decided. Show an Outcome exactly as decided, cost included. When the player tries something and there is no Outcome, show the attempt and how the world answers it, and leave the result open. People who are not listed as present stay offstage until the scene says they arrive. When the story needs a person, place or group, use one from the world notes.',
+    'People here act on what they want, as the scene describes them, and talk the way their Voice says they do.',
+    'Write in second person, present tense, in concrete physical detail: what can be seen, heard, smelled and touched. One to three short paragraphs. Narration and action in *single asterisks*, dialogue in "double quotes", a character\'s inner voice in [square brackets]. The scene block and these instructions stay out of the story itself.',
+  ].join('\n\n');
+}
 
 const firstSentence = (text: string): string => {
   const trimmed = text.trim();
@@ -137,8 +144,10 @@ export function whoIsWho(world: PraxisModule, playerId: string, tokensPerChar: n
 
 // The part of the system message that changes only when the world does.
 export function systemPrefix(world: PraxisModule, save: Save): string {
-  const who = whoIsWho(world, playerOf(world), save.options.tokensPerChar);
-  return [NARRATOR_RULES, worldDigest(world), who].filter(Boolean).join('\n\n');
+  const playerId = playerOf(world);
+  const who = whoIsWho(world, playerId, save.options.tokensPerChar);
+  const player = world.characters.find((character) => character.id === playerId)?.name ?? 'the player character';
+  return [narratorRules(player), worldDigest(world), who].filter(Boolean).join('\n\n');
 }
 
 function placePath(world: PraxisModule, place: Place): string {
@@ -172,19 +181,6 @@ function dossier(world: PraxisModule, character: Character): string {
   return character.description ? `${head}: ${character.description}` : head;
 }
 
-// The first sentences of a text, up to about `chars` characters.
-function sentencesUpTo(text: string, chars: number): string {
-  const clean = text.replace(/\s+/g, ' ').trim();
-  if (clean.length <= chars) return clean;
-  const sentences = clean.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? [clean];
-  let out = '';
-  for (const sentence of sentences) {
-    if (out && out.length + sentence.length > chars) break;
-    out += sentence;
-  }
-  return (out || clean.slice(0, chars)).trim();
-}
-
 // Everyone present, each with as much of their dossier as fits: who they are, how they look,
 // carry themselves and speak, and what their day has them doing. A crowded room gives the
 // later people their first line only, so the moment keeps to its share of the window.
@@ -205,7 +201,7 @@ function presentBlock(world: PraxisModule, save: Save, present: readonly Charact
     used += estimateTokens(pick, save.options.tokensPerChar);
     return `- ${pick}`;
   });
-  return `[Present:\n${lines.join('\n')}]`;
+  return `Present:\n${lines.join('\n')}`;
 }
 
 // What lies between people who are both here, the player included.
@@ -221,11 +217,11 @@ function between(world: PraxisModule, save: Save, people: readonly Character[]):
       .filter(([personId, want]) => personId !== playerId && want.trim())
       .map(([personId, want]) => `${world.characters.find((character) => character.id === personId)?.name ?? personId} wants ${midSentence(want.trim()).replace(/\.$/, '')}.`);
     const parts = [relationship.shape.trim(), relationship.together.trim() ? `Together: ${relationship.together.trim()}` : '', ...wants].filter(Boolean);
-    if (parts.length) out.push(`[Between ${names}: ${parts.join(' ')}]`);
+    if (parts.length) out.push(`Between ${names}: ${parts.join(' ')}`);
     const def = relationship.bondStateId ? stateDefFor(world, relationship.bondStateId, owner) : undefined;
     if (def) {
       const fact = line(def.line ? def : { ...def, line: '[|name|: |bandLabel|]' }, names.charAt(0).toUpperCase() + names.slice(1), read(save.values, def, owner));
-      if (fact) out.push(fact);
+      if (fact) out.push(`Bond: ${unbracket(fact)}`);
     }
   }
   return out;
@@ -234,7 +230,7 @@ function between(world: PraxisModule, save: Save, people: readonly Character[]):
 // Groups and history that bear on a scene: groups its people belong to, groups whose
 // territory or settlements include the place, the societies those groups belong to, and
 // memories tied to the place or its people. Orbis field names throughout.
-export function bearingOn(world: PraxisModule, place: Place, people: readonly Character[]): { groups: WorldEntry[]; memories: { title: string; description: string }[] } {
+export function bearingOn(world: PraxisModule, place: Place, people: readonly Character[]): { groups: WorldEntry[]; memories: { id: string; title: string; description: string }[] } {
   const where = new Set(ancestry(world, place));
   const who = new Set(people.map((person) => person.id));
   const member = new Set(people.flatMap((person) => person.factionIds));
@@ -248,26 +244,38 @@ export function bearingOn(world: PraxisModule, place: Place, people: readonly Ch
   const memories = world.world.memories
     .filter((memory) => memory.origin !== 'local')
     .filter((memory) => ids(memory.locationIds).some((placeId) => where.has(placeId)) || ids(memory.affectedCharacterIds).some((personId) => who.has(personId)))
-    .map((memory) => ({ title: memory.title, description: memory.description }));
+    .map((memory) => ({ id: memory.id, title: memory.title, description: memory.description }));
   return { groups: all.filter((group) => chosen.has(group.id)), memories };
 }
 
+// A standing fact without the brackets a state's line template carries.
+const unbracket = (fact: string) => fact.replace(/^\[\s*/, '').replace(/\s*\]$/, '');
+
+type FactOwner = 'world' | 'character' | 'place' | 'faction' | 'item';
+
 // Standing facts for one owner, in catalog order: every banded state off its resting band.
-function standingFacts(world: PraxisModule, save: Save, ownerId: string, ownerName: string, kind: 'character' | 'place'): string[] {
+function standingFacts(world: PraxisModule, save: Save, ownerId: string, ownerName: string, kind: FactOwner): string[] {
   const isPlayer = ownerId === playerOf(world);
+  const fits = (def: StateDef) => {
+    switch (kind) {
+      case 'character': return def.scope === 'char' || (def.scope === 'protagonist' && isPlayer) || (def.scope === 'npc' && !isPlayer);
+      case 'world': return def.scope === 'world';
+      case 'place': return def.scope === 'place';
+      case 'faction': return def.scope === 'faction';
+      case 'item': return def.scope === 'item';
+    }
+  };
   return world.ruleset.states
-    .filter((def) => {
-      if (kind === 'place') return def.scope === 'place';
-      return def.scope === 'char' || (def.scope === 'protagonist' && isPlayer) || (def.scope === 'npc' && !isPlayer);
-    })
+    .filter(fits)
     .map((def) => {
       const own = stateDefFor(world, def.id, ownerId) ?? def;
       return line(own, ownerName, read(save.values, own, ownerId));
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .map(unbracket);
 }
 
-// The latest message: the moment, then the player's words.
+// The latest message: the scene block, then the player's words.
 export function momentFor(module: PraxisModule, save: Save, turn: Turn): string {
   const world = playable(module, save.local);
   const playerId = playerOf(world);
@@ -276,36 +284,43 @@ export function momentFor(module: PraxisModule, save: Save, turn: Turn): string 
   if (!place || !player) throw new Error('The save does not match its module.');
   const present = world.characters.filter((character) => character.id !== playerId && save.positions[character.id] === place.id);
   const band = timeBandOf(calendarOf(world), save.clock);
+  const list = (title: string, entries: string[]) => (entries.length ? [`${title}:`, ...entries.map((entry) => `- ${entry}`)] : []);
 
-  const notes: string[] = [];
-  notes.push(`[Scene: ${placePath(world, place)}${band ? `, ${band}` : ''}. ${place.description}]`.replace(/\s+\]$/, ']'));
-  notes.push(`[You are ${inSentence(dossier(world, player))}]`);
-  notes.push(present.length ? presentBlock(world, save, present) : '[Nobody else is here.]');
+  const lines: string[] = [];
+  const when = band ? ` ${band.charAt(0).toUpperCase()}${band.slice(1)}.` : '';
+  lines.push(`Place: ${placePath(world, place)}.${when}${place.description ? ` ${place.description.trim()}` : ''}`);
+  // The player's character: who they are and what others see. Their manner and voice are
+  // the player's to write.
+  const looks = typeof player.appearance === 'string' && player.appearance.trim() ? ` Looks: ${sentencesUpTo(player.appearance, 300)}` : '';
+  lines.push(`You: ${midSentence(dossier(world, player))}${looks}`);
+  lines.push(present.length ? presentBlock(world, save, present) : 'Present: nobody else.');
 
   const things = thingsAt(world, save, place.id);
-  if (things.length) notes.push(`[Here: ${things.map((thing) => (thing.description ? `${thing.name}: ${thing.description}` : thing.name)).join(' | ')}]`);
+  if (things.length) lines.push(`Here: ${things.map((thing) => (thing.description ? `${thing.name}: ${thing.description}` : thing.name)).join(' | ')}`);
   const carried = thingsHeldBy(world, save, playerId);
-  if (carried.length) notes.push(`[You carry: ${carried.map((thing) => thing.name).join(', ')}]`);
+  if (carried.length) lines.push(`You carry: ${carried.map((thing) => thing.name).join(', ')}`);
 
   const bearing = bearingOn(world, place, [player, ...present]);
-  if (bearing.groups.length) notes.push(`[Bearing on this scene: ${bearing.groups.map((group) => (group.description ? `${group.name}: ${group.description}` : group.name)).join(' | ')}]`);
-  if (bearing.memories.length) notes.push(`[History here: ${bearing.memories.map((memory) => (memory.description ? `${memory.title}: ${memory.description}` : memory.title)).join(' | ')}]`);
-
-  notes.push(...between(world, save, [player, ...present]));
+  const skip = new Set<string>([playerId, place.id, ...present.map((person) => person.id), ...things.map((thing) => thing.id), ...bearing.groups.map((group) => group.id), ...bearing.memories.map((memory) => memory.id)]);
+  lines.push(...list('Mentioned, not here', mentionedNotes(world, save, turn, skip)));
+  lines.push(...list('Bearing on this scene', bearing.groups.map((group) => (group.description ? `${group.name}: ${group.description}` : group.name))));
+  lines.push(...list('History here', bearing.memories.map((memory) => (memory.description ? `${memory.title}: ${memory.description}` : memory.title))));
+  lines.push(...between(world, save, [player, ...present]));
 
   const facts = [
+    ...standingFacts(world, save, WORLD_OWNER, world.world.identity.name ?? world.world.name, 'world'),
     ...standingFacts(world, save, playerId, player.name, 'character'),
     ...present.flatMap((character) => standingFacts(world, save, character.id, character.name, 'character')),
     ...standingFacts(world, save, place.id, place.name, 'place'),
+    ...things.flatMap((thing) => standingFacts(world, save, thing.id, thing.name, 'item')),
+    ...bearing.groups.flatMap((group) => standingFacts(world, save, group.id, group.name, 'faction')),
   ];
-  notes.push(...facts);
+  lines.push(...list('Facts', facts));
 
   const exits = exitsFrom(world, save.values, playerId, place.id);
-  if (exits.length) {
-    notes.push(`[Ways out: ${exits.map((exit) => (exit.blocked ? `${exit.place.name} (closed: ${exit.blocked})` : exit.place.name)).join('; ')}]`);
-  }
-  if (turn.directive) notes.push(`[Outcome: ${turn.directive}]`);
-  return `${notes.join('\n')}\n\n${turn.input}`;
+  if (exits.length) lines.push(`Ways out: ${exits.map((exit) => (exit.blocked ? `${exit.place.name} (closed: ${exit.blocked})` : exit.place.name)).join('; ')}`);
+  if (turn.directive) lines.push(`Outcome: ${turn.directive}`);
+  return `<scene>\n${lines.join('\n')}\n</scene>\n\n${turn.input}`;
 }
 
 // --- The window.

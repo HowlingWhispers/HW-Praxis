@@ -61,7 +61,7 @@ describe('local records', () => {
     const save = must(addRecord(module, startSave(module), { id: 'local-ledger', type: 'thing', name: 'The gate ledger', description: 'Every signature since the arrival.', locationId: 'pc-landward-gate' })).save;
     expect(sceneOf(module, save).things.map((thing) => thing.name)).toEqual(['The gate ledger']);
     const moment = compileContext(module, must(say(module, save, 't1', 'I look.')).save).at(-1)!.content;
-    expect(moment).toMatch(/\[Here: The gate ledger: Every signature since the arrival\.\]/);
+    expect(moment).toMatch(/\nHere: The gate ledger: Every signature since the arrival\.\n/);
   });
 
   it('are checked against the world', () => {
@@ -114,11 +114,11 @@ describe('the context', () => {
   it('brings in the groups and history that bear on the scene', () => {
     const save = must(say(module, startSave(module), 't1', 'I wait.')).save;
     const moment = compileContext(module, save).at(-1)!.content;
-    expect(moment).toMatch(/\[Bearing on this scene: The Arbiters: A monastic order/);
+    expect(moment).toMatch(/\nBearing on this scene:\n- The Arbiters: A monastic order/);
     expect(moment).toMatch(/The Pact: The humans of Port Covenant/);
     const signed = must(act(module, startSave(module), 't0', { type: 'scene', actionId: 'sign-the-covenant' })).save;
     const inside = must(act(module, signed, 't1', { type: 'travel', to: 'port-covenant' })).save;
-    expect(compileContext(module, inside).at(-1)!.content).toMatch(/\[History here: The arrival: Humans driven from the homeland/);
+    expect(compileContext(module, inside).at(-1)!.content).toMatch(/\nHistory here:\n- The arrival: Humans driven from the homeland/);
   });
 
   it('sends the journal after the canon and before the transcript', () => {
