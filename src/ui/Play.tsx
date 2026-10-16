@@ -17,14 +17,15 @@ import { GuidePanel } from './GuidePanel';
 import { RecordPanel, type RecordTarget } from './RecordPanel';
 import { CheckPanel } from './CheckPanel';
 import { CheckCard } from './CheckCard';
+import { GenerationTestPanel } from './GenerationTestPanel';
 import { DiamondIcon, RerollIcon, SendIcon, StopIcon, UndoIcon } from './icons';
 import { SourceTag, describeEntry, newId } from './shared';
 import { NarrationError, narrate, promptTokensOf, type Diagnostics } from './novelai';
 import type { Prefs } from './prefs';
 
 // Where the player can be taken: the prompt, or the menu space and what it is showing.
-export type View = 'story' | 'menu' | 'journal' | 'guide' | 'record';
-type Page = 'menu' | 'journal' | 'guide' | 'record';
+export type View = 'story' | 'menu' | 'journal' | 'guide' | 'record' | 'test';
+type Page = Exclude<View, 'story'>;
 
 export interface Call {
   at: string;
@@ -406,6 +407,7 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
       >
         {page === 'journal' ? <JournalPanel api={api} headRef={pageHead} onBack={backToMenu} />
           : page === 'guide' ? <GuidePanel headRef={pageHead} onBack={backToMenu} />
+          : page === 'test' ? <GenerationTestPanel api={api} headRef={pageHead} onBack={backToMenu} />
           : page === 'record' ? <RecordPanel key={JSON.stringify(recordTarget)} api={api} target={recordTarget} headRef={pageHead} onDone={backToMenu} />
           : <Menu api={api} section={section} setSection={setSection} worldQuery={worldQuery} setWorldQuery={setWorldQuery} />}
       </section>

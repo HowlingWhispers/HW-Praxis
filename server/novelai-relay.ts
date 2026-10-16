@@ -117,6 +117,10 @@ export async function relayChat(fetchImpl: Fetch, rawToken: string | undefined, 
     ? { ...settings, messages, stream: false }
     : { ...settings, prompt: glmPrompt(messages), stop: GLM_STOPS, stream: false };
 
+  // How long NovelAI took, measured here so the browser's own distance to this server does
+  // not count. The generation test compares these.
+  const started = performance.now();
+  const upstreamMs = () => Math.round(performance.now() - started);
   let response: Response;
   try {
     response = await fetchImpl(`${NOVELAI_TEXT_BASE}${endpoint}`, {
@@ -126,12 +130,12 @@ export async function relayChat(fetchImpl: Fetch, rawToken: string | undefined, 
       signal: AbortSignal.timeout(120_000),
     });
   } catch {
-    return { status: 502, body: { error: 'Could not reach NovelAI.', diagnostics: { endpoint, mode } } };
+    return { status: 502, body: { error: 'Could not reach NovelAI.', diagnostics: { endpoint, mode, upstreamMs: upstreamMs() } } };
   }
   if (!response.ok) {
     const failed = await upstreamError(response);
     const body = failed.body as { error: string; diagnostics?: Record<string, unknown> };
-    return { status: failed.status, body: { ...body, diagnostics: { ...body.diagnostics, endpoint, mode } } };
+    return { status: failed.status, body: { ...body, diagnostics: { ...body.diagnostics, endpoint, mode, upstreamMs: upstreamMs() } } };
   }
 
   const body = await response.json().catch(() => null) as {
@@ -145,6 +149,7 @@ export async function relayChat(fetchImpl: Fetch, rawToken: string | undefined, 
       finish_reason?: unknown;
     }[];
   } | null;
+  const elapsed = upstreamMs();
   const choice = body?.choices?.[0];
   const firstText = (...values: unknown[]) => (values.find((value) => typeof value === 'string' && value.trim()) as string | undefined) ?? '';
   const content = firstText(choice?.message?.content, choice?.text, choice?.parsedContent, choice?.parsed_content);
@@ -165,6 +170,7 @@ export async function relayChat(fetchImpl: Fetch, rawToken: string | undefined, 
     textType: choice && 'text' in choice ? (choice.text === null ? 'null' : typeof choice.text) : 'absent',
     rawChoice: describeChoice(choice),
     maxTokens: settings.max_tokens,
+    upstreamMs: elapsed,
     usage: body?.usage && typeof body.usage === 'object' ? body.usage : null,
   };
   if (!content) {

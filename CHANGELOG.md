@@ -18,6 +18,10 @@ short human-readable name after the version.
   open where the menu was, and going back returns to the section you came from.
 - Opening a save, sending a turn or a reply landing shows the end of the story with the
   prompt at the foot of the screen. A reply taller than the screen shows from its start.
+- The generation test, in Settings › Testing. It measures by time whether NovelAI reuses
+  a long prompt it has just read, word for word or with a new ending, and whether a call
+  on a second model costs the first its reuse. It reports in words and copies the numbers
+  for pasting back. The relay now reports how long NovelAI took to answer.
 
 ## 0.9.0 - Dice - 2026-10-15
 
