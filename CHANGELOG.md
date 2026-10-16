@@ -8,6 +8,25 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.11.0 - The Narrator's Notes - 2026-10-16
+
+- The narrator's instructions are rewritten for GLM-4.6 as what to do rather than what
+  not to: a text adventure in second person, present tense; each reply is the next beat
+  and stops where the player can act; time moves only as far as the player's action; the
+  scene is the truth of the moment; an Outcome is shown exactly as decided.
+- The scene's notes now sit in one labelled `<scene>` block before the player's words,
+  instead of lines in square brackets, which are the player's inner voice.
+- Mentioned records: a person, place, group, piece of history, lore block, people, family
+  or thing named in the player's words this turn or in the last two replies, and not
+  already in the scene, gets a fuller note for that turn, within 800 tokens. Keys are the
+  name, the name without its article, the parts of a person's proper name, a title role
+  ("the Governor"), and any `keys` a record lists. The moment's reserve grows to 3,000.
+- Gaps closed: the player character's appearance reaches the narrator (manner and voice
+  stay the player's); world, faction and thing states off their resting band are facts;
+  module items can lie somewhere or be carried (`locationId`, `heldBy`); a scene action
+  that reaches a terminal tells the narrator.
+- Xialong uses the same prompt as GLM-4.6 for now; a prompt built NovelAI's way is on hold.
+
 ## 0.10.1 - 2026-10-16
 
 - `deploy/deploy.sh` deploys the newest `main` in one command on the server, following

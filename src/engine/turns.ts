@@ -134,7 +134,9 @@ export function act(module: PraxisModule, save: Save, id: string, action: Action
     if (!offered(world, save, chosen)) return { ok: false, reason: `${chosen.name} is not possible here and now.` };
     result = resolveScene(world, save, chosen);
     if (!result.ok) return result;
-    const timed = passTime(world, save, result.save, result.entries, chosen.outcome);
+    // A terminal the action reached is part of what the narrator must show.
+    const outcome = [chosen.outcome, ...result.terminals.map((terminal) => terminal.note)].join(' ');
+    const timed = passTime(world, save, result.save, result.entries, outcome);
     return open(world, save, timed.save, { id, kind: 'action', input: chosen.input, directive: timed.directive }, timed.entries, result.terminals);
   }
   if (action.type === 'travel') {

@@ -158,6 +158,10 @@ export const relationshipSchema = z.object({
 export const itemSchema = z.object({
   ...recordBase,
   description: text(8000).default(''),
+  // Where it lies, or who carries it. Orbis items take free-form fields; these follow the
+  // names Praxis's own records use.
+  locationId: id.optional(),
+  heldBy: id.optional(),
 }).passthrough();
 
 export const worldSchema = z.object({
@@ -440,6 +444,11 @@ export const moduleSchema = z.object({
       if (!characterState(state)) issue(['characters', index, 'maxima', stateId], `"${stateId}" is not a state a character holds.`);
       else if (state && maximum <= Math.min(state.min, state.max)) issue(['characters', index, 'maxima', stateId], `A maximum of ${maximum} leaves no room above the minimum.`);
     }
+  });
+
+  module.items.forEach((item, index) => {
+    if (item.locationId !== undefined && !places.has(item.locationId)) issue(['items', index, 'locationId'], `Unknown place "${item.locationId}".`);
+    if (item.heldBy !== undefined && !characterIds.has(item.heldBy)) issue(['items', index, 'heldBy'], `Unknown character "${item.heldBy}".`);
   });
 
   module.characters.forEach((character, index) => {

@@ -81,12 +81,13 @@ describe('the narrator\'s context', () => {
     save = must(say(module, save, 't2', 'I sign.')).save;
     const messages = compileContext(module, save);
     expect(messages.map((message) => message.role)).toEqual(['system', 'assistant', 'user', 'assistant', 'user']);
-    expect(messages[0]!.content).toMatch(/You are the narrator/);
+    expect(messages[0]!.content).toMatch(/^You narrate a text adventure\. The player plays the traveller/);
     expect(messages[0]!.content).toMatch(/Established facts:/);
     expect(messages[2]!.content).toBe('I hold out my hand for the pen.');
     const moment = messages[4]!.content;
-    expect(moment).toMatch(/^\[Scene: The landward gate, Nospier Point, Abernys, early morning\./);
-    expect(moment).toMatch(/\[Present:\n- The gate Arbiter/);
+    expect(moment).toMatch(/^<scene>\nPlace: The landward gate, Nospier Point, Abernys\. Early morning\./);
+    expect(moment).toMatch(/\nPresent:\n- The gate Arbiter/);
+    expect(moment).toMatch(/\n<\/scene>\n\nI sign\.$/);
     expect(moment).toMatch(/Port Covenant \(closed: No one enters the port without signing the Covenant\.\)/);
     expect(moment.endsWith('\n\nI sign.')).toBe(true);
   });
@@ -95,14 +96,14 @@ describe('the narrator\'s context', () => {
     let save = must(setState(module, signed(), 'health', 'gate-guard', 1)).save;
     save = must(say(module, save, 't1', 'I look at the guard.')).save;
     const moment = compileContext(module, save).at(-1)!.content;
-    expect(moment).toMatch(/\[A garrison guard is hurt\.\]/);
-    expect(moment).toMatch(/\[The traveller has signed the Covenant\.\]/);
+    expect(moment).toMatch(/\nFacts:\n(- .*\n)*- A garrison guard is hurt\.\n/);
+    expect(moment).toMatch(/\n- The traveller has signed the Covenant\.\n/);
     expect(moment).not.toMatch(/is unhurt/);
     expect(moment).not.toMatch(/Outcome/);
     save = must(act(module, save, 't2', { type: 'travel', to: 'pc-outside-walls' })).save;
     const next = compileContext(module, save);
-    expect(next.at(-1)!.content).toMatch(/\[Outcome: The player has just arrived at the outer lanes/);
-    expect(next.filter((message) => message.content.includes('[Outcome:'))).toHaveLength(1);
+    expect(next.at(-1)!.content).toMatch(/\nOutcome: The player has just arrived at the outer lanes/);
+    expect(next.filter((message) => message.content.includes('Outcome:'))).toHaveLength(1);
   });
 
   it('never names the clock\'s numbers', () => {

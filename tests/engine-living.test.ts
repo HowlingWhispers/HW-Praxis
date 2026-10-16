@@ -84,16 +84,16 @@ describe('relationships', () => {
     const rivals = stateDefFor(module, 'bond-rivals', pairKey('ottavio-marrane', 'lucan-abreu'))!;
     expect(read(save.values, rivals, pairKey('lucan-abreu', 'ottavio-marrane'))).toBe(2);
     const moment = momentOf(save);
-    expect(moment).toContain('[Between the gate Arbiter and a garrison guard: They keep the landward gate together every day');
-    expect(moment).toContain("[The gate Arbiter and a garrison guard: Each has done the other a good turn, and both remember it.]");
+    expect(moment).toContain('\nBetween the gate Arbiter and a garrison guard: They keep the landward gate together every day');
+    expect(moment).toContain("\nBond: The gate Arbiter and a garrison guard: Each has done the other a good turn, and both remember it.\n");
 
     // At noon the Governor and the High Arbiter are both at court.
     const noon = must(setClock(module, save, at(12, 30))).save;
     const atCourt = must(placeCharacter(module, noon, 'traveller', 'pc-governors-court')).save;
     const courtMoment = momentOf(atCourt);
-    expect(courtMoment).toContain('[Between Ottavio Marrane and Lucan Abreu: The Governor leads the colony');
+    expect(courtMoment).toContain('\nBetween Ottavio Marrane and Lucan Abreu: The Governor leads the colony');
     expect(courtMoment).toContain('Ottavio Marrane wants the commission');
-    expect(courtMoment).toContain('[Ottavio Marrane and Lucan Abreu: They measure themselves against each other');
+    expect(courtMoment).toContain('\nBond: Ottavio Marrane and Lucan Abreu: They measure themselves against each other');
   });
 
   it('can be started in play and set by hand, and go when the person does', () => {
@@ -106,7 +106,7 @@ describe('relationships', () => {
     expect(startBond(module, started, 'b2', 'gate-arbiter', 'bond-friends').ok).toBe(false);
     const warmer = must(setState(module, started, 'bond-acquaintance', bond.owner, 3)).save;
     expect(warmer.ledger.at(-1)).toMatchObject({ kind: 'state', owner: pairKey('traveller', 'gate-arbiter'), source: 'player', to: 3 });
-    expect(momentOf(warmer)).toContain('[The gate Arbiter and you: Each has done the other a good turn, and both remember it.]');
+    expect(momentOf(warmer)).toContain('\nBond: The gate Arbiter and you: Each has done the other a good turn, and both remember it.\n');
   });
 
   it('move a tier on a Flair triumph or despair against the other person', () => {
