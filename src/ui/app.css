@@ -165,10 +165,11 @@ h1, h2, h3, h4, p { margin: 0; }
 .tag.sugg { border-color: var(--faint); color: var(--text-2); }
 
 .pill {
-  flex: none; display: inline-flex; align-items: center; gap: 6px;
+  flex: 0 1 auto; min-width: 0; max-width: 46%; display: inline-flex; align-items: center; gap: 6px;
   padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line-2);
-  font-size: 13px; color: var(--text-2);
+  font-size: 13px; color: var(--text-2); white-space: nowrap;
 }
+.pill-text { overflow: hidden; text-overflow: ellipsis; }
 .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); }
 
 .av {
@@ -266,6 +267,7 @@ button.lr:hover:not(:disabled), a.lr:hover { background: var(--hover); }
 .rp-action { font-style: normal; }
 .rp-dialogue { color: #f6f1e7; }
 .rp-thought { font-style: italic; color: #a9bbd3; }
+.rp-note { font-size: 0.85em; color: var(--muted, #8a8f98); }
 
 .turn-you { background: var(--you-turn); border: 1px solid var(--you-turn-line); border-radius: 14px; padding: 11px 14px 12px; }
 .turn-you .rp { font-size: calc(var(--story-size) - 1px); }

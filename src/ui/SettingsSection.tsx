@@ -31,6 +31,13 @@ function Switch({ id, label, hint, on, onToggle }: { id: string; label: string; 
 
 const thousands = (value: number) => value.toLocaleString('en-US');
 
+// Who each message is from, in the player's terms. The first system message is the standing
+// instructions and world; a later one is the game's notes for the turn.
+function sentAs(role: 'system' | 'user' | 'assistant', index: number): string {
+  if (role === 'system') return index === 0 ? 'Instructions and world · system' : 'Game notes · system';
+  return role === 'user' ? 'You · user' : 'Narrator · assistant';
+}
+
 export function SettingsSection({ api }: { api: PlayApi }) {
   const { save, connection, prefs, lastPlan } = api;
   const options = save.options;
@@ -145,7 +152,7 @@ export function SettingsSection({ api }: { api: PlayApi }) {
           <div style={{ padding: '0 14px 14px' }}>
             {lastPlan ? (
               <ol className="sent">
-                {lastPlan.messages.map((message, index) => <li key={index}><span className="label">{message.role}</span><pre>{message.content}</pre></li>)}
+                {lastPlan.messages.map((message, index) => <li key={index}><span className="label">{sentAs(message.role, index)}</span><pre>{message.content}</pre></li>)}
               </ol>
             ) : <p className="meta">Nothing yet this session.</p>}
           </div>

@@ -8,6 +8,37 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.13.0 - The Context Ladder - 2026-10-16
+
+- The house format is now speech as plain text with no quotation marks, *narration and
+  action* in asterisks, and (thoughts) in parentheses, which nobody else in the story
+  hears. Square brackets are for notes outside the story: the game's to the narrator, or
+  the player's. The story view, the composer, the Guide, the opening and AGENTS.md follow it.
+- What the narrator is sent is laid out by how often it changes, and each thing has one
+  home. The system message never changes in play: the directions, the world, a names-only
+  list of who and where, and the journal. Then the transcript. Then the game's notes for
+  the turn, as their own message: `[ Lore: … ]` for you and the people, things, groups and
+  history here and anything just named; one `[ Scene: … ]` paragraph for where you are,
+  who is here doing what, what shows and the ways out; and `[ Outcome: … ]` for what the
+  rules decided. The player's words come last, alone.
+- Nothing is said twice. A person's profile is lore while they are here and the scene only
+  says they are here and what they are doing; the names list carries no descriptions; a
+  fact the outcome states is not repeated in the scene that turn.
+- Statuses read as story, in other people's terms: a guard "has given way to you: they
+  believe you, back down or do as you ask", "is near death", "is wavering"; everyone at a
+  place "is watching closely". States take `npcLabels` for this, and a terminal can carry a
+  `playerNote` for when it is you who arrives there.
+- An outcome says plainly what happened and what to do with it: "Flair succeeds. What you
+  just tried works on the garrison guard. The garrison guard has given way to you … Show it
+  in this reply, and let it change what the garrison guard does from here on." Failures,
+  Focus, costs and side effects get the same treatment; arrival, waiting and resting are
+  told to "you".
+- A copied `[ Lore ]`, `[ Scene ]` or `[ Outcome ]` line is taken out of a reply. Settings
+  › What the narrator was sent labels each message.
+- *Abernys: Port Covenant* 0.6.0 takes its approach ratings, Health, Strain, Alert, dice
+  and rest from the standard ruleset instead of repeating them, and its opening follows the
+  house format.
+
 ## 0.12.0 - Four Ways - 2026-10-16
 
 - Every person, thing and place in a scene can be acted on with the Four Approaches, with

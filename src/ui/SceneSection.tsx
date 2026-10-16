@@ -1,8 +1,8 @@
 // Scene: where you are, the time, who and what is here, and what you can do.
 import { useState } from 'react';
 import {
-  band, bondBetween, calendarOf, datePhrase, doingNow, durationWords, line, pairName, playerOf, read, sceneActionsFor, sceneOf, stateDefFor,
-  timeOfDay, weekdayOf, whereabouts, type Character, type Item,
+  band, bondBetween, calendarOf, datePhrase, definite, doingNow, durationWords, fact, labelFor, line, pairName, playerOf, read, sceneActionsFor, sceneOf, stateDefFor,
+  timeOfDay, weekdayOf, whereabouts, type Character, type Item, type StateDef,
 } from '../engine';
 import { BondWithYou } from './Bonds';
 import type { PlayApi } from './Play';
@@ -143,12 +143,14 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
     .map((def) => ({ def, value: read(save.values, def, person.id) }))
     .map((entry) => ({ ...entry, reading: band(entry.def, entry.value) }))
     .filter((entry) => entry.reading.banded && !entry.reading.atRest);
-  const knows = defs.map((def) => line(stateDefFor(world, def.id, person.id) ?? def, person.name, read(save.values, def, person.id))).filter(Boolean);
+  // In other people's words, as the narrator reads them: "is wavering", not "is strained".
+  const theirs = (def: StateDef, value: number) => labelFor(def, value, false);
+  const knows = defs.map((def) => fact(stateDefFor(world, def.id, person.id) ?? def, definite(person.name), read(save.values, def, person.id))).filter(Boolean);
   const meta = [roleOf(person), speciesOf(world, person), ...groupsOf(world, person)].filter(Boolean).join(' · ');
   const local = person.origin === 'local';
   const doing = doingNow(world, save, person);
   const day = doing ? whereabouts(calendarOf(world), person, save.clock) : null;
-  const dossier = ([['Looks', person.appearance], ['Manner', person.personality], ['Voice', person.speech]] as [string, string | undefined][])
+  const dossier = ([['Looks', person.appearance], ['Manner', person.personality], ['Speech', person.speech]] as [string, string | undefined][])
     .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim() !== '');
   // Their ties to the others here, and the bond with you, as the narrator reads them.
   const playerId = playerOf(world);
@@ -167,8 +169,8 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
           <span className="name">{person.name}</span>
           {meta && <span className="meta">{meta}</span>}
         </span>
-        {offRest.slice(0, 2).map(({ def, reading }) => (
-          <span key={def.id} className="pill"><span className="dot" style={{ background: stateColor(def) }} />{reading.label.replace(/^is /, '')}</span>
+        {offRest.slice(0, 2).map(({ def, value }) => (
+          <span key={def.id} className="pill"><span className="dot" style={{ background: stateColor(def) }} /><span className="pill-text">{theirs(def, value).split(':')[0]!.replace(/^(is|has) /, '').replace(/ to you$/, '')}</span></span>
         ))}
         <DraftTag record={person} show={prefs.showDrafts} />
         <ChevronRight />
@@ -200,7 +202,7 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
                 <div key={def.id} className="state-line">
                   <span className="what">{def.name}</span>
                   <StateBar def={def} value={value} />
-                  <span className="word">{band(def, value).label}{prefs.showNumbers ? ` · ${value}` : ''}</span>
+                  <span className="word">{theirs(def, value)}{prefs.showNumbers ? ` · ${value}` : ''}</span>
                 </div>
               );
             })}

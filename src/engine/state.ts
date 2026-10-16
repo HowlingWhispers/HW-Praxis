@@ -51,8 +51,12 @@ export const stateTerminalSchema = z.object({
   // A band index. An index past the end never matches, which is the quiet failure an
   // author wants rather than a directive fired at the wrong step.
   band: z.number().int().nonnegative().optional(),
-  // The directive. It replaces the roll's own directive rather than joining it.
+  // What it means, about "them": "They take no further part in this scene." The narrator
+  // reads it after the state's own words when a check or an action arrives here.
   note: z.string().min(1).max(2000),
+  // The same, when it is the player's character that arrives here, if turning "they" into
+  // "you" would read wrong: a guard who gives way believes you; you just run out of push.
+  playerNote: z.string().min(1).max(2000).optional(),
 });
 
 export const stateDefSchema = z.object({
@@ -63,6 +67,9 @@ export const stateDefSchema = z.object({
   max: z.number().int(),
   start: z.number().int(),
   bands: z.array(stateBandSchema).max(24).default([]),
+  // The same bands in other people's terms, when the player's words would read wrong for
+  // them: the player "is strained", a guard "is wavering". One label per band.
+  npcLabels: z.array(z.string().max(200)).max(24).optional(),
   // 'value': a band's `at` is a value. 'share': it is a percentage of the way from min to the
   // owner's max, so one set of bands reads right for a player with 8 Health and a minion with 2.
   bandBasis: z.enum(['value', 'share']).default('value'),
@@ -226,6 +233,30 @@ export function write(values: StateValues, def: StateDef, owner: string, next: n
 export function nudge(values: StateValues, def: StateDef, owner: string, delta: number, source: ChangeSource = 'rule'): StateWrite {
   if (!Number.isFinite(delta) || Math.round(delta) === 0) return { values, change: null, terminal: null };
   return write(values, def, owner, read(values, def, owner) + Math.round(delta), source);
+}
+
+// A band's words for the player ("are hurt") or for anyone else ("is near death").
+export function labelFor(def: StateDef, value: number, forPlayer: boolean): string {
+  const reading = band(def, value);
+  if (!reading.banded) return '';
+  if (forPlayer) return forYou(reading.label);
+  return def.npcLabels?.[reading.index] || reading.label;
+}
+
+// "is hurt" as the player reads it: "are hurt".
+export function forYou(label: string): string {
+  return label.replace(/^has /, 'have ').replace(/^is /, 'are ').replace(/^was /, 'were ');
+}
+
+// A standing fact as one plain sentence for the narrator, or '' when it is silent: off its
+// resting band only, unless `evenAtRest` (an outcome that brought something back to rest). The player's own facts read "You are hurt."; anyone else's use the
+// state's line template and other-people labels.
+export function fact(def: StateDef, ownerName: string, value: number, forPlayer = false, evenAtRest = false): string {
+  if (!evenAtRest && !speaks(def, value)) return '';
+  if (!band(def, value).banded) return '';
+  if (forPlayer) return `You ${labelFor(def, value, true)}.`;
+  const npcDef = def.npcLabels ? { ...def, bands: def.bands.map((entry, index) => ({ ...entry, label: def.npcLabels?.[index] || entry.label })) } : def;
+  return render(npcDef, ownerName, value).replace(/^\[\s*/, '').replace(/\s*\]$/, '');
 }
 
 // The standing fact one definition writes for one owner, or '' when it is silent.

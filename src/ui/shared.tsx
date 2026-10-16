@@ -1,6 +1,6 @@
 // Pieces several screens share: how a state, a ledger line or a record is shown.
 import {
-  band, durationWords, inSentence, pairName, read, render, stateDefFor, type Character, type LedgerEntry, type PraxisModule, type StateDef, type StateValues,
+  band, durationWords, forYou, inSentence, labelFor, pairName, read, render, stateDefFor, type Character, type LedgerEntry, type PraxisModule, type StateDef, type StateValues,
 } from '../engine';
 import { Diamond } from './icons';
 
@@ -42,9 +42,7 @@ export function YoursTag({ record }: { record: object | null | undefined }) {
 }
 
 // "has not signed the Covenant" said of "you".
-export function bandForYou(label: string): string {
-  return label.replace(/^has /, 'have ').replace(/^is /, 'are ').replace(/^was /, 'were ');
-}
+export const bandForYou = forYou;
 
 // A bounded value as a row of segments, or one bar when the range is long.
 export function StateBar({ def, value }: { def: StateDef; value: number }) {
@@ -129,7 +127,8 @@ export function describeEntry(module: PraxisModule, entry: LedgerEntry): string 
       const who = personName(entry.owner);
       // A state with its own sentence ("You have studied the door.") reads best as that.
       if (def?.line && word?.banded) return `${render(def, who, entry.to).replace(/^\[|\]$/g, '')} · ${entry.from} → ${entry.to}`;
-      if (word?.banded) return `${who} ${entry.owner === playerId ? bandForYou(word.label) : word.label} · ${entry.from} → ${entry.to}`;
+      // Someone else's in their own terms, up to any explanation: "A garrison guard has given way to you".
+      if (word?.banded) return `${who} ${entry.owner === playerId ? bandForYou(word.label) : labelFor(def!, entry.to, false).split(':')[0]} · ${entry.from} → ${entry.to}`;
       return `${who} · ${def?.name ?? entry.defId} ${entry.from} → ${entry.to}`;
     }
   }

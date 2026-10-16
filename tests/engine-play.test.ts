@@ -20,7 +20,7 @@ describe('scene actions', () => {
     expect(sceneActionsFor(module, start).map((action) => action.id)).toEqual(['sign-the-covenant']);
     const { save, turn, entries } = must(act(module, start, 't1', { type: 'scene', actionId: 'sign-the-covenant' }));
     expect(turn).toMatchObject({ kind: 'action', input: 'I sign the Covenant.' });
-    expect(turn.directive).toMatch(/signs the Covenant/);
+    expect(turn.directive).toMatch(/^You sign the Covenant/);
     expect(entries).toEqual([{ kind: 'state', at: start.clock, defId: 'signed-covenant', owner: 'traveller', from: 0, to: 1, source: 'rule' }]);
     expect(sceneActionsFor(module, save)).toEqual([]);
     expect(act(module, save, 't2', { type: 'scene', actionId: 'sign-the-covenant' })).toEqual({ ok: false, reason: 'Sign the Covenant is not possible here and now.' });
@@ -43,8 +43,9 @@ describe('local records', () => {
     expect(sceneOf(module, save).present.map((person) => person.name)).toContain('Teo');
     const withTurn = must(say(module, save, 't1', 'I look around.')).save;
     const messages = compileContext(module, withTurn);
-    expect(messages.at(-1)!.content).toMatch(/Teo, a gate runner, Humans: Carries messages/);
-    expect(messages[0]!.content).toMatch(/- Teo \(Humans\): a gate runner\./);
+    expect(messages.at(-2)!.content).toMatch(/\[ Lore: Teo, a gate runner, of the Humans\. Carries messages/);
+    expect(messages.at(-2)!.content).toContain('Teo is here.');
+    expect(messages[0]!.content).toMatch(/- Teo, a gate runner, Humans\n/);
   });
 
   it('can be a place to travel to, but only inside somewhere you can stand', () => {
@@ -60,8 +61,9 @@ describe('local records', () => {
   it('can be a thing lying somewhere', () => {
     const save = must(addRecord(module, startSave(module), { id: 'local-ledger', type: 'thing', name: 'The gate ledger', description: 'Every signature since the arrival.', locationId: 'pc-landward-gate' })).save;
     expect(sceneOf(module, save).things.map((thing) => thing.name)).toEqual(['The gate ledger']);
-    const moment = compileContext(module, must(say(module, save, 't1', 'I look.')).save).at(-1)!.content;
-    expect(moment).toMatch(/\nHere: The gate ledger: Every signature since the arrival\.\n/);
+    const moment = compileContext(module, must(say(module, save, 't1', 'I look.')).save).at(-2)!.content;
+    expect(moment).toContain('[ Lore: The gate ledger. Every signature since the arrival. ]');
+    expect(moment).toMatch(/\[ Scene: .* Also here: the gate ledger\./);
   });
 
   it('are checked against the world', () => {
@@ -104,21 +106,24 @@ describe('the context', () => {
   it('names who and what is in the world, so nothing is invented', () => {
     const save = must(say(module, startSave(module), 't1', 'Who runs this place?')).save;
     const system = compileContext(module, save)[0]!.content;
-    expect(system).toMatch(/- Ottavio Marrane \(Humans\): the Governor; usually at the Governor's court\./);
-    expect(system).toMatch(/- The gate Arbiter \(Humans\): An Arbiter on duty at the landward gate, with the Covenant's terms, ink, and a ledger of everyone who has signed, of the Arbiters; usually at the landward gate\./);
-    expect(system).toMatch(/- The Arbiters \(faction\): A monastic order of notaries headed by the High Arbiter\./);
+    expect(system).toContain("\n- Ottavio Marrane, the Governor, Humans, usually at the Governor's court\n");
+    expect(system).toContain('\n- The gate Arbiter, Humans, of the Arbiters, usually at the landward gate\n');
+    expect(system).toContain('\n- The Arbiters (faction)\n');
     expect(system).toMatch(/Places:\n- Abernys \(major region\)/);
+    // Names only: what someone or somewhere is like is lore, sent when it is needed.
+    expect(system).not.toContain('A monastic order of notaries');
+    expect(system).not.toContain('An Arbiter on duty at the landward gate');
     expect(system).not.toMatch(/- The traveller/);
   });
 
   it('brings in the groups and history that bear on the scene', () => {
     const save = must(say(module, startSave(module), 't1', 'I wait.')).save;
-    const moment = compileContext(module, save).at(-1)!.content;
-    expect(moment).toMatch(/\nBearing on this scene:\n- The Arbiters: A monastic order/);
-    expect(moment).toMatch(/The Pact: The humans of Port Covenant/);
+    const moment = compileContext(module, save).at(-2)!.content;
+    expect(moment).toContain('[ Lore: The Arbiters. A monastic order');
+    expect(moment).toContain('[ Lore: The Pact. The humans of Port Covenant');
     const signed = must(act(module, startSave(module), 't0', { type: 'scene', actionId: 'sign-the-covenant' })).save;
     const inside = must(act(module, signed, 't1', { type: 'travel', to: 'port-covenant' })).save;
-    expect(compileContext(module, inside).at(-1)!.content).toMatch(/\nHistory here:\n- The arrival: Humans driven from the homeland/);
+    expect(compileContext(module, inside).at(-2)!.content).toContain('[ Lore: The arrival. Humans driven from the homeland');
   });
 
   it('sends the journal after the canon and before the transcript', () => {

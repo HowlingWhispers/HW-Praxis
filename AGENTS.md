@@ -8,5 +8,5 @@
 - Modules are read-only canon. Play writes to the save, never to the module.
 - Keep Orbis field names and IDs in module records so a future Orbis loader is a swap, not a translation.
 - Saves live in the browser. The server holds no play state and never stores a provider credential.
-- Preserve roleplay formatting: dialogue in double quotes, action and narration in single asterisks, inner voice in square brackets.
+- Preserve roleplay formatting: narration and action in single asterisks, speech as plain text with no quotation marks, thoughts in parentheses. Square brackets are for notes outside the story (the game's notes to the narrator, or the player's).
 - Before completion run `npm test`, `npm run lint` and `npm run build`. CI runs the same three.

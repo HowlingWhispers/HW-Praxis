@@ -97,8 +97,9 @@ export function mentionables(world: PraxisModule, save: Save): Mentionable[] {
       keys: keysFor(place.name, place.keys),
       note: () => {
         const parent = place.parentLocationId ? places.get(place.parentLocationId)?.name : undefined;
-        const where = [place.kind !== 'other' ? place.kind : '', parent ? `in ${parent}` : ''].filter(Boolean).join(', ');
-        return `${place.name}${where ? ` (${where})` : ''}${place.description ? `: ${first(place.description)}` : ''}`;
+        const kind = place.kind !== 'other' ? `${/^[aeiou]/i.test(place.kind) ? 'an' : 'a'} ${place.kind}` : '';
+        const where = [kind, parent ? `in ${parent.replace(/^The /, 'the ')}` : ''].filter(Boolean).join(' ');
+        return `${place.name}${where ? `, ${where}` : ''}${place.description ? `: ${first(place.description)}` : '.'}`;
       },
     });
   }
@@ -141,7 +142,7 @@ export function mentionables(world: PraxisModule, save: Save): Mentionable[] {
       note: () => {
         const holder = text(thing.heldBy) ? personName.get(text(thing.heldBy)) : undefined;
         const at = text(thing.locationId) ? places.get(text(thing.locationId))?.name : undefined;
-        const where = holder ? ` (carried by ${holder === world.characters.find((character) => character.id === playerId)?.name ? 'you' : holder})` : at ? ` (at ${at})` : '';
+        const where = holder ? `, carried by ${holder === world.characters.find((character) => character.id === playerId)?.name ? 'you' : holder}` : at ? `, at ${at.replace(/^The /, 'the ')}` : '';
         return `${thing.name}${where}${thing.description ? `: ${first(thing.description)}` : ''}`;
       },
     });
@@ -176,12 +177,12 @@ function personNote(
   const role = text(person.role);
   const species = person.speciesId ? speciesName.get(person.speciesId) : undefined;
   const groups = person.factionIds.map((groupId) => groupName.get(groupId)).filter((name): name is string => Boolean(name)).map((name) => name.replace(/^The /, 'the '));
-  const head = [person.name, role ? role.replace(/^(The|A|An) /, (word) => word.toLowerCase()) : '', species, groups.length ? `of ${groups.join(' and ')}` : ''].filter(Boolean).join(', ');
+  const head = [person.name, role ? role.replace(/^(The|A|An) /, (word) => word.toLowerCase()) : '', species ? `of the ${species.replace(/^The /, '')}` : '', groups.length ? `member of ${groups.join(' and ')}` : ''].filter(Boolean).join(', ');
   const home = person.homeLocationId ? places.get(person.homeLocationId)?.name : undefined;
   const bond = bondBetween(world, save, world.scenario.playerCharacterId, person.id);
   const parts = [
     `${head}${person.description ? `: ${first(person.description)}` : '.'}`,
-    home ? `Usually at ${home.replace(/^The /, 'the ')}.` : '',
+    home ? `Usually at ${home.replace(/^The /, 'the ')}, and not here now.` : 'Not here now.',
     bond?.tier ? `Between you: ${bond.tier}` : '',
   ];
   return parts.filter(Boolean).join(' ');

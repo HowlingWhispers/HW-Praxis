@@ -388,7 +388,7 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
                 ref={composer}
                 rows={2}
                 value={draft}
-                placeholder='Your turn: *action*, "speech", [thought]'
+                placeholder='Your turn: *action*, speech, (thought)'
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
                   if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); send(); }

@@ -6,7 +6,7 @@ The scope, architecture and release plan are in *Praxis — Charter* in the Howl
 
 ## Status
 
-`0.12.0`. The engine has the state primitive, the clock and calendar, places and travel, scene presence, dossiers, schedules, relationships with bond tiers, authored scene actions, checks on the Four Approaches and Genesys dice against every person, thing and place, the standard `four-approaches/1` ruleset, the save with its ledger, turns with reroll and undo, the journal, local records, and a context compiler sized to the model's window. The first module, *Abernys: Port Covenant*, is in `modules/`. The interface plays it with narration through NovelAI on the player's own key; saves stay in the browser and can be exported and imported. The Java prototype that preceded this is in the history at `d3b13ee`.
+`0.13.0`. The engine has the state primitive, the clock and calendar, places and travel, scene presence, dossiers, schedules, relationships with bond tiers, authored scene actions, checks on the Four Approaches and Genesys dice against every person, thing and place, the standard `four-approaches/1` ruleset, the save with its ledger, turns with reroll and undo, the journal, local records, and a context compiler sized to the model's window. The first module, *Abernys: Port Covenant*, is in `modules/`. The interface plays it with narration through NovelAI on the player's own key; saves stay in the browser and can be exported and imported. The Java prototype that preceded this is in the history at `d3b13ee`.
 
 ## Layout
 

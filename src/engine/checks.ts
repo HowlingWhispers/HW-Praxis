@@ -18,7 +18,8 @@
 
 import { playable } from './records';
 import { DIFFICULTY_NAMES, stateDefFor, type Approach, type Cost, type Deed, type PraxisModule } from './module';
-import { band, line, read, write, type StateDef, type StateTerminal, type StateValues } from './state';
+import { band, fact, read, write, type StateDef, type StateTerminal, type StateValues } from './state';
+import { definite, midSentence, toYou } from './words';
 import { buildPool, oddsOf, rollPool, type Odds, type Pool } from './dice';
 import { playerOf, thingsAt, type CheckRecord, type LedgerEntry, type Save } from './session';
 import { pairName, relationshipBetween } from './relationships';
@@ -381,7 +382,7 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
   let values: StateValues = save.values;
   let clock = save.clock;
   const entries: LedgerEntry[] = [];
-  const terminals: { owner: string; terminal: StateTerminal }[] = [];
+  const terminals: { owner: string; defId: string; terminal: StateTerminal }[] = [];
   const changed = new Map<string, { owner: string; def: StateDef }>();
 
   const change = (stateId: string, owner: string, next: (current: number, def: StateDef) => number, source: 'rule' | 'player' = 'rule') => {
@@ -393,7 +394,7 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
       entries.push({ kind: 'state', at: clock, ...result.change });
       changed.set(`${owner}:${stateId}`, { owner, def });
     }
-    if (result.terminal) terminals.push({ owner, terminal: result.terminal });
+    if (result.terminal) terminals.push({ owner, defId: def.id, terminal: result.terminal });
   };
   const pay = (costs: readonly Cost[], minutes: number, times: number) => {
     for (const cost of costs) {
@@ -471,36 +472,50 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
     }
   }
 
-  // The directive: what happened, as facts the narrator must show.
-  const name = (owner: string) => ownerName(world, owner);
-  const parts: string[] = [];
-  const targetTerminal = terminals.find((entry) => entry.owner === target.owner);
+  // The outcome: what happened, in the story's own terms, and what the narrator does with
+  // it. "You" is the player's character throughout, as in the scene note.
+  const named = (owner: string) => (owner === playerId ? 'You' : definite(ownerName(world, owner)));
+  const mid = (owner: string) => midSentence(named(owner));
+  const isPerson = (owner: string) => owner !== playerId && world.characters.some((character) => character.id === owner);
+  // What shows about one state now, with what reaching its end means, if it just did.
+  const shows = (stateDef: StateDef, owner: string, evenAtRest = false): string => {
+    const forPlayer = owner === playerId;
+    const said = fact(stateDef, named(owner), read(values, stateDef, owner), forPlayer, evenAtRest);
+    const reached = terminals.find((entry) => entry.owner === owner && entry.defId === stateDef.id)?.terminal;
+    const means = !reached ? '' : forPlayer ? reached.playerNote ?? toYou(reached.note) : reached.note;
+    return [said, means].filter(Boolean).join(' ');
+  };
+  const them = mid(target.owner);
+  const person = isPerson(target.owner);
+  const parts: string[] = [
+    `${plan.approach.name} ${reading.succeeded ? `succeeds${reading.triumph ? ', better than hoped' : ''}` : `fails${reading.despair ? ', and it goes badly wrong' : ''}`}.`,
+  ];
   if (reading.succeeded) {
-    parts.push(`${plan.approach.name} succeeds${reading.triumph ? ', better than hoped' : ''}.`);
-    if (!def) parts.push('What the player tried works.');
-    else if (targetTerminal) parts.push(`${name(target.owner)}: ${targetTerminal.terminal.note}`);
-    else {
-      const fact = line(def, name(target.owner), read(values, def, target.owner));
-      parts.push(fact ? fact.replace(/^\[|\]$/g, '') : def.grows ? `The player learns something about ${inSentence(name(target.owner))}.` : `It tells on ${inSentence(name(target.owner))}, though it does not show yet.`);
-    }
+    if (!def) parts.push(`What you just tried works on ${them}.`);
+    else if (def.grows) parts.push(`You learn something useful about ${them}.`, shows(def, target.owner));
+    else parts.push(`What you just tried works on ${them}.`, shows(def, target.owner) || (person ? `It gets to ${them}, though it does not show yet.` : shows(def, target.owner, true)));
   } else {
-    parts.push(`${plan.approach.name} fails${reading.despair ? ', and it goes badly wrong' : ''}.`);
-    if (!def) parts.push('What the player tried does not work.');
+    parts.push(def?.grows ? `You learn nothing useful about ${them}.` : `What you just tried does not work on ${them}.`);
   }
+  if (reading.succeeded && reading.despair) parts.push('Something else goes badly wrong.');
+  if (!reading.succeeded && reading.triumph) parts.push('Even so, something goes very well for you.');
+  if (reading.netAdvantage === 1) parts.push('Something small also goes your way.');
+  else if (reading.netAdvantage >= 2) parts.push('Something else goes your way too: an opening you can use.');
+  else if (reading.netAdvantage === -1) parts.push('Something small also goes against you.');
+  else if (reading.netAdvantage <= -2) parts.push('Something else goes wrong for you too: real trouble.');
+  // What else it changed: the price of failing, a bond that moved.
   for (const { owner, def: changedDef } of changed.values()) {
     if (owner === target.owner && changedDef.id === target.defId) continue;
     if (plan.uses.aids.some((aid) => aid.defId === changedDef.id) && owner === target.owner) continue;
     if (dice.momentum === changedDef.id || dice.edge === changedDef.id || dice.storyPoints === changedDef.id) continue;
-    const terminal = terminals.find((entry) => entry.owner === owner && entry.terminal);
-    if (terminal && owner !== target.owner) { parts.push(`${name(owner)}: ${terminal.terminal.note}`); continue; }
-    const fact = line(changedDef, name(owner), read(values, changedDef, owner));
-    if (fact) parts.push(fact.replace(/^\[|\]$/g, ''));
+    const said = shows(changedDef, owner);
+    if (said) parts.push(said);
   }
   if (clock !== save.clock && !reading.succeeded) parts.push('It takes time.');
-  if (reading.netAdvantage === 1) parts.push('It leaves a small opening.');
-  else if (reading.netAdvantage >= 2) parts.push('It leaves a clear opening.');
-  else if (reading.netAdvantage === -1) parts.push('It brings a small complication.');
-  else if (reading.netAdvantage <= -2) parts.push('It brings real trouble.');
+  // How it carries forward.
+  if (reading.succeeded && def?.grows) parts.push('Show what you notice in this reply.');
+  else if (reading.succeeded) parts.push(person ? `Show it in this reply, and let it change what ${them} does from here on.` : 'Show it in this reply, and let it change what happens next.');
+  else parts.push(person ? `Show it in this reply, and let ${them} react to it.` : 'Show it in this reply, and let it change what happens next.');
 
   const record: CheckRecord = {
     approach: plan.approach.id,
@@ -527,7 +542,7 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
       entries,
       terminals: terminals.map((entry) => entry.terminal),
       record,
-      directive: parts.join(' '),
+      directive: parts.filter(Boolean).join(' '),
     },
   };
 }
