@@ -25,3 +25,15 @@ export const toYou = (text: string) =>
     .replace(/\bThemselves\b/g, 'Yourself').replace(/\bthemselves\b/g, 'yourself')
     .replace(/\bThem\b/g, 'You').replace(/\bthem\b/g, 'you')
     .replace(/\bTheir\b/g, 'Your').replace(/\btheir\b/g, 'your');
+
+// What the player wants, written in their own voice, as the narrator reads it:
+// "She lets me through" becomes "she lets you through".
+export const wantedAsYou = (text: string) => {
+  const clean = text.trim().replace(/\s+/g, ' ').replace(/[.!]+$/, '');
+  if (!clean) return '';
+  const turned = clean
+    .replace(/\bI am\b/g, 'you are').replace(/\bI'm\b/g, "you're").replace(/\bI was\b/g, 'you were')
+    .replace(/\bI\b/g, 'you').replace(/\b[Mm]yself\b/g, 'yourself').replace(/\b[Mm]ine\b/g, 'yours')
+    .replace(/\b[Mm]e\b/g, 'you').replace(/\bMy\b/g, 'Your').replace(/\bmy\b/g, 'your');
+  return /^(She|He|They|It|The|A|An|You|Your|We|Our|Her|His|Their)\b/.test(turned) ? turned.charAt(0).toLowerCase() + turned.slice(1) : turned;
+};

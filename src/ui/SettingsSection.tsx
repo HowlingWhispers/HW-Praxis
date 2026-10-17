@@ -1,5 +1,5 @@
 // Settings: narration, the journal, reading, this save, and the tools for testing.
-import { exportSave, setOptions, type Options } from '../engine';
+import { exportSave, planAsText, sentAs, setOptions, type Options } from '../engine';
 import type { PlayApi } from './Play';
 import { ConnectForm } from './Connect';
 import { ChevronRight, DownloadIcon, ListIcon, PulseIcon, BookIcon } from './icons';
@@ -31,11 +31,24 @@ function Switch({ id, label, hint, on, onToggle }: { id: string; label: string; 
 
 const thousands = (value: number) => value.toLocaleString('en-US');
 
-// Who each message is from, in the player's terms. The first system message is the standing
-// instructions and world; the second, the story so far and the lore for this scene.
-function sentAs(role: 'system' | 'user' | 'assistant', index: number): string {
-  if (role === 'system') return index === 0 ? 'Instructions and world · system' : 'Story so far and lore · system';
-  return role === 'user' ? 'You · user' : 'Narrator · assistant';
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function saveText(text: string, name: string) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function SettingsSection({ api }: { api: PlayApi }) {
@@ -151,10 +164,19 @@ export function SettingsSection({ api }: { api: PlayApi }) {
           <summary className="lr" style={{ borderTop: 0 }}><BookIcon /><span className="name grow">What the narrator was sent</span><ChevronRight /></summary>
           <div style={{ padding: '0 14px 14px' }}>
             {lastPlan ? (
+              <>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '0 0 12px' }}>
+                <button type="button" className="btn" onClick={() => { void copyText(planAsText(lastPlan, api.tries)).then((ok) => api.notify(ok ? 'Copied: everything sent, with the replies so far.' : 'Copying is blocked here. Use Save as a file.')); }}>Copy all</button>
+                <button type="button" className="btn" onClick={() => saveText(planAsText(lastPlan, api.tries), `praxis-context-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`)}>Save as a file</button>
+                <button type="button" className="btn" disabled={api.busy || !connection.connected} onClick={() => api.sampleTurn(5)}>Try this turn 5 more times</button>
+                <span className="meta" style={{ alignSelf: 'center' }}>{api.tries.length ? `Includes ${api.tries.length} ${api.tries.length === 1 ? 'reply' : 'replies'} to this turn.` : 'No reply yet.'}</span>
+              </div>
               <ol className="sent">
                 {lastPlan.messages.map((message, index) => <li key={index}><span className="label">{sentAs(message.role, index)}</span><pre>{message.content}</pre></li>)}
                 {lastPlan.prefill && <li><span className="label">The reply's opening · prefill</span><pre>{lastPlan.prefill}</pre></li>}
+                {api.tries.map((reply, index) => <li key={`try-${index}`}><span className="label">Reply {index + 1} of {api.tries.length}</span><pre>{reply}</pre></li>)}
               </ol>
+              </>
             ) : <p className="meta">Nothing yet this session.</p>}
           </div>
         </details>

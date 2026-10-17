@@ -8,6 +8,21 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.14.1 - Stakes - 2026-10-16
+
+- A check can say what you want from it ("She lets me through without signing."). The
+  outcome then says outright whether it happens:
+  - a success: "It works, so this happens: she lets you through without signing.";
+  - a partial one: "This does not happen yet: …";
+  - a failure: "This does not happen: …".
+  The check card shows it.
+- Someone who has given way now "takes your word over what they see or know". A lie the
+  scene could disprove, such as a name not in the ledger, still lands.
+- Settings › What the narrator was sent:
+  - **Copy all** and **Save as a file**: everything sent, with the replies that came back.
+  - **Try this turn 5 more times**: asks again without changing the story and lists every
+    reply, so how often the narrator follows a ruling can be counted.
+
 ## 0.14.0 - The Scene and Its Cast - 2026-10-16
 
 - The narrator's context is laid out the way NovelAI lays out a story, with each thing

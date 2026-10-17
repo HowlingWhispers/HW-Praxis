@@ -537,3 +537,18 @@ export function replyFrom(plan: Pick<ContextPlan, 'replyStart'>, text: string): 
   if (!plan.replyStart || body.startsWith(plan.replyStart)) return body;
   return `${plan.replyStart}${body}`;
 }
+
+// Who each message is from, in the player's terms.
+export function sentAs(role: ChatMessage['role'], index: number): string {
+  if (role === 'system') return index === 0 ? 'Instructions and world · system' : 'Story so far and lore · system';
+  return role === 'user' ? 'You · user' : 'Narrator · assistant';
+}
+
+// Everything the narrator was sent, as one text to copy or save, with the replies that came
+// back for it, so a turn can be looked at whole.
+export function planAsText(plan: Pick<ContextPlan, 'messages' | 'prefill'>, replies: readonly string[] = []): string {
+  const parts = plan.messages.map((message, index) => `=== ${sentAs(message.role, index)} ===\n${message.content}`);
+  if (plan.prefill) parts.push(`=== The reply's opening · prefill ===\n${plan.prefill}`);
+  replies.forEach((reply, index) => parts.push(`=== Reply ${index + 1} of ${replies.length} ===\n${reply}`));
+  return `${parts.join('\n\n')}\n`;
+}

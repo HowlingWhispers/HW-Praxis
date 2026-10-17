@@ -50,6 +50,9 @@ export interface PlayApi {
   journalBusy: boolean;
   calls: Call[];
   lastPlan: ContextPlan | null;
+  // The replies that came back for the latest turn this session, rerolls included.
+  tries: string[];
+  sampleTurn: (times: number) => void;
   // Replaces the save, with an optional message for the player.
   commit: (next: Save, message?: string) => void;
   notify: (message: string) => void;
@@ -87,6 +90,7 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
   const [busy, setBusy] = useState(false);
   const [journalBusy, setJournalBusy] = useState(false);
   const [lastPlan, setLastPlan] = useState<ContextPlan | null>(null);
+  const [tries, setTries] = useState<{ turnId: string; texts: string[] }>({ turnId: '', texts: [] });
   const [calls, setCalls] = useState<Call[]>([]);
   const [page, setPage] = useState<Page>('menu');
   const [section, setSection] = useState<Section>('none');
@@ -151,8 +155,10 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
       const ms = Math.round(performance.now() - started);
       const promptTokens = promptTokensOf(result.usage);
       logCall({ at: new Date().toLocaleTimeString(), purpose: 'narration', ok: true, ms, message: `${result.text.length} characters${promptTokens ? `, prompt ${promptTokens} tokens` : ''}`, diagnostics: result.diagnostics ?? null });
+      const reply = replyFrom(plan, cleanReply(result.text, turn.input));
+      setTries((seen) => ({ turnId: turn.id, texts: seen.turnId === turn.id ? [...seen.texts, reply] : [reply] }));
       setSave((current) => {
-        const placed = setReply(current, turn.id, replyFrom(plan, cleanReply(result.text, turn.input)));
+        const placed = setReply(current, turn.id, reply);
         if (!placed.ok) return current;
         return promptTokens ? recordPromptSize(placed.save, promptChars(plan.messages, plan.prefill), promptTokens) : placed.save;
       });
@@ -163,6 +169,31 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
       logCall({ at: new Date().toLocaleTimeString(), purpose: 'narration', ok: false, ms: 0, message, diagnostics: error instanceof NarrationError ? error.diagnostics : null });
     } finally {
       if (pending.current === controller) { pending.current = null; setBusy(false); }
+    }
+  }
+
+  // Asks for the latest turn again, several times, without touching the story: the replies
+  // join this turn's tries, to read side by side or export. A way to see how often the
+  // narrator follows what the rules decided.
+  async function sampleTurn(times: number) {
+    const turn = lastTurn(save);
+    if (!turn || !connection.connected || busy) return;
+    let plan: ContextPlan;
+    try { plan = contextPlan(module, save); } catch { return; }
+    setLastPlan(plan);
+    setBusy(true);
+    try {
+      for (let index = 0; index < times; index += 1) {
+        setNotice(`Trying this turn again: ${index + 1} of ${times}…`);
+        const result = await narrate(plan.messages, connection.model, connection.mode, { maxTokens: save.options.replyTokens, prefill: plan.prefill });
+        const reply = replyFrom(plan, cleanReply(result.text, turn.input));
+        setTries((seen) => ({ turnId: turn.id, texts: seen.turnId === turn.id ? [...seen.texts, reply] : [reply] }));
+      }
+      setNotice(`Tried ${times} more times. Settings › What the narrator was sent has them all.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Narration failed.');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -265,6 +296,8 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
     journalBusy,
     calls,
     lastPlan,
+    tries: tries.turnId === lastTurn(save)?.id ? tries.texts : [],
+    sampleTurn: (times) => { void sampleTurn(times); },
     commit: (next, message) => { setSave(next); if (message !== undefined) setNotice(message); },
     notify: setNotice,
     perform,
