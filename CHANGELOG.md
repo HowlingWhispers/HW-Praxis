@@ -8,6 +8,33 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.16.0 - The Outer Lanes - 2026-10-17
+
+- Port Covenant 0.8.0 adds three places to test schedules, followers and contracts. All of
+  it is draft.
+  - **The Tarred Rope**, an alehouse in the outer lanes, kept by Pell. Garrick Hale, a
+    sellsword between contracts, can be hired there for ten coin.
+  - **The Reddles**, a human fisherman and his harefolk wife. They have a house in the outer
+    lanes and a family record. He works the boats on the harbour and drinks at the Tarred Rope
+    in the evening; she mends nets at home and sells the catch on the harbour.
+  - **The contract hall** on the harbour, where Odile Fenn brokers indenture. Wren's contract
+    can be bought there for twenty-five coin.
+- **Coin:** the traveller starts with 40.
+- **Two kinds of hold over someone,** each with a follow rule:
+  - Bound by contract: "She must go where you go and do the work you set, whether she will
+    it or not."
+  - In your pay: "He will travel with you and do the work you hired him for, while the pay
+    lasts."
+- **Scene actions can do more:** require people to be present (`present`), check another
+  person's state (`when[].characterId`), and change it (`effects[].characterId`). A bargain
+  is offered only where it belongs, with the right people there, and while you can pay.
+  What it changes is told in each condition's own words as part of the outcome, and is
+  not repeated as a condition to keep that turn.
+- **A side effect never undoes a success.** After a success, a complication reads
+  "Something small goes against you as well, without undoing what you achieved."
+- **Continuing an edit:** the edited text is sent without trailing space, and the narrator's
+  continuation joins it with exactly one.
+
 ## 0.15.0 - Clean Copy - 2026-10-17
 
 - The reply's opening reads as clean sentences, one to a line, because the reply copies

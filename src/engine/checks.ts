@@ -518,12 +518,14 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
     parts.push(def?.grows ? `It fails${worse}, and you learn nothing useful about ${them}.` : def ? `It fails${worse} and makes no headway against ${them}.` : `It fails${worse}.`);
     if (wanted) parts.push(`This does not happen: ${wanted}.`);
   }
-  if (reading.succeeded && reading.despair) parts.push('Something else goes badly wrong.');
+  // Side effects never undo the result: after a success, the narrator is told so outright.
+  const still = reading.succeeded ? ', without undoing what you achieved' : '';
+  if (reading.succeeded && reading.despair) parts.push(`Something else goes badly wrong${still}.`);
   if (!reading.succeeded && reading.triumph) parts.push('Even so, something goes very well for you.');
-  if (reading.netAdvantage === 1) parts.push('Something small also goes your way.');
-  else if (reading.netAdvantage >= 2) parts.push('Something else goes your way too, an opening you can use.');
-  else if (reading.netAdvantage === -1) parts.push('Something small also goes against you.');
-  else if (reading.netAdvantage <= -2) parts.push('Something else goes wrong for you too.');
+  if (reading.netAdvantage === 1) parts.push(reading.succeeded ? 'Something small also goes your way.' : 'Even so, something small goes your way.');
+  else if (reading.netAdvantage >= 2) parts.push(reading.succeeded ? 'Something else goes your way too, an opening you can use.' : 'Even so, something goes your way, an opening you can use.');
+  else if (reading.netAdvantage === -1) parts.push(`Something small goes against you as well${still}.`);
+  else if (reading.netAdvantage <= -2) parts.push(`Something else goes wrong for you too${still}.`);
   // What else it changed: the price of failing, a bond that moved.
   for (const { owner, def: changedDef } of changed.values()) {
     if (owner === target.owner && changedDef.id === target.defId) continue;

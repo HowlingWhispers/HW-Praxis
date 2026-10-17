@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   act, bondBetween, bondsOf, bringAlong, contextPlan, doingNow, dueElsewhere, followRuleFor, followSchedules, leaveBehind, loadModule, pairKey,
-  placeCharacter, planFor, read, rowAt, say, setClock, setState, settleCheck, startBond, startSave, stateDefFor, undoLastTurn, whereabouts,
+  placeCharacter, planFor, read, rowAt, say, sceneActionsFor, setClock, setState, settleCheck, startBond, startSave, stateDefFor, undoLastTurn, whereabouts,
   DEFAULT_CALENDAR, type PraxisModule, type Save,
 } from '../src/engine';
 import { abernys, abernysRaw } from './abernys';
@@ -151,6 +151,75 @@ describe('followers', () => {
     expect(forced.following).toEqual({ 'gate-arbiter': 'by-hand' });
     expect(forced.ledger.at(-1)).toMatchObject({ kind: 'follow', source: 'player' });
     expect(must(leaveBehind(module, forced, 'gate-arbiter')).save.following).toEqual({});
+  });
+});
+
+describe('the outer lanes', () => {
+  it('lets you hire someone who is here, paying from your coin, and have them come along', () => {
+    let save = must(setClock(module, startSave(module), at(11))).save;
+    save = must(placeCharacter(module, save, 'traveller', 'pc-tarred-rope')).save;
+    expect(sceneActionsFor(module, save).map((action) => action.id)).toEqual(['hire-garrick']);
+    const coin = stateDefFor(module, 'coin', 'traveller')!;
+    expect(read(save.values, coin, 'traveller')).toBe(40);
+    const hired = must(act(module, save, 't1', { type: 'scene', actionId: 'hire-garrick' }));
+    expect(read(hired.save.values, coin, 'traveller')).toBe(30);
+    expect(hired.turn.directive).toBe('You pay Garrick Hale ten coin, and he pockets it without counting.\nGarrick Hale is in your pay. He will travel with you and do the work you hired him for, while the pay lasts.');
+    // Shown once, as what happened, not again as a condition to keep.
+    const now = contextPlan(module, hired.save);
+    expect(now.prefill).toContain('\n- Show that Garrick Hale is in your pay. He will travel with you and do the work you hired him for, while the pay lasts.\n');
+    expect(now.prefill).not.toContain('Remember that Garrick Hale');
+    expect(sceneActionsFor(module, hired.save)).toEqual([]);
+    expect(followRuleFor(module, hired.save, 'garrick-hale')?.id).toBe('hired');
+    const plan = contextPlan(module, must(say(module, hired.save, 't2', 'Drink up.')).save);
+    expect(plan.prefill).toContain('\n- Remember that Garrick Hale is in your pay. He will travel with you and do the work you hired him for, while the pay lasts.\n');
+    const party = must(bringAlong(module, hired.save, 'garrick-hale')).save;
+    const out = must(act(module, party, 't2', { type: 'travel', to: 'pc-landward-gate' }));
+    expect(out.save.positions['garrick-hale']).toBe('pc-landward-gate');
+    expect(out.turn.directive).toMatch(/with Garrick Hale, in your pay\.$/);
+    // Without him here, there is nobody to hire.
+    const empty = must(placeCharacter(module, save, 'garrick-hale', 'pc-harbour')).save;
+    expect(sceneActionsFor(module, empty)).toEqual([]);
+  });
+
+  it('lets you buy a contract, and the person it binds must come with you', () => {
+    let save = must(act(module, startSave(module), 't1', { type: 'scene', actionId: 'sign-the-covenant' })).save;
+    save = must(placeCharacter(module, save, 'traveller', 'pc-contract-hall')).save;
+    expect(sceneActionsFor(module, save).map((action) => action.id)).toEqual(['buy-wrens-contract']);
+    const bought = must(act(module, save, 't2', { type: 'scene', actionId: 'buy-wrens-contract' })).save;
+    expect(read(bought.values, stateDefFor(module, 'coin', 'traveller')!, 'traveller')).toBe(15);
+    expect(followRuleFor(module, bought, 'wren')?.id).toBe('bound');
+    const plan = contextPlan(module, must(say(module, bought, 't3', 'Come.')).save);
+    expect(plan.prefill).toContain('\n- Remember that Wren is bound to you by contract. She must go where you go and do the work you set, whether she will it or not.\n');
+    const taken = must(bringAlong(module, bought, 'wren')).save;
+    expect(taken.following).toEqual({ wren: 'bound' });
+    expect(contextPlan(module, must(say(module, taken, 't3', 'Come.')).save).messages[1]!.content).toContain('Wren, an indentured woman, bound to you by contract');
+    // Not enough coin, and the sale is not offered.
+    const poor = must(setState(module, save, 'coin', 'traveller', 10)).save;
+    expect(sceneActionsFor(module, poor)).toEqual([]);
+  });
+
+  it('keeps a family\'s days: home, work and the alehouse', () => {
+    const tomas = person('tomas-reddle');
+    expect(planFor(DEFAULT_CALENDAR, tomas.schedule!, at(6)).rows.map((row) => row.locationId)).toEqual(['pc-harbour', 'pc-harbour', 'pc-tarred-rope', 'pc-reddle-house']);
+    let save = must(setClock(module, startSave(module), at(18, 30))).save;
+    expect(save.positions['tomas-reddle']).toBe('pc-tarred-rope');
+    expect(doingNow(module, save, tomas)).toBe('drinking at the long table');
+    save = must(placeCharacter(module, save, 'traveller', 'pc-tarred-rope')).save;
+    // Past eleven, while you are with him, he stays; when you wait, he goes home.
+    const talked = followSchedules(module, { ...save, clock: at(23, 30) }, save.clock, at(23, 30), { hold: true }).save;
+    expect(talked.positions['tomas-reddle']).toBe('pc-tarred-rope');
+    expect(dueElsewhere(module, talked, tomas)).toBe('The Reddle house');
+    const waited = must(act(module, talked, 't1', { type: 'wait', minutes: 10 }));
+    expect(waited.save.positions['tomas-reddle']).toBe('pc-reddle-house');
+    expect(module.world.families.find((family) => family.id === 'the-reddles')).toBeTruthy();
+  });
+
+  it('refuses an action that changes a state the person does not hold', () => {
+    const raw = structuredClone(abernysRaw) as Record<string, any>;
+    raw.ruleset.actions.find((action: { id: string }) => action.id === 'hire-garrick').effects.push({ stateId: 'signed-covenant', characterId: 'garrick-hale', set: 1 });
+    const loaded = loadModule(raw);
+    expect(loaded.ok).toBe(false);
+    if (!loaded.ok) expect(loaded.errors.some((error) => error.includes('"signed-covenant" is not a state garrick-hale holds.'))).toBe(true);
   });
 });
 

@@ -217,6 +217,22 @@ describe('what the narrator is told', () => {
     expect(replyFrom(plan, ' at last.* Name.')).toBe('*The Arbiter looks up at last.* Name.');
   });
 
+  it('never lets a side effect undo a success', () => {
+    const save = startSave(module);
+    const target: Target = { owner: 'gate-arbiter', defId: 'strain' };
+    // A seeded sequence of rolls, searched for a success that also brings threat.
+    const seeded = (seed: number) => { let k = seed; return () => { k = (k * 1103515245 + 12345) % 2147483648; return k / 2147483648; }; };
+    let found = '';
+    for (let seed = 0; seed < 3000 && !found; seed += 1) {
+      const settled = settleCheck(module, save, target, { approach: 'flair', charge: 0 }, seeded(seed * 7919));
+      if (settled.ok && settled.outcome.record.succeeded && settled.outcome.record.netAdvantage < 0) found = settled.outcome.directive;
+    }
+    expect(found).toMatch(/\nSomething (small goes against you as well|else goes wrong for you too), without undoing what you achieved\./);
+    expect(replyFrom({ replyStart: '*Your heel smacks into his helm' }, ' with a sharp crack.*')).toBe('*Your heel smacks into his helm with a sharp crack.*');
+    const plan = continuing(contextPlan(module, must(say(module, save, 't1', 'I kick.')).save), '*Your heel smacks into his helm ');
+    expect(plan.prefill.endsWith('*Your heel smacks into his helm')).toBe(true);
+  });
+
   it('keeps game notes out of the story if the model copies one', () => {
     expect(cleanReply('[ Scene: The landward gate. ]\n*Fog.* Name.\n[ Outcome: Flair succeeds. ]', 'x')).toBe('*Fog.* Name.');
     expect(cleanReply('Understood. I will:\n- Continue\n[Of course, here you go:]\n*Fog.* Name.', 'x')).toBe('*Fog.* Name.');
