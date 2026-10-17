@@ -24,6 +24,7 @@ const CHAPTERS: { id: Chapter; title: string; summary: string; body: ReactNode }
       <>
         <p>The mechanics are optional. Set any value yourself, put yourself anywhere, take a locked way anyway. Each change goes in the ledger as <b style={{ color: 'var(--you)' }}>yours</b>, so you can always tell what the rules decided from what you did.</p>
         <p>Undo takes back the last turn and everything recorded since, hand changes included.</p>
+        <p>Reroll asks the narrator again. Edit lets you change the latest reply: save it as it stands, or cut it where it went wrong and choose <b>Continue from here</b> to have the narrator carry on from your words. Once a turn is done, only the story stays with the narrator; the dice and rulings do not.</p>
       </>
     ),
   },

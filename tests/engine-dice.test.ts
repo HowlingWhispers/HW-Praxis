@@ -66,7 +66,7 @@ describe('checks', () => {
     const { save, turn } = must(act(module, start, 't1', { type: 'check', target: arbiterStrain, choice: { approach: 'flair', charge: 2 }, input: 'Let me through on my word.', random: always(0.5) }));
     expect(value(save, 'strain', 'gate-arbiter')).toBe(2);
     expect(turn.check).toMatchObject({ approach: 'flair', charge: 2, succeeded: true, netSuccess: 2, netAdvantage: 1, auto: false });
-    expect(turn.directive).toBe('It gains ground, but it is not over yet. The gate Arbiter is wavering: unsure now, but still holding out. Something small also goes your way.');
+    expect(turn.directive).toBe('It gains ground, but it is not over yet.\nThe gate Arbiter is wavering, no longer sure of her ground but still holding out.\nSomething small also goes your way.');
     expect(save.spent.traveller?.flair).toEqual([2]);
     expect(value(save, 'momentum', 'traveller')).toBe(1);
     expect(chargesOf(module, save, 'traveller').find((entry) => entry.approach === 'flair')!.slots.map((slot) => slot.spent)).toEqual([false, true, false]);
@@ -79,7 +79,7 @@ describe('checks', () => {
     expect(turn.check?.succeeded).toBe(false);
     expect(value(save, 'strain', 'traveller')).toBe(5);
     expect(value(save, 'strain', 'gate-arbiter')).toBe(4);
-    expect(turn.directive).toBe('It fails: it makes no headway against the gate Arbiter. You are strained.');
+    expect(turn.directive).toBe('It fails and makes no headway against the gate Arbiter.\nYou are strained.');
     const force = must(act(module, startSave(module), 't1', { type: 'check', target: { owner: 'gate-guard', defId: 'health' }, choice: { approach: 'force', charge: 0 }, input: 'I swing.', random: always(0) })).save;
     expect(value(force, 'health', 'traveller')).toBe(7);
     expect(value(force, 'alert', 'pc-landward-gate')).toBe(1);

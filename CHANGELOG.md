@@ -8,6 +8,26 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.15.0 - Clean Copy - 2026-10-17
+
+- The reply's opening reads as clean sentences, one to a line, because the reply copies
+  whatever it looks like:
+  - "Show that it works: she believes your lie and lets you through."
+  - "Remember that the garrison guard has given way. He will take your word over anything
+    he can see or know, and do as you ask, until something new changes his mind."
+  - Every line ends with a full stop and holds at most one colon.
+- Outcomes are one plain sentence a line ("It fails and makes no headway against the gate
+  Arbiter."). Condition words are written as sentences with the person's own pronouns.
+- People carry pronouns (`pronouns`, as Orbis's persona record writes them). Port Covenant
+  0.7.0 gives each person theirs, and local people can be given them in the record form.
+- Once a turn is resolved, only the story stays in the narrator's context: no rolls and
+  no rulings in the transcript.
+- The latest reply can be edited. **Save** keeps it as written; **Continue from here** hands
+  the edited text back as the start of the reply, and the narrator carries on from it.
+- A minion falls to one success: the standard minion tier has 1 Health and 1 Strain, and
+  Port Covenant's tiered people take their limits from their tier. A success that wears
+  someone down without finishing them reads "Success, not over yet" on its check card.
+
 ## 0.14.1 - Stakes - 2026-10-16
 
 - A check can say what you want from it ("She lets me through without signing."). The

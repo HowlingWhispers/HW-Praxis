@@ -14,8 +14,8 @@
 //                 who is present and what they are doing               or something new is
 //                 what lies between the people here                    named
 //                 lore switched on by key since the scene began
-//   transcript  Earlier turns: your words, with what the rules         never rewritten
-//               decided for them, and the narrator's replies
+//   transcript  Earlier turns: your words and the narrator's replies.   never rewritten
+//               Once resolved, only the story remains: no rolls
 //   user        Your words this turn, alone                           every turn
 //   prefill     The start of the reply, as NovelAI writes it: what    every turn
 //               the narrator will do this turn, what the rules
@@ -48,7 +48,7 @@ import { MOMENT_RESERVE, estimateTokens } from './options';
 import { journalBlock } from './journal';
 import { playable } from './records';
 import { playerOf, placeOf, thingsAt, thingsHeldBy, type Save, type Turn } from './session';
-import { capital, definite, listOf as list, midSentence, sentence } from './words';
+import { capital, definite, listOf as list, midSentence, pronounsOf, sentence } from './words';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -64,7 +64,7 @@ export function narratorRules(playerName: string): string {
     '- Write only the next beat. Show how the world answers what the player just did, then stop where they can act again.',
     `- Leave what ${player} says, does, thinks and feels to the player.`,
     '- Notes in [square brackets] are outside the story, from the game or the player, and they are true. Use what they say in your own words, and keep the notes themselves out of the story.',
-    '- What the rules decided is final. Show it exactly, and let it carry into what everyone does next. When nothing was decided, show the attempt and leave the result open.',
+    '- What the rules decided is final. When your reply opens by saying what to show, show exactly that, and let it carry into what everyone does next. When nothing was decided, show the attempt and leave the result open.',
     '- Only the people listed as present are here. Anyone else stays offstage until they arrive.',
     '- Write in second person, present tense, in concrete detail that can be seen, heard, smelled and touched. One to three short paragraphs.',
     '- Narration and action go in *asterisks*. Speech is plain text, with no quotation marks. Thoughts go in (parentheses), and no one else hears them.',
@@ -72,12 +72,11 @@ export function narratorRules(playerName: string): string {
 }
 
 // The format, shown rather than told: the model copies what it sees. A different story, so
-// none of it leaks into this one, with a partial success followed exactly, a thought nobody
-// hears, and a turn with nothing decided.
+// none of it leaks into this one, with a thought nobody hears and a reply that stops where
+// the player can act.
 export const FORMAT_EXAMPLE = [
   'An example of the format, from another story:',
   'You: Evening. *I set two coins on the rail.* That should cover the toll. (He looks like he would take the coat off my back.)',
-  '[ Outcome: It gains ground, but it is not over yet. The tollkeeper is wavering: unsure now, but still holding out. ]',
   'Narrator: *The tollkeeper sweeps the coins off the rail without counting them. Rain runs from the brim of his hat.* Two for a man on foot. *His eyes go to the mule behind you, then back to your face. His hand stays on the bar.* The mule is another two. Most pay it.',
   'You: *I ask the ferryman how deep the river runs here.*',
   'Narrator: *He leans on his pole and spits over the side. The ferry swings a little in the current.* Deep enough to keep what it takes.',
@@ -237,7 +236,9 @@ function statusOf(world: PraxisModule, save: Save, ownerId: string, ownerName: s
     .filter(fits)
     .map((def) => {
       const own = stateDefFor(world, def.id, ownerId) ?? def;
-      return fact(own, definite(ownerName), read(save.values, own, ownerId), isPlayer);
+      const person = kind === 'character' ? world.characters.find((character) => character.id === ownerId) : undefined;
+      const who = person ? pronounsOf(person.pronouns) : kind === 'item' ? pronounsOf('it') : undefined;
+      return fact(own, definite(ownerName), read(save.values, own, ownerId), isPlayer, false, who);
     })
     .filter(Boolean);
 }
@@ -352,26 +353,32 @@ export function standingFor(module: PraxisModule, save: Save, turn: Turn): strin
 
 // The start of the reply, as NovelAI writes it for its own models: the narrator says what it
 // will do, then the story begins. Closest to where the reply is written, so it carries the
-// most weight.
+// most weight, and written as clean sentences, since whatever it looks like, the reply copies.
 export const PREFILL_MARK = '[Of course, here you go:]';
 export const REPLY_START = '*';
 
+// "It works." reads "it works" after "Show that"; a name keeps its capital.
+const LEADS = /^(It|The|A|An|You|Your|Something|Time|Even|This|That|Everyone|Nothing|Meanwhile|Whatever|One|There)\b/;
+const lowerLead = (text: string) => (LEADS.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : text);
+const ended = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
+
 export function prefillFor(module: PraxisModule, save: Save, turn: Turn): string {
   const standing = standingFor(module, save, turn);
+  const decided = (turn.directive ?? '').split('\n').map((line) => line.trim()).filter(Boolean);
   const lines = [
     'Understood. I will:',
-    '- Continue the text adventure in the established voice: second person, present tense, *narration and action* in asterisks, speech as plain text, (thoughts) in parentheses',
-    turn.directive ? `- Show what the rules decided: ${turn.directive}` : '- Show how the world answers what you just did, and leave the outcome of anything uncertain open',
-    standing.length ? `- Keep true: ${standing.join(' ')}` : '',
-    '- Stop where you can act again',
+    '- Continue the text adventure in the established voice, in second person and present tense, with narration and action in *asterisks*, speech as plain text, and thoughts in (parentheses).',
+    ...(decided.length ? decided.map((line) => `- Show that ${ended(lowerLead(line))}`) : ['- Show how the world answers what you just did, and leave the outcome of anything uncertain open.']),
+    ...standing.map((entry) => `- Remember that ${ended(lowerLead(entry))}`),
+    '- Stop where you can act again.',
     PREFILL_MARK,
   ];
-  return `${lines.filter(Boolean).join('\n')}\n${REPLY_START}`;
+  return `${lines.join('\n')}\n${REPLY_START}`;
 }
 
-// A past turn as the transcript keeps it: your words, then what the rules decided for them.
+// A past turn as the transcript keeps it: once a turn is resolved, only the story remains.
 function pastInput(turn: Turn): string {
-  return turn.directive ? `${turn.input}\n\n${note(`Outcome: ${turn.directive}`)}` : turn.input;
+  return turn.input;
 }
 
 // --- The window.
@@ -531,8 +538,10 @@ export function promptChars(messages: readonly ChatMessage[], prefill = ''): num
   return messages.reduce((sum, message) => sum + message.content.length + 16, 0) + prefill.length;
 }
 
-// The reply as the player reads it: the opening the prefill gave, then what came back.
+// The reply as the player reads it: the opening the prefill gave, then what came back. When
+// the narrator was continuing a reply the player edited, the two join exactly as written.
 export function replyFrom(plan: Pick<ContextPlan, 'replyStart'>, text: string): string {
+  if (plan.replyStart.length > REPLY_START.length) return `${plan.replyStart}${text.replace(/\s+$/, '')}`;
   const body = text.replace(/^\s+/, '');
   if (!plan.replyStart || body.startsWith(plan.replyStart)) return body;
   return `${plan.replyStart}${body}`;
@@ -551,4 +560,11 @@ export function planAsText(plan: Pick<ContextPlan, 'messages' | 'prefill'>, repl
   if (plan.prefill) parts.push(`=== The reply's opening · prefill ===\n${plan.prefill}`);
   replies.forEach((reply, index) => parts.push(`=== Reply ${index + 1} of ${replies.length} ===\n${reply}`));
   return `${parts.join('\n\n')}\n`;
+}
+
+// The same call, asked to carry on from a reply the player edited up to a point: the edit
+// becomes the start of the reply, after the narrator's opening.
+export function continuing(plan: ContextPlan, partial: string): ContextPlan {
+  const head = plan.prefill.slice(0, plan.prefill.length - plan.replyStart.length);
+  return { ...plan, prefill: `${head}${partial}`, replyStart: partial };
 }

@@ -16,15 +16,15 @@ export const STANDARD_RULESET = {
     })),
     {
       id: 'health', name: 'Health', scope: 'char', min: 0, max: 8, start: 8, category: 'Condition', display: 'band', bandBasis: 'share',
-      // "Words: what they mean". The screen shows the words; the narrator reads both, so a
-      // wound that is not yet the end says so. Any loss leaves the resting band, so a
-      // success always shows.
-      bands: share([[0, 'is down'], [1, 'is badly hurt: every move costs you'], [34, 'is hurt: it slows you'], [60, 'is bruised'], [100, 'is unhurt']]), restBand: 4,
+      // Each label is its words, then what they mean, in one clean sentence. The screen shows
+      // the words; the narrator reads it all, so a wound that is not yet the end says so. Any
+      // loss leaves the resting band, so a success always shows. Pronouns come from the person.
+      bands: share([[0, 'is down'], [1, 'is badly hurt, and every move costs you'], [34, 'is hurt, and it slows you'], [60, 'is bruised'], [100, 'is unhurt']]), restBand: 4,
       npcLabels: [
-        'is down: out of the fight and unable to act',
-        'is near death: barely standing, and one more good blow could drop them',
-        'is hurt: bleeding and slowed, but still fighting',
-        'is bruised: shaken, but still fighting',
+        'is down, out of the fight and unable to act',
+        'is near death. One more good blow could drop |them|',
+        'is hurt, bleeding and slowed, but still fighting',
+        'is bruised, shaken but still fighting',
         'is unhurt',
       ],
       terminals: [{ at: 'min', note: 'They take no further part in this scene.', playerNote: 'You can do nothing more in this scene.' }],
@@ -32,12 +32,12 @@ export const STANDARD_RULESET = {
     },
     {
       id: 'strain', name: 'Strain', scope: 'char', min: 0, max: 6, start: 6, category: 'Condition', display: 'band', bandBasis: 'share',
-      bands: share([[0, 'is spent'], [1, 'is badly strained: your composure is fraying'], [34, 'is strained'], [100, 'is steady']]), restBand: 3,
+      bands: share([[0, 'is spent'], [1, 'is badly strained, and your composure is fraying'], [34, 'is strained'], [100, 'is steady']]), restBand: 3,
       // Against someone else, Strain is their will to hold out against you.
       npcLabels: [
-        'has given way: they take your word over what they see or know, back down, or do as you ask, until something new changes their mind',
-        'is close to giving way: still holding out, but not for much longer',
-        'is wavering: unsure now, but still holding out',
+        'has given way. |They| will take your word over anything |they| can see or know, and do as you ask, until something new changes |their| mind',
+        'is close to giving way. |They| will hold out a little longer, but not much',
+        'is wavering, no longer sure of |their| ground but still holding out',
         'is steady',
       ],
       terminals: [{ at: 'min', note: 'They stay that way unless something new changes their mind.', playerNote: 'You can push yourself no further until you rest.' }],
@@ -48,7 +48,7 @@ export const STANDARD_RULESET = {
     { id: 'momentum', name: 'Momentum', scope: 'protagonist', min: -3, max: 3, start: 0, category: 'Momentum', display: 'hidden' },
     {
       id: 'alert', name: 'Alert', scope: 'place', min: 0, max: 3, start: 0, category: 'Scene', display: 'band',
-      bands: share([[0, 'is quiet'], [1, 'is uneasy: they keep an eye on you'], [2, 'is watching closely: one more slip and they act'], [3, 'is roused: they act against you']]), restBand: 0,
+      bands: share([[0, 'is quiet'], [1, 'is uneasy and keeps an eye on you'], [2, 'is watching closely, and one more slip will bring them down on you'], [3, 'is roused and acts against you']]), restBand: 0,
       line: '[Everyone at |nameMid| |bandLabel|.]',
       terminals: [{ at: 'max', note: 'Nothing passes unchallenged now.' }],
       approach: { owner: 'finesse', secondary: [] }, verb: 'Lie low, cover your tracks',
@@ -73,13 +73,13 @@ export const STANDARD_RULESET = {
     // Obstacles: any thing in a scene can be broken or worked open.
     {
       id: 'integrity', name: 'Integrity', scope: 'item', min: 0, max: 2, start: 2, category: 'Obstacle', display: 'band',
-      bands: share([[0, 'is broken'], [1, 'is damaged: still holding, but it will not take much more'], [100, 'is sound']]), restBand: 2, bandBasis: 'share',
+      bands: share([[0, 'is broken'], [1, 'is damaged, still holding, but it will not take much more'], [100, 'is sound']]), restBand: 2, bandBasis: 'share',
       terminals: [{ at: 'min', note: 'It gives way, and whatever it held shut is open now.' }],
       approach: { owner: 'force', secondary: [] }, verb: 'Break it or force it',
     },
     {
       id: 'security', name: 'Security', scope: 'item', min: 0, max: 2, start: 2, category: 'Obstacle', display: 'band',
-      bands: share([[0, 'is open'], [1, 'is giving: nearly open'], [100, 'is secure']]), restBand: 2, bandBasis: 'share',
+      bands: share([[0, 'is open'], [1, 'is giving, nearly open'], [100, 'is secure']]), restBand: 2, bandBasis: 'share',
       terminals: [{ at: 'min', note: 'Whatever it kept shut or held fast is yours to take.' }],
       approach: { owner: 'finesse', secondary: [] }, verb: 'Pick it, work it loose, take it',
     },
@@ -112,7 +112,8 @@ export const STANDARD_RULESET = {
   rest: { minutes: 480, effects: [{ stateId: 'health', add: 1 }, { stateId: 'strain', toMax: true }], resetCharges: true },
   // The Four Approaches tiers: how hard someone is to act against, and their maxima.
   tiers: {
-    minion: { difficulty: 1, maxima: { health: 2, strain: 1 } },
+    // A minion falls to one success: a proficient character beats them in a single roll.
+    minion: { difficulty: 1, maxima: { health: 1, strain: 1 } },
     rival: { difficulty: 2, maxima: { health: 5, strain: 4 } },
     nemesis: { difficulty: 3, maxima: { health: 8, strain: 6 } },
   },

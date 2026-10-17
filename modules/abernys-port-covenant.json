@@ -2,8 +2,8 @@
   "format": "praxis-module/1",
   "id": "abernys-port-covenant",
   "name": "Abernys: Port Covenant",
-  "version": "0.6.0",
-  "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and their Four Approaches tiers (the Arbiter a rival, the guard a minion), and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own. From 0.4.0, also draft: every dossier field (appearance, personality, speech), every schedule, the four bond kinds and their tiers, and the three relationships between the Governor, the High Arbiter, the garrison captain and the gate staff. The leverage between the Governor and the captain (she knows the last ship carried no orders) is from the societies doc. From 0.5.0 the ruleset extends the standard Four Approaches ruleset (four-approaches/1) for Leverage, Prepared, Integrity, Security, the person deed and the tiers; the tiers given to each character and the registry strongroom door are draft. From 0.6.0 the module takes the approach ratings, Health, Strain, Alert, the dice and rest from the standard ruleset instead of repeating them, and its opening and outcomes follow the house format: you, present tense, speech without quotation marks.",
+  "version": "0.7.0",
+  "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and their Four Approaches tiers (the Arbiter a rival, the guard a minion), and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own. From 0.4.0, also draft: every dossier field (appearance, personality, speech), every schedule, the four bond kinds and their tiers, and the three relationships between the Governor, the High Arbiter, the garrison captain and the gate staff. The leverage between the Governor and the captain (she knows the last ship carried no orders) is from the societies doc. From 0.5.0 the ruleset extends the standard Four Approaches ruleset (four-approaches/1) for Leverage, Prepared, Integrity, Security, the person deed and the tiers; the tiers given to each character and the registry strongroom door are draft. From 0.6.0 the module takes the approach ratings, Health, Strain, Alert, the dice and rest from the standard ruleset instead of repeating them, and its opening and outcomes follow the house format: you, present tense, speech without quotation marks. From 0.7.0 each person carries pronouns, read from their own descriptions, so conditions read as she, he or they. Tiers alone now set Health and Strain, so a minion such as the gate guard falls to one success.",
   "source": {
     "kind": "local"
   },
@@ -334,6 +334,7 @@
     {
       "id": "gate-arbiter",
       "name": "The gate Arbiter",
+      "pronouns": "she/her",
       "speciesId": "humans",
       "factionIds": [
         "the-arbiters"
@@ -341,10 +342,6 @@
       "homeLocationId": "pc-landward-gate",
       "canonStatus": "draft",
       "description": "An Arbiter on duty at the landward gate, with the Covenant's terms, ink, and a ledger of everyone who has signed.",
-      "maxima": {
-        "health": 5,
-        "strain": 4
-      },
       "appearance": "A woman in the Arbiters' grey, ink to the second knuckle, hood pushed back despite the fog, a writing board strapped to her left forearm.",
       "personality": "Patient, exact and unhurried. She treats every arrival as a contract not yet signed, and is not unkind, only uninterested in anything that is not on paper.",
       "speech": "Short, complete sentences. Repeats terms back word for word, and says 'the Covenant' the way others say 'the weather'.",
@@ -383,14 +380,11 @@
     {
       "id": "gate-guard",
       "name": "A garrison guard",
+      "pronouns": "he/him",
       "speciesId": "humans",
       "homeLocationId": "pc-landward-gate",
       "canonStatus": "draft",
       "description": "One of the garrison's soldiers, posted at the gate.",
-      "maxima": {
-        "health": 2,
-        "strain": 1
-      },
       "appearance": "Helmet strapped tight, cloak dark with fog-wet, leaning on a pike more than he should.",
       "personality": "Cold, bored and loyal to whoever pays the garrison. Watches the road, not the people on it.",
       "speech": "As few words as he can manage, most of them to the Arbiter.",
@@ -423,6 +417,7 @@
     {
       "id": "ottavio-marrane",
       "name": "Ottavio Marrane",
+      "pronouns": "he/him",
       "speciesId": "humans",
       "homeLocationId": "pc-governors-court",
       "canonStatus": "draft",
@@ -460,6 +455,7 @@
     {
       "id": "lucan-abreu",
       "name": "Lucan Abreu",
+      "pronouns": "he/him",
       "speciesId": "humans",
       "factionIds": [
         "the-arbiters"
@@ -511,6 +507,7 @@
     {
       "id": "ines-corvo",
       "name": "Ines Corvo",
+      "pronouns": "she/her",
       "speciesId": "humans",
       "homeLocationId": "pc-garrison",
       "canonStatus": "draft",
@@ -564,6 +561,7 @@
     {
       "id": "cadfan",
       "name": "Cadfan",
+      "pronouns": "he/him",
       "speciesId": "badgerfolk",
       "homeLocationId": "bogwater",
       "role": "A fen trader",
@@ -625,6 +623,7 @@
     {
       "id": "brond",
       "name": "Brond",
+      "pronouns": "he/him",
       "speciesId": "bovinefolk",
       "homeLocationId": "aurochs-downs",
       "canonStatus": "draft",

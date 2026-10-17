@@ -30,6 +30,7 @@ const checkSchema = z.object({
   approach: id,
   approachName: z.string().max(60),
   intent: z.string().max(300).optional(),
+  partial: z.boolean().optional(),
   // defId is null for a deed: an act with no state to wear down.
   target: z.object({ owner: id, defId: id.nullable(), label: z.string().max(200) }),
   charge: z.number().int(),

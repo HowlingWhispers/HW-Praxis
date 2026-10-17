@@ -482,3 +482,4 @@ button.lr:hover:not(:disabled), a.lr:hover { background: var(--hover); }
   .prompt.checking { overflow: clip; }
   .menu-space { margin-top: 18px; border-top: 1px solid var(--line); }
 }
+.edit-reply { margin: 4px 0 6px; }

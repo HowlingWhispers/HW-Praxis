@@ -139,7 +139,7 @@ describe('followers', () => {
     const went = must(act(module, save, 't1', { type: 'travel', to: 'pc-outside-walls' }));
     expect(went.save.positions['gate-guard']).toBe('pc-landward-gate');
     expect(went.save.following).toEqual({});
-    expect(went.turn.directive).toMatch(/ A garrison guard does not come with you\.$/);
+    expect(went.turn.directive).toMatch(/\nA garrison guard does not come with you\.$/);
     // A companion once the bond is warm enough: the warmest two tiers by default.
     let bonded = must(startBond(module, startSave(module), 'b1', 'gate-arbiter', 'bond-acquaintance')).save;
     const owner = bondBetween(module, bonded, 'traveller', 'gate-arbiter')!.owner;

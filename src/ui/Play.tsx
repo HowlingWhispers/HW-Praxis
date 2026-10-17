@@ -4,7 +4,7 @@
 // decides what to show and when to ask NovelAI.
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import {
-  act, cleanReply, cleanSuggestion, replyFrom, compressRequest, compressionDue, contextPlan, durationWords, entryRequest, inSentence,
+  act, cleanReply, cleanSuggestion, continuing, replyFrom, compressRequest, compressionDue, contextPlan, durationWords, entryRequest, inSentence,
   journalDue, lastTurn, placeCharacter, playable, playerOf, promptChars, recordPromptSize, say, sceneActionsFor, sceneOf,
   setPending, setReply, setState, timeOfDay, uncoveredTurns, undoLastTurn,
   type Action, type ContextPlan, type PraxisModule, type Save, type Turn,
@@ -18,7 +18,7 @@ import { RecordPanel, type RecordTarget } from './RecordPanel';
 import { CheckPanel } from './CheckPanel';
 import { CheckCard } from './CheckCard';
 import { GenerationTestPanel } from './GenerationTestPanel';
-import { DiamondIcon, RerollIcon, SendIcon, StopIcon, UndoIcon } from './icons';
+import { DiamondIcon, PenIcon, RerollIcon, SendIcon, StopIcon, UndoIcon } from './icons';
 import { SourceTag, describeEntry, newId } from './shared';
 import { NarrationError, narrate, promptTokensOf, type Diagnostics } from './novelai';
 import type { Prefs } from './prefs';
@@ -91,6 +91,8 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
   const [journalBusy, setJournalBusy] = useState(false);
   const [lastPlan, setLastPlan] = useState<ContextPlan | null>(null);
   const [tries, setTries] = useState<{ turnId: string; texts: string[] }>({ turnId: '', texts: [] });
+  // A reply being edited: saved as it stands, or handed back for the narrator to carry on.
+  const [editing, setEditing] = useState<{ turnId: string; text: string } | null>(null);
   const [calls, setCalls] = useState<Call[]>([]);
   const [page, setPage] = useState<Page>('menu');
   const [section, setSection] = useState<Section>('none');
@@ -131,13 +133,15 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
 
   const logCall = useCallback((call: Call) => setCalls((list) => [call, ...list].slice(0, 10)), []);
 
-  async function runNarration(target: Save) {
+  // Narrates the latest turn; with `from`, carries on from a reply the player edited.
+  async function runNarration(target: Save, from?: string) {
     const turn = lastTurn(target);
     if (!turn) return;
     if (!connection.connected) { setNotice('Recorded. Connect NovelAI in Settings to have it narrated.'); return; }
     let plan: ContextPlan;
     try {
       plan = contextPlan(module, target);
+      if (from) plan = continuing(plan, from);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'The narrator\'s notes could not be built.');
       return;
@@ -155,7 +159,7 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
       const ms = Math.round(performance.now() - started);
       const promptTokens = promptTokensOf(result.usage);
       logCall({ at: new Date().toLocaleTimeString(), purpose: 'narration', ok: true, ms, message: `${result.text.length} characters${promptTokens ? `, prompt ${promptTokens} tokens` : ''}`, diagnostics: result.diagnostics ?? null });
-      const reply = replyFrom(plan, cleanReply(result.text, turn.input));
+      const reply = replyFrom(plan, from ? result.text.replace(/<think>[\s\S]*?<\/think>/gi, '') : cleanReply(result.text, turn.input));
       setTries((seen) => ({ turnId: turn.id, texts: seen.turnId === turn.id ? [...seen.texts, reply] : [reply] }));
       setSave((current) => {
         const placed = setReply(current, turn.id, reply);
@@ -373,6 +377,19 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
               connected={connection.connected}
               onReroll={() => void runNarration(save)}
               onUndo={undo}
+              editing={editing?.turnId === turn.id ? editing.text : null}
+              onEdit={(text) => setEditing(text === null ? null : { turnId: turn.id, text })}
+              onSaveEdit={(text) => {
+                const placed = setReply(save, turn.id, text);
+                if (!placed.ok) { setNotice(placed.reason); return; }
+                setSave(placed.save);
+                setEditing(null);
+                setNotice('Reply saved as you edited it.');
+              }}
+              onContinue={(text) => {
+                setEditing(null);
+                void runNarration(save, text);
+              }}
               onStop={stop}
               model={calls.find((call) => call.purpose === 'narration' && call.ok)}
             />
@@ -475,7 +492,7 @@ function showLatest() {
   }, 0);
 }
 
-function TurnView({ world, save, turn, next, latest, busy, connected, onReroll, onUndo, onStop, model }: {
+function TurnView({ world, save, turn, next, latest, busy, connected, onReroll, onUndo, onStop, model, editing, onEdit, onSaveEdit, onContinue }: {
   world: PraxisModule;
   save: Save;
   turn: Turn;
@@ -487,6 +504,11 @@ function TurnView({ world, save, turn, next, latest, busy, connected, onReroll, 
   onUndo: () => void;
   onStop: () => void;
   model: Call | undefined;
+  // The reply as it is being edited, or null when it is not.
+  editing: string | null;
+  onEdit: (text: string | null) => void;
+  onSaveEdit: (text: string) => void;
+  onContinue: (text: string) => void;
 }) {
   // Hidden states (momentum) stay out of the story, and so do people's days elsewhere: only
   // comings and goings where you were show here. The ledger in Settings has everything.
@@ -513,7 +535,18 @@ function TurnView({ world, save, turn, next, latest, busy, connected, onReroll, 
           ))}
         </div>
       )}
-      {turn.reply ? <article aria-label="Narrator"><RichText text={turn.reply} /></article>
+      {editing !== null ? (
+        <div className="edit-reply">
+          <label htmlFor={`edit-${turn.id}`} className="label field-label">Edit the reply</label>
+          <textarea id={`edit-${turn.id}`} className="area" rows={8} value={editing} onChange={(event) => onEdit(event.target.value)} />
+          <p className="meta" style={{ margin: '6px 0 10px', lineHeight: 1.4 }}>Save it as it stands, or cut it where it went wrong and let the narrator carry on from there.</p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn primary" disabled={!editing.trim()} onClick={() => onSaveEdit(editing)}>Save</button>
+            <button type="button" className="btn" disabled={!editing.trim() || !connected || busy} onClick={() => onContinue(editing)}>Continue from here</button>
+            <button type="button" className="btn quiet" onClick={() => onEdit(null)}>Cancel</button>
+          </div>
+        </div>
+      ) : turn.reply ? <article aria-label="Narrator"><RichText text={turn.reply} /></article>
         : waiting ? <p className="writing">The narrator is writing…</p>
         : latest ? <p className="muted" style={{ fontSize: 14 }}>{connected ? 'Not narrated yet.' : 'Not narrated. Connect NovelAI in Settings to have turns narrated.'}</p>
         : null}
@@ -524,6 +557,7 @@ function TurnView({ world, save, turn, next, latest, busy, connected, onReroll, 
           ) : (
             <button type="button" className="ghost" onClick={onReroll} disabled={!connected}><RerollIcon />{turn.reply ? 'Reroll' : 'Narrate'}</button>
           )}
+          {turn.reply && editing === null && !waiting && <button type="button" className="ghost" onClick={() => onEdit(turn.reply ?? '')}><PenIcon />Edit</button>}
           <button type="button" className="ghost" onClick={onUndo}><UndoIcon />Undo turn</button>
           {model && turn.reply && <span className="meta">{[typeof model.diagnostics?.model === 'string' ? model.diagnostics.model : '', model.ms ? `${(model.ms / 1000).toFixed(1)} s` : ''].filter(Boolean).join(' · ')}</span>}
         </div>

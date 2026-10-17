@@ -98,31 +98,31 @@ describe('the narrator\'s context', () => {
     // Your turn holds only what you wrote.
     expect(messages[5]!.content).toBe('I sign.');
     expect(plan.prefill).toMatch(/^Understood\. I will:\n/);
-    expect(plan.prefill).toContain('- Show how the world answers what you just did, and leave the outcome of anything uncertain open');
-    expect(plan.prefill.endsWith('- Stop where you can act again\n[Of course, here you go:]\n*')).toBe(true);
+    expect(plan.prefill).toContain('\n- Show how the world answers what you just did, and leave the outcome of anything uncertain open.\n');
+    expect(plan.prefill.endsWith('\n- Stop where you can act again.\n[Of course, here you go:]\n*')).toBe(true);
     expect(replyFrom(plan, 'She pushes the ledger across.* Sign there.')).toBe('*She pushes the ledger across.* Sign there.');
     expect(replyFrom(plan, '*She pushes the ledger across.*')).toBe('*She pushes the ledger across.*');
   });
 
-  it('keeps conditions true in the reply\'s opening, and an outcome once, then in the transcript', () => {
-    let save = must(setState(module, signed(), 'health', 'gate-guard', 1)).save;
-    save = must(say(module, save, 't1', 'I look at the guard.')).save;
+  it('keeps conditions true in the reply\'s opening, shows an outcome once, then keeps only the story', () => {
+    let save = must(setState(module, signed(), 'health', 'gate-arbiter', 2)).save;
+    save = must(say(module, save, 't1', 'I look at the Arbiter.')).save;
     const plan = contextPlan(module, save);
-    expect(plan.prefill).toMatch(/\n- Keep true: .*You have signed the Covenant\./);
-    expect(plan.prefill).toContain('The garrison guard is hurt: bleeding and slowed, but still fighting.');
+    expect(plan.prefill).toContain('\n- Remember that you have signed the Covenant.\n');
+    expect(plan.prefill).toContain('\n- Remember that the gate Arbiter is hurt, bleeding and slowed, but still fighting.\n');
     expect(plan.prefill).not.toMatch(/is unhurt/);
-    expect(plan.prefill).not.toContain('Show what the rules decided');
-    save = must(setReply(save, 't1', '*He leans on his pike.*')).save;
+    expect(plan.prefill).not.toContain('- Show that');
+    save = must(setReply(save, 't1', '*She winces as she writes.*')).save;
     save = must(act(module, save, 't2', { type: 'travel', to: 'pc-outside-walls' })).save;
     const next = contextPlan(module, save);
-    expect(next.prefill).toMatch(/\n- Show what the rules decided: You have just arrived at the outer lanes after [^\n]*\.\n/);
-    expect(next.messages.some((message) => message.content.includes('Outcome: You have just arrived'))).toBe(false);
+    expect(next.prefill).toMatch(/\n- Show that you have just arrived at the outer lanes after [^\n]*\.\n/);
     save = must(setReply(save, 't2', '*Mud and washing lines.*')).save;
     save = must(say(module, save, 't3', 'I look around.')).save;
     const later = contextPlan(module, save);
-    // Once it is past, what the rules decided stays with your words in the transcript.
-    expect(later.messages.filter((message) => message.content.includes('[ Outcome: You have just arrived at the outer lanes'))).toHaveLength(1);
-    expect(later.messages.find((message) => message.content.includes('[ Outcome: You have just arrived'))!.content).toMatch(/^I head for the outer lanes\.\n\n\[ Outcome: /);
+    // Once a turn is resolved, only the story remains: no rolls, no rulings.
+    expect(later.messages.some((message) => message.content.includes('You have just arrived'))).toBe(false);
+    expect(later.messages.some((message) => message.content === 'I head for the outer lanes.')).toBe(true);
+    expect(later.prefill).not.toContain('- Show that');
   });
 
   it('never names the clock\'s numbers', () => {

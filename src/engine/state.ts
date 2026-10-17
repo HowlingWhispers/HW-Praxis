@@ -17,6 +17,7 @@
 //   twice, but stepping from one terminal straight into another counts as an arrival.
 
 import { z } from 'zod';
+import { THEY, type Pronouns } from './words';
 
 export const STATE_SCOPES = [
   'world', // one value, owned by the world
@@ -188,10 +189,11 @@ export interface BandReading {
   banded: boolean;
 }
 
-// A label is "words: what they mean". The screen shows the words; the narrator gets both.
-// A relationship's tiers are whole sentences and are never cut.
+// A label is its words, then what they mean: "is hurt, bleeding and slowed, but still
+// fighting". The screen shows the words before the first comma, colon or full stop; the
+// narrator gets it all. A relationship's tiers are whole sentences and are never cut.
 export function shortLabel(def: Pick<StateDef, 'scope'>, label: string): string {
-  return def.scope === 'relationship' ? label : label.split(': ')[0]!.trim();
+  return def.scope === 'relationship' ? label : label.split(/[.,;:]\s/)[0]!.trim();
 }
 
 export function band(def: StateDef, value: number): BandReading {
@@ -264,12 +266,12 @@ export function forYou(label: string): string {
 // A standing fact as one plain sentence for the narrator, or '' when it is silent: off its
 // resting band only, unless `evenAtRest` (an outcome that brought something back to rest). The player's own facts read "You are hurt."; anyone else's use the
 // state's line template and other-people labels.
-export function fact(def: StateDef, ownerName: string, value: number, forPlayer = false, evenAtRest = false): string {
+export function fact(def: StateDef, ownerName: string, value: number, forPlayer = false, evenAtRest = false, who?: Pronouns): string {
   if (!evenAtRest && !speaks(def, value)) return '';
   if (!band(def, value).banded) return '';
   if (forPlayer) return `You ${labelFor(def, value, true)}.`;
   const npcDef = def.npcLabels ? { ...def, bands: def.bands.map((entry, index) => ({ ...entry, label: def.npcLabels?.[index] || entry.label })) } : def;
-  return render(npcDef, ownerName, value).replace(/^\[\s*/, '').replace(/\s*\]$/, '');
+  return render(npcDef, ownerName, value, false, who).replace(/^\[\s*/, '').replace(/\s*\]$/, '');
 }
 
 // The standing fact one definition writes for one owner, or '' when it is silent.
@@ -281,7 +283,7 @@ export function line(def: StateDef, ownerName: string, value: number): string {
 
 // The same sentence whether or not it would reach the model, for the player's own screens,
 // which pass `short` to leave out what a label means.
-export function render(def: StateDef, ownerName: string, value: number, short = false): string {
+export function render(def: StateDef, ownerName: string, value: number, short = false, who: Pronouns = THEY): string {
   const b = band(def, value);
   const template = def.line?.trim() || DEFAULT_STATE_LINE;
   const macros: Record<string, string> = {
@@ -292,5 +294,10 @@ export function render(def: StateDef, ownerName: string, value: number, short = 
     bandLabel: short ? b.short : b.label,
     value: String(clamp(def, value)),
   };
-  return template.replace(/\|(name|nameMid|defName|bandLabel|value)\|/g, (_, key: string) => macros[key] ?? '').replace(/\s+/g, ' ').trim();
+  // Then the pronouns a label may use: |they| |them| |their|, capitalised for a sentence start.
+  const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+  const forms: Record<string, string> = { they: who.they, them: who.them, their: who.their, They: capital(who.they), Them: capital(who.them), Their: capital(who.their) };
+  return template.replace(/\|(name|nameMid|defName|bandLabel|value)\|/g, (_, key: string) => macros[key] ?? '')
+    .replace(/\|(they|them|their|They|Them|Their)\|/g, (_, key: string) => forms[key] ?? '')
+    .replace(/\s+/g, ' ').trim();
 }
