@@ -33,12 +33,15 @@ describe('a fresh save', () => {
   });
 
   it('gives a tiered character their own maximum, read as a share for bands', () => {
-    const guardHealth = stateDefFor(module, 'health', 'gate-guard')!;
-    expect(read(save.values, guardHealth, 'gate-guard')).toBe(2);
-    expect(band(guardHealth, 2).label).toBe('is unhurt');
-    expect(band(guardHealth, 1).short).toBe('is hurt');
-    expect(band(guardHealth, 1).label).toBe('is hurt: it slows you');
+    const arbiterHealth = stateDefFor(module, 'health', 'gate-arbiter')!;
+    expect(read(save.values, arbiterHealth, 'gate-arbiter')).toBe(5);
+    expect(band(arbiterHealth, 5).label).toBe('is unhurt');
+    expect(band(arbiterHealth, 2).short).toBe('is hurt');
+    expect(band(arbiterHealth, 2).label).toBe('is hurt, and it slows you');
     expect(band(health, 1).short).toBe('is badly hurt');
+    // A minion falls to one success.
+    expect(stateDefFor(module, 'health', 'gate-guard')!.max).toBe(1);
+    expect(stateDefFor(module, 'strain', 'gate-guard')!.max).toBe(1);
   });
 });
 

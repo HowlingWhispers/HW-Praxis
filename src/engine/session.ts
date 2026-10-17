@@ -65,6 +65,8 @@ export interface CheckRecord {
   chance: number;
   // What the player said they wanted from it.
   intent?: string;
+  // A success that wore the target down without finishing it: it gained ground, not the end.
+  partial?: boolean;
 }
 
 // One exchange: what the player did, what the rules decided, and what the narrator wrote.

@@ -37,3 +37,17 @@ export const wantedAsYou = (text: string) => {
     .replace(/\b[Mm]e\b/g, 'you').replace(/\bMy\b/g, 'Your').replace(/\bmy\b/g, 'your');
   return /^(She|He|They|It|The|A|An|You|Your|We|Our|Her|His|Their)\b/.test(turned) ? turned.charAt(0).toLowerCase() + turned.slice(1) : turned;
 };
+
+export interface Pronouns { they: string; them: string; their: string }
+
+// "she/her" and the like, as the three forms a sentence needs. Unset or unknown reads as
+// they/them.
+export function pronounsOf(text: string | undefined): Pronouns {
+  const first = (text ?? '').trim().toLowerCase().split(/[\s/,]+/)[0] ?? '';
+  if (first === 'she') return { they: 'she', them: 'her', their: 'her' };
+  if (first === 'he') return { they: 'he', them: 'him', their: 'his' };
+  if (first === 'it') return { they: 'it', them: 'it', their: 'its' };
+  return { they: 'they', them: 'them', their: 'their' };
+}
+
+export const THEY: Pronouns = { they: 'they', them: 'them', their: 'their' };

@@ -38,6 +38,7 @@ export function RecordPanel({ api, target, headRef, onDone }: { api: PlayApi; ta
   const [description, setDescription] = useState(existing?.description ?? '');
   const [playerNote, setPlayerNote] = useState(existing?.playerNote ?? '');
   const [speciesId, setSpeciesId] = useState(existing?.speciesId ?? '');
+  const [pronouns, setPronouns] = useState(existing?.pronouns ?? '');
   const [groupId, setGroupId] = useState(existing?.factionIds[0] ?? '');
   const [kind, setKind] = useState<string>(existing?.kind ?? 'building');
   const [parentId, setParentId] = useState(existing?.parentLocationId ?? scene.place.id);
@@ -51,7 +52,7 @@ export function RecordPanel({ api, target, headRef, onDone }: { api: PlayApi; ta
 
   function input(): LocalRecordInput {
     const base: LocalRecordInput = { id: existing?.id ?? newId(`local-${type}`), type, name: name.trim(), summary: summary.trim(), description: description.trim(), playerNote: playerNote.trim(), factionIds: [] };
-    if (type === 'person') return { ...base, speciesId: speciesId || undefined, factionIds: groupId ? [groupId] : [] };
+    if (type === 'person') return { ...base, speciesId: speciesId || undefined, pronouns: pronouns || undefined, factionIds: groupId ? [groupId] : [] };
     if (type === 'place') return { ...base, kind: kind as LocalRecordInput['kind'], parentLocationId: parentId || undefined };
     if (type === 'thing') return { ...base, heldBy: thingAt === 'carried' ? playerId : undefined, locationId: thingAt && thingAt !== 'carried' ? thingAt : undefined };
     return base;
@@ -62,7 +63,7 @@ export function RecordPanel({ api, target, headRef, onDone }: { api: PlayApi; ta
     const record = input();
     let next: Save;
     if (existing) {
-      const updated = updateRecord(module, save, existing.id, { ...record, speciesId: record.speciesId, kind: record.kind, parentLocationId: record.parentLocationId, heldBy: record.heldBy, locationId: record.locationId });
+      const updated = updateRecord(module, save, existing.id, { ...record, speciesId: record.speciesId, pronouns: record.pronouns, kind: record.kind, parentLocationId: record.parentLocationId, heldBy: record.heldBy, locationId: record.locationId });
       if (!updated.ok) { setProblem(updated.reason); return; }
       next = updated.save;
       if (type === 'person' && (save.positions[existing.id] ?? '') !== whereId) {
@@ -142,6 +143,15 @@ export function RecordPanel({ api, target, headRef, onDone }: { api: PlayApi; ta
                   {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
                 </select>
               </div>
+            </div>
+            <div>
+              <label htmlFor="record-pronouns" className="label field-label">Pronouns</label>
+              <select id="record-pronouns" className="select" value={pronouns} onChange={(event) => setPronouns(event.target.value)}>
+                <option value="">They/them</option>
+                <option value="she/her">She/her</option>
+                <option value="he/him">He/him</option>
+                <option value="it/its">It/its</option>
+              </select>
             </div>
             <div>
               <label htmlFor="record-where" className="label field-label">Where they are</label>

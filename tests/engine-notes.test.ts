@@ -105,7 +105,7 @@ describe('the lorebook section and the reply\'s opening', () => {
     const lore = loreOf(world, save);
     expect(lore).toMatch(/^\[ You are the traveller: .*Looks: Road dust to the knees, a pack with one strap mended in twine\. \]/m);
     expect(lore).not.toContain('Should never reach the narrator.');
-    expect(prefillOf(world, save)).toMatch(/\n- Keep true: Abernys is in\.\n/);
+    expect(prefillOf(world, save)).toContain('\n- Remember that Abernys is in.\n');
   });
 
   it('refuses items placed somewhere unknown', () => {

@@ -113,7 +113,7 @@ function passTime(world: PraxisModule, before: Save, after: Save, entries: Ledge
   return {
     save: followed.save,
     entries: [...entries, ...followed.entries],
-    directive: news.length ? `${directive} Meanwhile, ${news.join('; ')}.` : directive,
+    directive: news.length ? `${directive}\nMeanwhile, ${news.join('; ')}.` : directive,
   };
 }
 
@@ -137,7 +137,7 @@ export function act(module: PraxisModule, save: Save, id: string, action: Action
     result = resolveScene(world, save, chosen);
     if (!result.ok) return result;
     // A terminal the action reached is part of what the narrator must show.
-    const outcome = [chosen.outcome, ...result.terminals.map((terminal) => terminal.note)].join(' ');
+    const outcome = [chosen.outcome, ...result.terminals.map((terminal) => terminal.note)].join('\n');
     const timed = passTime(world, save, result.save, result.entries, outcome, true);
     return open(world, save, timed.save, { id, kind: 'action', input: chosen.input, directive: timed.directive }, timed.entries, result.terminals);
   }
@@ -156,7 +156,7 @@ export function act(module: PraxisModule, save: Save, id: string, action: Action
     const nameOf = (characterId: string) => world.characters.find((character) => character.id === characterId)?.name ?? characterId;
     const party = came.map((entry) => `${midSentence(nameOf(entry.characterId))}, ${followingAs(world, moved, entry.characterId)}`);
     directive = `You have just arrived at ${name} after ${roughDuration(minutes)}${party.length ? `, with ${party.join(' and ')}` : ''}.`;
-    for (const entry of stayed) directive += ` ${nameOf(entry.characterId)} does not come with you.`;
+    for (const entry of stayed) directive += `\n${nameOf(entry.characterId)} does not come with you.`;
   } else {
     result = wait(save, action.minutes);
     if (!result.ok) return result;

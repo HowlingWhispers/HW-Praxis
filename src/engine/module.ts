@@ -131,6 +131,9 @@ export const characterSchema = z.object({
   // The dossier. Orbis characters take these as free-form fields; the names follow Orbis's
   // persona record (appearance, personality, speech) so one shape serves both.
   role: text(200).optional(),
+  // As Orbis's persona record writes them: "she/her", "he/him", "they/them", "it/its".
+  // Unset reads as they/them.
+  pronouns: text(40).optional(),
   appearance: text(4000).optional(),
   personality: text(4000).optional(),
   speech: text(4000).optional(),

@@ -22,8 +22,8 @@ export function Die({ kind, face }: { kind: string; face?: string }) {
   );
 }
 
-export function verdictOf(check: Pick<CheckRecord, 'succeeded' | 'netSuccess' | 'triumph' | 'despair'>): string {
-  if (check.succeeded) return `${check.triumph ? 'Triumph' : 'Success'}${check.netSuccess > 1 ? ` +${check.netSuccess - 1}` : ''}`;
+export function verdictOf(check: Pick<CheckRecord, 'succeeded' | 'netSuccess' | 'triumph' | 'despair' | 'partial'>): string {
+  if (check.succeeded) return `${check.triumph ? 'Triumph' : 'Success'}${check.netSuccess > 1 ? ` +${check.netSuccess - 1}` : ''}${check.partial ? ', not over yet' : ''}`;
   return check.despair ? 'Despair' : 'Failure';
 }
 

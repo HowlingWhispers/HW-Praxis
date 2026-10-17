@@ -19,7 +19,7 @@
 import { playable } from './records';
 import { DIFFICULTY_NAMES, stateDefFor, type Approach, type Cost, type Deed, type PraxisModule } from './module';
 import { band, fact, labelFor, read, shortLabel, write, type StateDef, type StateTerminal, type StateValues } from './state';
-import { definite, midSentence, toYou, wantedAsYou } from './words';
+import { definite, midSentence, pronounsOf, toYou, wantedAsYou } from './words';
 import { buildPool, oddsOf, rollPool, type Odds, type Pool } from './dice';
 import { playerOf, thingsAt, type CheckRecord, type LedgerEntry, type Save } from './session';
 import { pairName, relationshipBetween } from './relationships';
@@ -476,17 +476,23 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
     }
   }
 
-  // The outcome, as facts in the story's own terms. The narrator is told to show it; each
-  // condition says what it means, including when more is needed before it is over.
+  // The outcome, one plain sentence a line, in the story's own terms. Each condition says what
+  // it means, including when more is needed before it is over. The reply's opening turns
+  // each line into "Show that …".
   const named = (owner: string) => (owner === playerId ? 'You' : definite(ownerName(world, owner)));
   const mid = (owner: string) => midSentence(named(owner));
   const isPerson = (owner: string) => owner !== playerId && world.characters.some((character) => character.id === owner);
+  const pronounsFor = (owner: string) => {
+    const person = world.characters.find((character) => character.id === owner);
+    if (person) return pronounsOf(person.pronouns);
+    return world.items.some((item) => item.id === owner) ? pronounsOf('it') : undefined;
+  };
   // What shows about one state now. When it has just reached an end: for someone else with
   // words of their own (npcLabels), those words say it all; otherwise the terminal's note
   // follows, turned to "you" for the player.
   const shows = (stateDef: StateDef, owner: string, evenAtRest = false): string => {
     const forPlayer = owner === playerId;
-    const said = fact(stateDef, named(owner), read(values, stateDef, owner), forPlayer, evenAtRest);
+    const said = fact(stateDef, named(owner), read(values, stateDef, owner), forPlayer, evenAtRest, pronounsFor(owner));
     const reached = terminals.find((entry) => entry.owner === owner && entry.defId === stateDef.id)?.terminal;
     const means = !reached ? '' : forPlayer ? reached.playerNote ?? toYou(reached.note) : stateDef.npcLabels ? '' : reached.note;
     return [said, means].filter(Boolean).join(' ');
@@ -498,25 +504,24 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
   const parts: string[] = [];
   if (reading.succeeded) {
     const better = reading.triumph ? ', better than hoped' : '';
-    const works = wanted ? `It works${better}, so this happens: ${wanted}.` : `It works${better}.`;
+    const works = wanted ? `It works${better}: ${wanted}.` : `It works${better}.`;
     if (!def) parts.push(works);
-    else if (def.grows) parts.push(wanted ? works : `It works${better}: you notice something useful about ${them}.`, shows(def, target.owner));
+    else if (def.grows) parts.push(wanted ? works : `It works${better}, and you notice something useful about ${them}.`, shows(def, target.owner));
     else if (reachedEnd) parts.push(works, shows(def, target.owner));
     else {
-      const now = shows(def, target.owner);
-      const notYet = wanted ? ` This does not happen yet: ${wanted}.` : '';
-      if (now) parts.push(`It gains ground${better}, but it is not over yet.${notYet}`, now);
-      else parts.push(isPerson(target.owner) ? `It lands, but only just: ${them} shows no sign of it yet.${notYet}` : `It lands, but only just.${notYet}`, isPerson(target.owner) ? '' : shows(def, target.owner, true));
+      parts.push(`It gains ground${better}, but it is not over yet.`);
+      if (wanted) parts.push(`This does not happen yet: ${wanted}.`);
+      parts.push(shows(def, target.owner) || (isPerson(target.owner) ? `${named(target.owner)} shows no sign of it yet.` : shows(def, target.owner, true)));
     }
   } else {
-    const worse = reading.despair ? ', and it goes badly wrong' : '';
-    const denied = wanted ? ` This does not happen: ${wanted}.` : '';
-    parts.push((def?.grows ? `It fails${worse}: you learn nothing useful about ${them}.` : def ? `It fails${worse}: it makes no headway against ${them}.` : `It fails${worse}.`) + denied);
+    const worse = reading.despair ? ' badly' : '';
+    parts.push(def?.grows ? `It fails${worse}, and you learn nothing useful about ${them}.` : def ? `It fails${worse} and makes no headway against ${them}.` : `It fails${worse}.`);
+    if (wanted) parts.push(`This does not happen: ${wanted}.`);
   }
   if (reading.succeeded && reading.despair) parts.push('Something else goes badly wrong.');
   if (!reading.succeeded && reading.triumph) parts.push('Even so, something goes very well for you.');
   if (reading.netAdvantage === 1) parts.push('Something small also goes your way.');
-  else if (reading.netAdvantage >= 2) parts.push('Something else goes your way too: an opening you can use.');
+  else if (reading.netAdvantage >= 2) parts.push('Something else goes your way too, an opening you can use.');
   else if (reading.netAdvantage === -1) parts.push('Something small also goes against you.');
   else if (reading.netAdvantage <= -2) parts.push('Something else goes wrong for you too.');
   // What else it changed: the price of failing, a bond that moved.
@@ -546,6 +551,7 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
     despair: reading.despair,
     chance: Math.round(plan.odds.success * 1000) / 1000,
     ...(choice.intent?.trim() ? { intent: choice.intent.trim().slice(0, 300) } : {}),
+    ...(reading.succeeded && def && !def.grows && !reachedEnd ? { partial: true } : {}),
   };
 
   return {
@@ -555,7 +561,7 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
       entries,
       terminals: terminals.map((entry) => entry.terminal),
       record,
-      directive: parts.filter(Boolean).join(' '),
+      directive: parts.filter(Boolean).join('\n'),
     },
   };
 }

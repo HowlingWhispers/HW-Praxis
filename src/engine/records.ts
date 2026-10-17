@@ -28,6 +28,7 @@ export const localRecordSchema = z.object({
   // For the player only. Never sent to the narrator.
   playerNote: z.string().max(4000).default(''),
   // People.
+  pronouns: z.string().max(40).optional(),
   speciesId: id.optional(),
   factionIds: z.array(id).max(20).default([]),
   // Places: what it is and what it is inside.
@@ -78,6 +79,7 @@ export function playable(module: PraxisModule, local: readonly LocalRecord[]): P
     id: record.id,
     name: record.name,
     role: record.summary || undefined,
+    pronouns: record.pronouns,
     description: record.description,
     speciesId: record.speciesId,
     factionIds: record.factionIds,
