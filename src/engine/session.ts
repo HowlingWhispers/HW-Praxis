@@ -63,6 +63,8 @@ export interface CheckRecord {
   despair: boolean;
   // The chance it had, from 0 to 1.
   chance: number;
+  // What the player said they wanted from it.
+  intent?: string;
 }
 
 // One exchange: what the player did, what the rules decided, and what the narrator wrote.

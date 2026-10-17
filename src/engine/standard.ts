@@ -35,7 +35,7 @@ export const STANDARD_RULESET = {
       bands: share([[0, 'is spent'], [1, 'is badly strained: your composure is fraying'], [34, 'is strained'], [100, 'is steady']]), restBand: 3,
       // Against someone else, Strain is their will to hold out against you.
       npcLabels: [
-        'has given way: they believe you, back down or do as you ask, until something new changes their mind',
+        'has given way: they take your word over what they see or know, back down, or do as you ask, until something new changes their mind',
         'is close to giving way: still holding out, but not for much longer',
         'is wavering: unsure now, but still holding out',
         'is steady',

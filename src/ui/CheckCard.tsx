@@ -44,6 +44,7 @@ export function CheckCard({ check }: { check: CheckRecord }) {
         </span>
         <span className="check-target">{check.target.label}</span>
       </div>
+      {check.intent && <p className="meta" style={{ margin: '6px 0 0', lineHeight: 1.4 }}>Wanted: {check.intent}</p>}
       {!check.auto && (
         <div className="dice-row">
           {check.good.map((die, index) => <Die key={`g${index}`} kind={die.kind} face={die.face} />)}

@@ -19,7 +19,7 @@
 import { playable } from './records';
 import { DIFFICULTY_NAMES, stateDefFor, type Approach, type Cost, type Deed, type PraxisModule } from './module';
 import { band, fact, labelFor, read, shortLabel, write, type StateDef, type StateTerminal, type StateValues } from './state';
-import { definite, midSentence, toYou } from './words';
+import { definite, midSentence, toYou, wantedAsYou } from './words';
 import { buildPool, oddsOf, rollPool, type Odds, type Pool } from './dice';
 import { playerOf, thingsAt, type CheckRecord, type LedgerEntry, type Save } from './session';
 import { pairName, relationshipBetween } from './relationships';
@@ -185,6 +185,10 @@ export interface CheckChoice {
   storyPoint?: boolean;
   // Spend what Focus built against this target (Leverage, Prepared). On unless turned off.
   useAids?: boolean;
+  // What the player wants from it, in their own words: "She lets me through without
+  // signing." A success makes it happen, a partial success leaves it not yet won, a failure
+  // denies it. The narrator is told so plainly.
+  intent?: string;
 }
 
 export interface CheckPlan {
@@ -489,20 +493,25 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
   };
   const them = mid(target.owner);
   const reachedEnd = Boolean(def && terminals.some((entry) => entry.owner === target.owner && entry.defId === def.id));
+  // What the player wanted, when they said: the outcome says outright whether it happens.
+  const wanted = wantedAsYou(choice.intent ?? '');
   const parts: string[] = [];
   if (reading.succeeded) {
     const better = reading.triumph ? ', better than hoped' : '';
-    if (!def) parts.push(`It works${better}.`);
-    else if (def.grows) parts.push(`It works${better}: you notice something useful about ${them}.`, shows(def, target.owner));
-    else if (reachedEnd) parts.push(`It works${better}.`, shows(def, target.owner));
+    const works = wanted ? `It works${better}, so this happens: ${wanted}.` : `It works${better}.`;
+    if (!def) parts.push(works);
+    else if (def.grows) parts.push(wanted ? works : `It works${better}: you notice something useful about ${them}.`, shows(def, target.owner));
+    else if (reachedEnd) parts.push(works, shows(def, target.owner));
     else {
       const now = shows(def, target.owner);
-      if (now) parts.push(`It gains ground${better}, but it is not over yet.`, now);
-      else parts.push(isPerson(target.owner) ? `It lands, but only just: ${them} shows no sign of it yet.` : `It lands, but only just.`, isPerson(target.owner) ? '' : shows(def, target.owner, true));
+      const notYet = wanted ? ` This does not happen yet: ${wanted}.` : '';
+      if (now) parts.push(`It gains ground${better}, but it is not over yet.${notYet}`, now);
+      else parts.push(isPerson(target.owner) ? `It lands, but only just: ${them} shows no sign of it yet.${notYet}` : `It lands, but only just.${notYet}`, isPerson(target.owner) ? '' : shows(def, target.owner, true));
     }
   } else {
     const worse = reading.despair ? ', and it goes badly wrong' : '';
-    parts.push(def?.grows ? `It fails${worse}: you learn nothing useful about ${them}.` : def ? `It fails${worse}: it makes no headway against ${them}.` : `It fails${worse}.`);
+    const denied = wanted ? ` This does not happen: ${wanted}.` : '';
+    parts.push((def?.grows ? `It fails${worse}: you learn nothing useful about ${them}.` : def ? `It fails${worse}: it makes no headway against ${them}.` : `It fails${worse}.`) + denied);
   }
   if (reading.succeeded && reading.despair) parts.push('Something else goes badly wrong.');
   if (!reading.succeeded && reading.triumph) parts.push('Even so, something goes very well for you.');
@@ -536,6 +545,7 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
     triumph: reading.triumph,
     despair: reading.despair,
     chance: Math.round(plan.odds.success * 1000) / 1000,
+    ...(choice.intent?.trim() ? { intent: choice.intent.trim().slice(0, 300) } : {}),
   };
 
   return {

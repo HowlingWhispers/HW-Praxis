@@ -102,6 +102,11 @@ export function CheckPanel({ api, owner, headRef, onCancel }: { api: PlayApi; ow
           <label htmlFor="check-line" className="label field-label">What you’re trying to do</label>
           <textarea id="check-line" className="area" rows={2} value={line} placeholder="Your line in the story, such as: I put my shoulder to the door." onChange={(event) => setLine(event.target.value)} />
         </div>
+        <div>
+          <label htmlFor="check-intent" className="label field-label">What you want from it · optional</label>
+          <input id="check-intent" className="field" value={choice.intent ?? ''} maxLength={300} placeholder="Such as: She lets me through without signing." onChange={(event) => setChoice({ ...choice, intent: event.target.value })} />
+          <p className="meta" style={{ marginTop: 6, lineHeight: 1.4 }}>A success makes it happen; a partial one leaves it not yet won; a failure denies it. The narrator is told which.</p>
+        </div>
 
         <div>
           <span id="check-target" className="label field-label">Against</span>
