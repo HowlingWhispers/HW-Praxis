@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  act, actsOn, addObstacle, cleanReply, compileContext, difficultyFor, loadModule, planCheck, playable, randomDifficulty, read, say, setState, settleCheck, startSave, stateDefFor, subjectsHere,
+  act, actsOn, addObstacle, cleanReply, compileContext, contextPlan, setReply, difficultyFor, loadModule, planCheck, playable, randomDifficulty, read, say, setState, settleCheck, startSave, stateDefFor, subjectsHere,
   type PraxisModule, type Save, type Target,
 } from '../src/engine';
 import { abernys, abernysRaw } from './abernys';
@@ -64,11 +64,10 @@ describe('every record, four ways', () => {
     const plan = must(planCheck(module, save, deed, { approach: 'finesse', charge: 0 }));
     expect(plan.stakes.success).toBe('What you are trying works.');
     const won = must(act(module, save, 't1', { type: 'check', target: deed, choice: { approach: 'finesse', charge: 0 }, input: 'I lift her pen while she writes.', random: rollFor(module, save, deed, 'finesse', true) }));
-    expect(won.turn.directive).toMatch(/^Finesse succeeds\. What you just tried works on the gate Arbiter\./);
-    expect(won.turn.directive).toMatch(/Show it in this reply, and let it change what the gate Arbiter does from here on\.$/);
+    expect(won.turn.directive).toMatch(/^It works\./);
     expect(won.turn.check?.target).toEqual({ owner: 'gate-arbiter', defId: null, label: 'The gate Arbiter · Lift, slip past or plant something' });
     const lost = must(act(module, save, 't1', { type: 'check', target: deed, choice: { approach: 'finesse', charge: 0 }, input: 'I lift her pen.', random: rollFor(module, save, deed, 'finesse', false) }));
-    expect(lost.turn.directive).toMatch(/^Finesse fails\. What you just tried does not work on the gate Arbiter\. .*Everyone at the landward gate is uneasy\./);
+    expect(lost.turn.directive).toMatch(/^It fails\. .*Everyone at the landward gate is uneasy: they keep an eye on you\./);
     expect(value(module, lost.save, 'alert', 'pc-landward-gate')).toBe(1);
     expect(planCheck(module, save, deed, { approach: 'flair', charge: 0 })).toEqual({ ok: false, reason: 'Flair has nothing to do to the gate Arbiter on its own.' });
   });
@@ -124,44 +123,54 @@ describe('every record, four ways', () => {
 });
 
 describe('what the narrator is told', () => {
-  it('says plainly what a success did, what it means, and that it carries on', () => {
+  it('says plainly what a success did and what it means, and keeps it true afterwards', () => {
     const save = startSave(module);
     const sway: Target = { owner: 'gate-guard', defId: 'strain' };
-    const won = must(act(module, save, 't1', { type: 'check', target: sway, choice: { approach: 'flair', charge: 0 }, input: "You don't recognize me? I already work here, *I lie.*", random: rollFor(module, save, sway, 'flair', true) }));
-    expect(won.turn.directive).toMatch(/^Flair succeeds\. What you just tried works on the garrison guard\. The garrison guard has given way to you: they believe you, back down or do as you ask\. They stay that way unless something new changes their mind\./);
-    expect(won.turn.directive).toMatch(/Show it in this reply, and let it change what the garrison guard does from here on\.$/);
-    const messages = compileContext(module, won.save);
-    const notes = messages.at(-2)!.content;
-    expect(messages.at(-2)!.role).toBe('system');
-    expect(messages.at(-1)).toEqual({ role: 'user', content: "You don't recognize me? I already work here, *I lie.*" });
-    // Said once: the outcome carries it this turn, so the scene does not repeat it.
-    expect(notes.match(/has given way to you/g)).toHaveLength(1);
-    expect(notes).toMatch(/\n\[ Outcome: Flair succeeds\. .* \]$/);
-    // Next turn the scene keeps saying it, and the outcome is gone.
-    const later = compileContext(module, must(say(module, won.save, 't2', 'I nod to him and walk on.')).save).at(-2)!.content;
-    expect(later).toMatch(/\[ Scene: .*The garrison guard has given way to you: they believe you, back down or do as you ask\./);
-    expect(later).not.toContain('Outcome');
+    const input = "You don't recognize me? I already work here, *I lie.*";
+    const won = must(act(module, save, 't1', { type: 'check', target: sway, choice: { approach: 'flair', charge: 0 }, input, random: rollFor(module, save, sway, 'flair', true) }));
+    expect(won.turn.directive).toMatch(/^It works\. The garrison guard has given way: they believe you, back down or do as you ask, until something new changes their mind\./);
+    const plan = contextPlan(module, won.save);
+    expect(plan.messages.at(-1)).toEqual({ role: 'user', content: input });
+    // Said once: the outcome carries it this turn, so the conditions kept true leave it out.
+    expect(plan.prefill.match(/has given way/g)).toHaveLength(1);
+    expect(plan.prefill).toContain(`- Show what the rules decided: ${won.turn.directive}`);
+    // Next turn it is a condition to keep true, and the outcome stays with the words that won it.
+    const replied = must(setReply(won.save, 't1', '*He shrugs.* Didn’t know your face.')).save;
+    const later = contextPlan(module, must(say(module, replied, 't2', 'I nod to him and walk on.')).save);
+    expect(later.prefill).toMatch(/\n- Keep true: .*The garrison guard has given way: they believe you, back down or do as you ask, until something new changes their mind\./);
+    expect(later.prefill).not.toContain('Show what the rules decided');
+    expect(later.messages.some((message) => message.role === 'user' && message.content === `${input}\n\n[ Outcome: ${won.turn.directive} ]`)).toBe(true);
+  });
+
+  it('says when it is not over yet, and what that means', () => {
+    const save = startSave(module);
+    const sway: Target = { owner: 'gate-arbiter', defId: 'strain' };
+    const partial = must(act(module, save, 't1', { type: 'check', target: sway, choice: { approach: 'flair', charge: 0 }, input: 'You will find I have already signed.', random: rollFor(module, save, sway, 'flair', true) }));
+    expect(partial.turn.directive).toMatch(/^It gains ground, but it is not over yet\. The gate Arbiter is (wavering: unsure now|close to giving way: still holding out)/);
+    const hit: Target = { owner: 'gate-arbiter', defId: 'health' };
+    const struck = must(act(module, save, 't1', { type: 'check', target: hit, choice: { approach: 'force', charge: 0 }, input: 'I hit her.', random: rollFor(module, save, hit, 'force', true) }));
+    expect(struck.turn.directive).toMatch(/The gate Arbiter is (bruised: shaken, but still fighting|hurt: bleeding and slowed, but still fighting|near death: barely standing)/);
   });
 
   it('turns a note about them into one about you, or uses the player\'s own', () => {
     const save = must(setState(module, startSave(module), 'health', 'traveller', 1)).save;
     const hit: Target = { owner: 'gate-guard', defId: 'health' };
     const lost = must(act(module, save, 't1', { type: 'check', target: hit, choice: { approach: 'force', charge: 0 }, input: 'I swing at him.', random: rollFor(module, save, hit, 'force', false) }));
+    expect(lost.turn.directive).toMatch(/^It fails: it makes no headway against the garrison guard\./);
     expect(lost.turn.directive).toContain('You are down. You can do nothing more in this scene.');
-    expect(lost.turn.directive).toContain('Everyone at the landward gate is uneasy.');
-    expect(lost.turn.directive).toMatch(/let the garrison guard react to it\.$/);
+    expect(lost.turn.directive).toContain('Everyone at the landward gate is uneasy: they keep an eye on you.');
   });
 
   it('lets Focus show what was learned', () => {
     const save = startSave(module);
     const study: Target = { owner: 'gate-arbiter', defId: 'leverage' };
     const won = must(act(module, save, 't1', { type: 'check', target: study, choice: { approach: 'focus', charge: 0 }, input: 'I watch her hands.', random: rollFor(module, save, study, 'focus', true) }));
-    expect(won.turn.directive).toMatch(/^Focus succeeds\. You learn something useful about the gate Arbiter\. You have (something|real leverage) on the gate Arbiter\./);
-    expect(won.turn.directive).toMatch(/Show what you notice in this reply\.$/);
+    expect(won.turn.directive).toMatch(/^It works: you notice something useful about the gate Arbiter\. You have (something|real leverage) on the gate Arbiter\./);
   });
 
   it('keeps game notes out of the story if the model copies one', () => {
     expect(cleanReply('[ Scene: The landward gate. ]\n*Fog.* Name.\n[ Outcome: Flair succeeds. ]', 'x')).toBe('*Fog.* Name.');
+    expect(cleanReply('Understood. I will:\n- Continue\n[Of course, here you go:]\n*Fog.* Name.', 'x')).toBe('*Fog.* Name.');
     expect(cleanReply('*She looks up.* [a note of my own] stays.', 'x')).toBe('*She looks up.* [a note of my own] stays.');
   });
 });

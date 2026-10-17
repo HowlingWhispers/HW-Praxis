@@ -58,7 +58,7 @@ export function Menu({ api, section, setSection, worldQuery, setWorldQuery }: {
       const def = stateDefFor(world, defId, playerId);
       if (!def) return '';
       const reading = band(def, read(save.values, def, playerId));
-      return reading.banded ? reading.label.replace(/^is /, '') : '';
+      return reading.banded ? reading.short.replace(/^is /, '') : '';
     })
     .filter(Boolean)
     .join(', ');

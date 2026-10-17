@@ -1,6 +1,6 @@
 // Pieces several screens share: how a state, a ledger line or a record is shown.
 import {
-  band, durationWords, forYou, inSentence, labelFor, pairName, read, render, stateDefFor, type Character, type LedgerEntry, type PraxisModule, type StateDef, type StateValues,
+  band, durationWords, forYou, inSentence, labelFor, shortLabel, pairName, read, render, stateDefFor, type Character, type LedgerEntry, type PraxisModule, type StateDef, type StateValues,
 } from '../engine';
 import { Diamond } from './icons';
 
@@ -87,7 +87,7 @@ export function readState(module: PraxisModule, values: StateValues, defId: stri
   if (!def) return null;
   const value = read(values, def, owner);
   const reading = band(def, value);
-  return { def, value, word: reading.banded ? reading.label : String(value), atRest: reading.atRest };
+  return { def, value, word: reading.banded ? reading.short : String(value), atRest: reading.atRest };
 }
 
 // The states one character holds that a player would look at, in catalog order.
@@ -126,11 +126,13 @@ export function describeEntry(module: PraxisModule, entry: LedgerEntry): string 
       }
       const who = personName(entry.owner);
       // A state with its own sentence ("You have studied the door.") reads best as that.
-      if (def?.line && word?.banded) return `${render(def, who, entry.to).replace(/^\[|\]$/g, '')} · ${entry.from} → ${entry.to}`;
-      // Someone else's in their own terms, up to any explanation: "A garrison guard has given way to you".
-      if (word?.banded) return `${who} ${entry.owner === playerId ? bandForYou(word.label) : labelFor(def!, entry.to, false).split(':')[0]} · ${entry.from} → ${entry.to}`;
+      if (def?.line && word?.banded) return `${render(def, who, entry.to, true).replace(/^\[|\]$/g, '')} · ${entry.from} → ${entry.to}`;
+      // Someone else's in their own terms, up to any explanation: "A garrison guard has given way".
+      if (word?.banded) return `${who} ${entry.owner === playerId ? bandForYou(word.short) : shortLabel(def!, labelFor(def!, entry.to, false))} · ${entry.from} → ${entry.to}`;
       return `${who} · ${def?.name ?? entry.defId} ${entry.from} → ${entry.to}`;
     }
+    case 'follow':
+      return entry.as === null ? `${personName(entry.characterId)} stops coming with you` : `${personName(entry.characterId)} comes with you`;
   }
 }
 

@@ -28,7 +28,7 @@ export function ValueEditor({ def, value, onSet }: { def: StateDef; value: numbe
         onKeyDown={(event) => { if (event.key === 'Enter') commit(); }}
       />
       <button type="button" className="btn square" aria-label={`Raise ${def.name}`} disabled={value >= hi} onClick={() => onSet(value + 1)}>+</button>
-      <span className="meta">{lo} to {hi}{reading.banded ? ` · ${reading.label}` : ''}</span>
+      <span className="meta">{lo} to {hi}{reading.banded ? ` · ${reading.short}` : ''}</span>
     </div>
   );
 }

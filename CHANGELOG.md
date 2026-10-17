@@ -8,6 +8,49 @@ Praxis is pre-alpha. Versions below `0.1.0` do not exist; the project starts at
 Use `X.Y.Z` semantic versioning, where `Z` is required. A new milestone gets a
 short human-readable name after the version.
 
+## 0.14.0 - The Scene and Its Cast - 2026-10-16
+
+- The narrator's context is laid out the way NovelAI lays out a story, with each thing
+  sent once:
+  - **First system message, fixed for the story:** brief rules, the house format shown by
+    example from another story, and the world, with the land's top regions one line each.
+  - **Second system message, the lorebook section:**
+    - the story so far and you;
+    - where you are (forced on while you are there);
+    - who is present and what they are doing (the dramatis personae);
+    - what lies between them;
+    - lore switched on by key.
+  - **The transcript:** each past turn keeps your words with what the rules decided.
+  - **Your words this turn, alone.**
+  - **The reply's opening, as NovelAI's prefill:** "Understood. I will: …" with the outcome
+    and every condition to keep true, then "[Of course, here you go:]" and an opening `*`.
+- The world-wide list of names is gone. Character and other lore switches on by key:
+  - **From where:** anything named since the scene began, in your words, a reply or an outcome.
+  - **How long:** it stays on until you leave.
+  - **Short names:** someone present also answers to the last word of their name ("guard").
+  - **Targets:** anyone a check targets switches on.
+  - **Longer names win:** where two names overlap, the longer one counts, so "the garrison
+    guard" is not the garrison.
+- Outcomes and conditions are brief facts that say what they mean:
+  - "It works.", "It gains ground, but it is not over yet.", "It fails: it makes no headway
+    against …".
+  - Conditions say whether more is needed: "is hurt: bleeding and slowed, but still fighting",
+    "is close to giving way: still holding out, but not for much longer", "has given way:
+    they believe you, back down or do as you ask, until something new changes their mind".
+  - Any loss now leaves the resting band, so a success always shows.
+  - The screen shows only the words before the colon.
+- Schedules hold while you are with someone: nobody walks out mid-conversation. They are
+  "due at the Governor's court by now" instead, and go when you leave, wait or rest.
+- Followers: someone can come with you when you travel.
+  - **Who:** a companion once your bond reaches its warmest two tiers (`followsFrom` on a
+    bond kind changes that); a captive once they are down; or someone who has given way to you.
+  - **The rules:** `ruleset.follow` lists these. Their row in Scene offers it, and
+    "Bring along anyway" sets it by hand.
+  - **On the road:** followers keep no schedule. Each journey checks their reason again, and
+    anyone it no longer holds for stays behind.
+- Narration in asterisks shows in italics. Settings › What the narrator was sent shows the
+  prefill. A reply that repeats the prefill is trimmed to the story.
+
 ## 0.13.0 - The Context Ladder - 2026-10-16
 
 - The house format is now speech as plain text with no quotation marks, *narration and

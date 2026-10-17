@@ -1,12 +1,15 @@
-// Mentioned records: the lorebook idea, applied to records.
+// Key-activated lore: NovelAI's lorebook idea, applied to records.
 //
-// When a record is named in the player's words this turn or in the last two replies, and it
-// is not already in the scene, the narrator gets a fuller note about it for that turn. The
-// keys are the record's name, the name without its article, the parts of a person's proper
-// name, and any `keys` the record lists (a Praxis field; Orbis keeps fields it does not know).
+// A record's lore joins the narrator's lorebook section once it is named in the story of the
+// current scene: your words or a reply since you arrived where you are (or the opening, before
+// you have gone anywhere). It stays until you leave, so someone who goes quiet keeps their
+// profile, and the section changes only when something new comes up. The keys are the
+// record's name, the name without its article, the parts of a person's proper name, a title
+// role, any `keys` the record lists, and, for someone here whose name starts with an article,
+// its last word ("guard" for "A garrison guard"). Being the target of a check counts too.
 //
-// Pure: text in, notes out. The notes go in the moment, never in the system part, because
-// they change nearly every turn and the system part must stay the same between calls.
+// Only the story is scanned, with what the rules decided each turn, never the game's other
+// notes: the dramatis personae names everyone present, and scanning it would switch them all on.
 
 import type { Character, PraxisModule } from './module';
 import type { Save, Turn } from './session';
@@ -22,9 +25,9 @@ export interface Mentionable {
   note: () => string;
 }
 
-export const MENTION_TOKENS = 800;
 const NOTE_CHARS = 420;
 const KIND_ORDER: MentionKind[] = ['person', 'place', 'group', 'memory', 'lore', 'species', 'family', 'thing'];
+export const LORE_TOKENS = 1800;
 const ARTICLE = /^(the|a|an)\s+/i;
 // Words that start a proper name but say nothing on their own.
 const WEAK = new Set(['the', 'and', 'of', 'old', 'young', 'lord', 'lady', 'sir', 'dame', 'master', 'mother', 'father', 'saint']);
@@ -62,10 +65,10 @@ export function keysFor(name: string, extra: unknown, options: { proper?: boolea
   return [...keys];
 }
 
-function matcher(keys: readonly string[]): RegExp | null {
-  const usable = keys.filter((key) => key.length >= 3).map((key) => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'));
+function matcher(keys: readonly string[], flags = ''): RegExp | null {
+  const usable = keys.filter((key) => key.length >= 3).sort((a, b) => b.length - a.length).map((key) => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'));
   if (!usable.length) return null;
-  return new RegExp(`(?<![\\p{L}\\p{N}])(?:${usable.join('|')})(?![\\p{L}\\p{N}])`, 'iu');
+  return new RegExp(`(?<![\\p{L}\\p{N}])(?:${usable.join('|')})(?![\\p{L}\\p{N}])`, `iu${flags}`);
 }
 
 const first = (value: unknown) => sentencesUpTo(text(value), NOTE_CHARS);
@@ -188,35 +191,78 @@ function personNote(
   return parts.filter(Boolean).join(' ');
 }
 
-// The texts a mention is looked for in, newest first: the player's words this turn, then the
-// replies to the two turns before it.
-export function mentionSources(save: Save, turn: Turn): string[] {
-  const index = save.turns.indexOf(turn);
-  const before = index >= 0 ? save.turns.slice(0, index) : save.turns.slice(0, -1);
-  const replies = before.slice(-2).reverse().map((entry) => entry.reply ?? '');
-  return [turn.input, ...replies].filter((entry) => entry.trim() !== '');
+// Where the current scene began: the latest turn that moved you, whose reply is the arrival,
+// or the start of the story.
+export function sceneStartOf(save: Save, playerId: string): number {
+  const turns = save.turns;
+  for (let index = turns.length - 1; index >= 0; index -= 1) {
+    const before = turns[index]!.before.positions[playerId];
+    const after = index + 1 < turns.length ? turns[index + 1]!.before.positions[playerId] : save.positions[playerId];
+    if (before !== after) return index;
+  }
+  return 0;
 }
 
-// Notes for records named recently and not already in the scene, within the budget.
-export function mentionedNotes(world: PraxisModule, save: Save, turn: Turn, skip: ReadonlySet<string>): string[] {
-  const sources = mentionSources(save, turn);
-  if (!sources.length) return [];
-  const candidates = mentionables(world, save).filter((entry) => !skip.has(entry.id));
-  const chosen: Mentionable[] = [];
-  const seen = new Set<string>();
+export interface Activation {
+  id: string;
+  kind: MentionKind;
+  // Positions in the scene's story text: the opening is -1, turn i's words 2i, its reply 2i + 1.
+  first: number;
+  last: number;
+}
+
+// Everything named in the current scene so far, in the order it first came up.
+export function loreActivations(world: PraxisModule, save: Save, turn: Turn, presentIds: ReadonlySet<string>, skip: ReadonlySet<string>): Activation[] {
+  const playerId = world.scenario.playerCharacterId;
+  const index = save.turns.indexOf(turn);
+  const upTo = index >= 0 ? index : save.turns.length - 1;
+  const start = Math.min(sceneStartOf(save, playerId), upTo);
+  const sources: { at: number; text: string }[] = [];
+  const targets: { at: number; owner: string }[] = [];
+  if (start === 0 && world.scenario.opening.trim()) sources.push({ at: -1, text: world.scenario.opening });
+  for (let at = start; at <= upTo; at += 1) {
+    const entry = save.turns[at]!;
+    sources.push({ at: 2 * at, text: entry.input });
+    // What the rules decided names people too: "Meanwhile, Ines Corvo arrives."
+    if (entry.directive) sources.push({ at: 2 * at, text: entry.directive });
+    if (entry.check) targets.push({ at: 2 * at, owner: entry.check.target.owner });
+    if (at < upTo && entry.reply) sources.push({ at: 2 * at + 1, text: entry.reply });
+  }
+  const found = new Map<string, Activation>();
+  const note = (id: string, kind: MentionKind, at: number) => {
+    const known = found.get(id);
+    if (known) known.last = Math.max(known.last, at);
+    else found.set(id, { id, kind, first: at, last: at });
+  };
+  const candidates = mentionables(world, save)
+    .filter((entry) => !skip.has(entry.id) && entry.id !== playerId)
+    .map((entry) => {
+      const name = entry.kind === 'person' ? world.characters.find((character) => character.id === entry.id)?.name ?? '' : '';
+      const head = presentIds.has(entry.id) && ARTICLE.test(name) ? name.trim().split(/\s+/).at(-1) ?? '' : '';
+      return { entry, test: matcher(head ? [...entry.keys, head] : entry.keys, 'g') };
+    });
   for (const source of sources) {
-    const hits = candidates.filter((entry) => !seen.has(entry.id) && matcher(entry.keys)?.test(source));
-    hits.sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
-    for (const hit of hits) { seen.add(hit.id); chosen.push(hit); }
+    // Every match, then only those no longer match of something else overlaps: "The
+    // garrison" in "The garrison guard" is the guard, not the garrison.
+    const spans: { id: string; kind: MentionKind; from: number; to: number }[] = [];
+    for (const { entry, test } of candidates) {
+      if (!test) continue;
+      for (const match of source.text.matchAll(test)) spans.push({ id: entry.id, kind: entry.kind, from: match.index, to: match.index + match[0].length });
+    }
+    for (const span of spans) {
+      const beaten = spans.some((other) => other.id !== span.id && other.from < span.to && span.from < other.to && other.to - other.from > span.to - span.from);
+      if (!beaten) note(span.id, span.kind, source.at);
+    }
   }
-  const notes: string[] = [];
-  let used = 0;
-  for (const entry of chosen) {
-    const note = entry.note();
-    const cost = estimateTokens(note, save.options.tokensPerChar) + 2;
-    if (used + cost > MENTION_TOKENS) continue;
-    used += cost;
-    notes.push(note);
+  for (const target of targets) {
+    if (skip.has(target.owner) || target.owner === playerId) continue;
+    const person = world.characters.some((character) => character.id === target.owner);
+    if (person || world.items.some((item) => item.id === target.owner)) note(target.owner, person ? 'person' : 'thing', target.at);
   }
-  return notes;
+  return [...found.values()].sort((a, b) => a.first - b.first || KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
+}
+
+// The note a mention gives, by id: what the lorebook section shows for an absent record.
+export function mentionNote(world: PraxisModule, save: Save, id: string): string {
+  return mentionables(world, save).find((entry) => entry.id === id)?.note() ?? '';
 }

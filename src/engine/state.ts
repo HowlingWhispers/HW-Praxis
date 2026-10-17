@@ -95,6 +95,9 @@ export const stateDefSchema = z.object({
   aids: z.enum(['easier', 'boost']).optional(),
   // What acting on it is, in a few words, for the check screen: "Hurt or overpower".
   verb: z.string().max(80).optional(),
+  // A bond kind: the tier (a band index) from which the other person will travel with you.
+  // Unset, the warmest two tiers.
+  followsFrom: z.number().int().nonnegative().optional(),
 });
 
 export type StateBand = z.infer<typeof stateBandSchema>;
@@ -177,20 +180,30 @@ export function read(values: StateValues, def: StateDef, owner: string): number 
 export interface BandReading {
   // -1 when the definition has no bands.
   index: number;
+  // The band's words in full, as the narrator reads them: "is hurt: bleeding and slowed".
   label: string;
+  // The words before any explanation, for the screen: "is hurt".
+  short: string;
   atRest: boolean;
   banded: boolean;
 }
 
+// A label is "words: what they mean". The screen shows the words; the narrator gets both.
+// A relationship's tiers are whole sentences and are never cut.
+export function shortLabel(def: Pick<StateDef, 'scope'>, label: string): string {
+  return def.scope === 'relationship' ? label : label.split(': ')[0]!.trim();
+}
+
 export function band(def: StateDef, value: number): BandReading {
-  if (!def.bands.length) return { index: -1, label: '', atRest: true, banded: false };
+  if (!def.bands.length) return { index: -1, label: '', short: '', atRest: true, banded: false };
   const v = clamp(def, value);
   const { lo, hi } = bounds(def);
   const measure = def.bandBasis === 'share' ? (hi === lo ? 100 : ((v - lo) / (hi - lo)) * 100) : v;
   let index = 0;
   def.bands.forEach((b, i) => { if (i === 0 || measure >= b.at) index = i; });
   const rest = Math.max(0, Math.min(def.bands.length - 1, def.restBand));
-  return { index, label: def.bands[index]?.label ?? '', atRest: index === rest, banded: true };
+  const label = def.bands[index]?.label ?? '';
+  return { index, label, short: shortLabel(def, label), atRest: index === rest, banded: true };
 }
 
 // A value reaches context only if its definition has bands and it is off its resting band.
@@ -266,8 +279,9 @@ export function line(def: StateDef, ownerName: string, value: number): string {
   return render(def, ownerName, value);
 }
 
-// The same sentence whether or not it would reach the model, for the player's own screens.
-export function render(def: StateDef, ownerName: string, value: number): string {
+// The same sentence whether or not it would reach the model, for the player's own screens,
+// which pass `short` to leave out what a label means.
+export function render(def: StateDef, ownerName: string, value: number, short = false): string {
   const b = band(def, value);
   const template = def.line?.trim() || DEFAULT_STATE_LINE;
   const macros: Record<string, string> = {
@@ -275,7 +289,7 @@ export function render(def: StateDef, ownerName: string, value: number): string 
     // The name as it reads inside a sentence: "The harbour" becomes "the harbour".
     nameMid: ownerName.replace(/^(The|A|An) /, (word) => word.toLowerCase()),
     defName: def.name,
-    bandLabel: b.label,
+    bandLabel: short ? b.short : b.label,
     value: String(clamp(def, value)),
   };
   return template.replace(/\|(name|nameMid|defName|bandLabel|value)\|/g, (_, key: string) => macros[key] ?? '').replace(/\s+/g, ' ').trim();

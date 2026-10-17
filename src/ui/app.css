@@ -264,7 +264,7 @@ button.lr:hover:not(:disabled), a.lr:hover { background: var(--hover); }
 .rp { font: var(--story-size)/1.62 var(--story-face); color: #cec8bb; }
 .rp p { margin: 0 0 10px; }
 .rp p:last-child { margin-bottom: 0; }
-.rp-action { font-style: normal; }
+.rp-action { font-style: italic; }
 .rp-dialogue { color: #f6f1e7; }
 .rp-thought { font-style: italic; color: #a9bbd3; }
 .rp-note { font-size: 0.85em; color: var(--muted, #8a8f98); }

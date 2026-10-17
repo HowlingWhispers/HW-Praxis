@@ -301,6 +301,23 @@ export const tierSchema = z.object({
   maxima: z.record(z.string(), z.number().int()).default({}),
 });
 
+// A way someone can come along with you when you travel. It holds when any one of its
+// conditions does: a state of theirs within bounds, or a bond with you at or above the tier
+// its kind marks (StateDef.followsFrom).
+export const followConditionSchema = z.union([
+  z.object({ stateId: id, atLeast: z.number().int().optional(), atMost: z.number().int().optional() }).strict(),
+  z.object({ bond: z.literal('follows') }).strict(),
+]);
+
+export const followRuleSchema = z.object({
+  id,
+  // The button: "Bring along as your captive".
+  label: z.string().min(1).max(80),
+  // How the narrator hears it: "your captive", "travelling with you".
+  as: z.string().min(1).max(80),
+  anyOf: z.array(followConditionSchema).min(1).max(8),
+});
+
 export const rulesetSchema = z.object({
   // "four-approaches/1" lays the standard ruleset beneath this one (standard.ts).
   extends: z.literal(STANDARD_RULESET_ID).optional(),
@@ -313,6 +330,7 @@ export const rulesetSchema = z.object({
   dice: diceSchema.optional(),
   rest: restSchema.optional(),
   deeds: z.array(deedSchema).max(40).default([]),
+  follow: z.array(followRuleSchema).max(12).default([]),
   tiers: z.object({ minion: tierSchema.optional(), rival: tierSchema.optional(), nemesis: tierSchema.optional() }).optional(),
 });
 
@@ -342,7 +360,7 @@ export const moduleSchema = z.object({
   characters: z.array(characterSchema).max(5000).default([]),
   relationships: z.array(relationshipSchema).max(5000).default([]),
   items: z.array(itemSchema).max(5000).default([]),
-  ruleset: rulesetSchema.default({ states: [], travel: { walkKph: 4, tiers: [] }, actions: [], approaches: [], deeds: [] }),
+  ruleset: rulesetSchema.default({ states: [], travel: { walkKph: 4, tiers: [] }, actions: [], approaches: [], deeds: [], follow: [] }),
   scenario: scenarioSchema,
 }).superRefine((module, context) => {
   const issue = (path: (string | number)[], message: string) => context.addIssue({ code: 'custom', path, message });
@@ -463,6 +481,14 @@ export const moduleSchema = z.object({
   module.ruleset.deeds.forEach((deed, index) => {
     if (!approachIds.has(deed.approach)) issue(['ruleset', 'deeds', index, 'approach'], `Unknown approach "${deed.approach}".`);
   });
+  unique(module.ruleset.follow.map((rule) => rule.id), ['ruleset', 'follow']);
+  module.ruleset.follow.forEach((rule, index) => {
+    rule.anyOf.forEach((condition, conditionIndex) => {
+      if (!('stateId' in condition)) return;
+      const state = states.get(condition.stateId);
+      if (!state || !['char', 'npc'].includes(state.scope)) issue(['ruleset', 'follow', index, 'anyOf', conditionIndex, 'stateId'], `"${condition.stateId}" is not a state other people hold.`);
+    });
+  });
   unique(module.ruleset.actions.map((action) => action.id), ['ruleset', 'actions']);
   module.ruleset.actions.forEach((action, index) => {
     const path = ['ruleset', 'actions', index];
@@ -566,6 +592,7 @@ export type Memory = z.infer<typeof memorySchema>;
 export type SceneAction = z.infer<typeof sceneActionSchema>;
 export type Approach = z.infer<typeof approachSchema>;
 export type Deed = z.infer<typeof deedSchema>;
+export type FollowRule = z.infer<typeof followRuleSchema>;
 export type Level = z.infer<typeof levelSchema>;
 export type Tier = (typeof TIERS)[number];
 export type Cost = z.infer<typeof costSchema>;

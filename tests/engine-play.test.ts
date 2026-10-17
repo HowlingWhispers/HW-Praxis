@@ -41,11 +41,14 @@ describe('local records', () => {
     const { save, entries } = must(addRecord(module, start, { id: 'local-teo', type: 'person', name: 'Teo', summary: 'A gate runner', description: 'Carries messages through the gate for a copper a trip.', speciesId: 'humans' }, 'pc-landward-gate'));
     expect(entries).toMatchObject([{ kind: 'move', characterId: 'local-teo', to: 'pc-landward-gate', source: 'player' }]);
     expect(sceneOf(module, save).present.map((person) => person.name)).toContain('Teo');
-    const withTurn = must(say(module, save, 't1', 'I look around.')).save;
-    const messages = compileContext(module, withTurn);
-    expect(messages.at(-2)!.content).toMatch(/\[ Lore: Teo, a gate runner, of the Humans\. Carries messages/);
-    expect(messages.at(-2)!.content).toContain('Teo is here.');
-    expect(messages[0]!.content).toMatch(/- Teo, a gate runner, Humans\n/);
+    // Here but not yet named: the dramatis personae carries their first line.
+    const looked = compileContext(module, must(say(module, save, 't1', 'I look around.')).save);
+    expect(looked[1]!.content).toMatch(/\[ Present at the landward gate, [a-z ]+: .*Teo, a gate runner: Carries messages through the gate for a copper a trip\. \]/);
+    expect(looked[0]!.content).not.toContain('Teo');
+    // Named: their lore is on, and the line moves there.
+    const named = compileContext(module, must(say(module, save, 't1', 'I wave Teo over.')).save);
+    expect(named[1]!.content).toContain('[ Teo, a gate runner, of the Humans: Carries messages through the gate for a copper a trip. ]');
+    expect(named[1]!.content).toMatch(/Teo, a gate runner\. \]/);
   });
 
   it('can be a place to travel to, but only inside somewhere you can stand', () => {
@@ -61,9 +64,9 @@ describe('local records', () => {
   it('can be a thing lying somewhere', () => {
     const save = must(addRecord(module, startSave(module), { id: 'local-ledger', type: 'thing', name: 'The gate ledger', description: 'Every signature since the arrival.', locationId: 'pc-landward-gate' })).save;
     expect(sceneOf(module, save).things.map((thing) => thing.name)).toEqual(['The gate ledger']);
-    const moment = compileContext(module, must(say(module, save, 't1', 'I look.')).save).at(-2)!.content;
-    expect(moment).toContain('[ Lore: The gate ledger. Every signature since the arrival. ]');
-    expect(moment).toMatch(/\[ Scene: .* Also here: the gate ledger\./);
+    const lore = compileContext(module, must(say(module, save, 't1', 'I look at the gate ledger.')).save)[1]!.content;
+    expect(lore).toMatch(/\[ The landward gate, .* Also here: the gate ledger\. /);
+    expect(lore).toContain('[ The gate ledger, at the landward gate: Every signature since the arrival. ]');
   });
 
   it('are checked against the world', () => {
@@ -103,34 +106,33 @@ describe('local records', () => {
 });
 
 describe('the context', () => {
-  it('names who and what is in the world, so nothing is invented', () => {
+  it('gives the land at a glance, and no roster of everyone in it', () => {
     const save = must(say(module, startSave(module), 't1', 'Who runs this place?')).save;
     const system = compileContext(module, save)[0]!.content;
-    expect(system).toContain("\n- Ottavio Marrane, the Governor, Humans, usually at the Governor's court\n");
-    expect(system).toContain('\n- The gate Arbiter, Humans, of the Arbiters, usually at the landward gate\n');
-    expect(system).toContain('\n- The Arbiters (faction)\n');
-    expect(system).toMatch(/Places:\n- Abernys \(major region\)/);
-    // Names only: what someone or somewhere is like is lore, sent when it is needed.
+    expect(system).toContain('The land:\n- Abernys: The island.');
+    expect(system).toContain('\n- Nospier Point, in Abernys: The southern headland.');
+    // People and the deeper places arrive as lore, when they are here or named.
+    expect(system).not.toContain('Ottavio Marrane');
+    expect(system).not.toContain('- The landward gate');
     expect(system).not.toContain('A monastic order of notaries');
-    expect(system).not.toContain('An Arbiter on duty at the landward gate');
-    expect(system).not.toMatch(/- The traveller/);
   });
 
   it('brings in the groups and history that bear on the scene', () => {
-    const save = must(say(module, startSave(module), 't1', 'I wait.')).save;
-    const moment = compileContext(module, save).at(-2)!.content;
-    expect(moment).toContain('[ Lore: The Arbiters. A monastic order');
-    expect(moment).toContain('[ Lore: The Pact. The humans of Port Covenant');
+    const save = must(say(module, startSave(module), 't1', 'I ask what the Arbiters and the Pact are.')).save;
+    const lore = compileContext(module, save)[1]!.content;
+    expect(lore).toContain('[ The Arbiters: A monastic order');
+    expect(lore).toContain('[ The Pact: The humans of Port Covenant');
     const signed = must(act(module, startSave(module), 't0', { type: 'scene', actionId: 'sign-the-covenant' })).save;
     const inside = must(act(module, signed, 't1', { type: 'travel', to: 'port-covenant' })).save;
-    expect(compileContext(module, inside).at(-2)!.content).toContain('[ Lore: The arrival. Humans driven from the homeland');
+    expect(compileContext(module, inside)[1]!.content).toMatch(/\[ Port Covenant, Nospier Point, Abernys: .*The arrival: Humans driven from the homeland/);
   });
 
-  it('sends the journal after the canon and before the transcript', () => {
+  it('sends the journal after the canon, ahead of the scene\'s lore', () => {
     let save = must(addEntry(startSave(module), 'j1', 'The traveller reached the gate in fog.')).save;
     save = must(say(module, save, 't1', 'I wait.')).save;
-    const system = compileContext(module, save)[0]!.content;
-    expect(system.endsWith('The story so far:\nThe traveller reached the gate in fog.')).toBe(true);
+    const messages = compileContext(module, save);
+    expect(messages[0]!.content).not.toContain('The story so far');
+    expect(messages[1]!.content.startsWith('The story so far:\nThe traveller reached the gate in fog.\n\n[ You are the traveller')).toBe(true);
   });
 
   it('keeps the transcript start fixed between cuts, then cuts a whole piece', () => {

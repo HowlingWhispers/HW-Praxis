@@ -4,7 +4,7 @@
 // decides what to show and when to ask NovelAI.
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import {
-  act, cleanReply, cleanSuggestion, compressRequest, compressionDue, contextPlan, durationWords, entryRequest, inSentence,
+  act, cleanReply, cleanSuggestion, replyFrom, compressRequest, compressionDue, contextPlan, durationWords, entryRequest, inSentence,
   journalDue, lastTurn, placeCharacter, playable, playerOf, promptChars, recordPromptSize, say, sceneActionsFor, sceneOf,
   setPending, setReply, setState, timeOfDay, uncoveredTurns, undoLastTurn,
   type Action, type ContextPlan, type PraxisModule, type Save, type Turn,
@@ -146,15 +146,15 @@ export function Play({ module, initial, name, connection, setConnection, prefs, 
     setNotice('');
     const started = performance.now();
     try {
-      const result = await narrate(plan.messages, connection.model, connection.mode, { maxTokens: target.options.replyTokens, signal: controller.signal });
+      const result = await narrate(plan.messages, connection.model, connection.mode, { maxTokens: target.options.replyTokens, signal: controller.signal, prefill: plan.prefill });
       if (controller.signal.aborted) return;
       const ms = Math.round(performance.now() - started);
       const promptTokens = promptTokensOf(result.usage);
       logCall({ at: new Date().toLocaleTimeString(), purpose: 'narration', ok: true, ms, message: `${result.text.length} characters${promptTokens ? `, prompt ${promptTokens} tokens` : ''}`, diagnostics: result.diagnostics ?? null });
       setSave((current) => {
-        const placed = setReply(current, turn.id, cleanReply(result.text, turn.input));
+        const placed = setReply(current, turn.id, replyFrom(plan, cleanReply(result.text, turn.input)));
         if (!placed.ok) return current;
-        return promptTokens ? recordPromptSize(placed.save, promptChars(plan.messages), promptTokens) : placed.save;
+        return promptTokens ? recordPromptSize(placed.save, promptChars(plan.messages, plan.prefill), promptTokens) : placed.save;
       });
     } catch (error) {
       if (controller.signal.aborted) return;

@@ -51,7 +51,8 @@ const CHAPTERS: { id: Chapter; title: string; summary: string; body: ReactNode }
     body: (
       <>
         <p>When someone is in the scene, the narrator reads their dossier: who they are, how they look, how they carry themselves and how they speak. In a crowded room the later arrivals get only their first line, so the story keeps its room.</p>
-        <p>Some people keep a <b>routine</b>. As time passes they go where their day takes them, and the story tells you who left and who came. Put someone somewhere by hand and they stay put until their day next moves them.</p>
+        <p>Some people keep a <b>routine</b>. As time passes they go where their day takes them, and the story tells you who left and who came. While you are with someone, they stay: nobody walks out of a conversation because the hour struck, though they may be due elsewhere. When you leave, or wait or rest, they go where their day puts them. Put someone somewhere by hand and they stay put until their day next moves them.</p>
+        <p>Someone can <b>come with you</b> when you travel: a companion, once your bond is warm enough; a captive, once they are down; or someone who has given way to you. Their row in Scene offers it when it holds, and you can always bring someone along by hand. They go where you go and keep no schedule. Each time you travel the reason is checked again, and anyone it no longer holds for stays behind.</p>
         <p>A <b>bond</b> is what lies between two people, in words: rivals who keep score, friends out of practice. Bonds between people who are both here reach the narrator. Start one with anyone from their row in Scene. A triumph against them with the approach that owns the bond, Flair here, warms it a tier; a despair cools it. You can also set it by hand.</p>
       </>
     ),

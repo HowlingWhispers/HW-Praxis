@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  act, bondBetween, bondsOf, contextPlan, doingNow, loadModule, pairKey, placeCharacter, planFor, read, rowAt, say, setClock,
-  setState, settleCheck, startBond, startSave, stateDefFor, undoLastTurn, whereabouts, DEFAULT_CALENDAR, type PraxisModule, type Save,
+  act, bondBetween, bondsOf, bringAlong, contextPlan, doingNow, dueElsewhere, followRuleFor, followSchedules, leaveBehind, loadModule, pairKey,
+  placeCharacter, planFor, read, rowAt, say, setClock, setState, settleCheck, startBond, startSave, stateDefFor, undoLastTurn, whereabouts,
+  DEFAULT_CALENDAR, type PraxisModule, type Save,
 } from '../src/engine';
 import { abernys, abernysRaw } from './abernys';
 
@@ -14,8 +15,11 @@ function must<T extends { ok: boolean }>(result: T): Extract<T, { ok: true }> {
 
 const person = (id: string) => module.characters.find((character) => character.id === id)!;
 const at = (hour: number, minute = 0, day = 0) => day * 1440 + hour * 60 + minute;
-// The game's notes for the turn: the message just before the player's words.
-const momentOf = (save: Save) => contextPlan(module, must(say(module, save, 'look', 'I look around.')).save).messages.at(-2)!.content;
+// The lorebook section and the reply's opening, where the game's notes for a turn go.
+const momentOf = (save: Save) => {
+  const plan = contextPlan(module, must(say(module, save, 'look', 'I look around.')).save);
+  return `${plan.messages[1]!.content}\n${plan.prefill}`;
+};
 
 function withRaw(change: (raw: Record<string, any>) => void): ReturnType<typeof loadModule> {
   const raw = structuredClone(abernysRaw) as Record<string, any>;
@@ -49,8 +53,8 @@ describe('schedules', () => {
     expect(waited.save.positions['ines-corvo']).toBe('pc-landward-gate');
     expect(waited.entries.some((entry) => entry.kind === 'move' && entry.characterId === 'ines-corvo' && entry.source === 'rule')).toBe(true);
     expect(waited.turn.directive).toMatch(/Meanwhile, Ines Corvo arrives\.$/);
-    expect(momentOf(waited.save)).toMatch(/\[ Lore: Ines Corvo, the garrison captain, of the Humans\. /);
-    expect(momentOf(waited.save)).toContain('Ines Corvo is here, inspecting the gate and the road beyond it.');
+    expect(momentOf(waited.save)).toContain('[ Ines Corvo, the garrison captain, of the Humans: ');
+    expect(momentOf(waited.save)).toMatch(/\[ Present at the landward gate, [a-z ]+: .*Ines Corvo, the garrison captain, inspecting the gate and the road beyond it\./);
     const longer = must(act(module, startSave(module), 't1', { type: 'wait', minutes: 240 }));
     expect(longer.save.positions['ines-corvo']).toBe('pc-governors-court');
     expect(longer.turn.directive).toMatch(/Meanwhile, Ines Corvo comes by and goes on to the Governor's court\.$/);
@@ -80,22 +84,92 @@ describe('schedules', () => {
   });
 });
 
+describe('people you are with', () => {
+  it('stay while you are with them, due elsewhere, and go when you wait or leave', () => {
+    const arrived = must(act(module, startSave(module), 't1', { type: 'wait', minutes: 150 })).save;
+    expect(arrived.positions['ines-corvo']).toBe('pc-landward-gate');
+    // Your own turns hold her: two hours pass in talk, and she is still here.
+    const later = arrived.clock + 120;
+    const talked = followSchedules(module, { ...arrived, clock: later }, arrived.clock, later, { hold: true }).save;
+    expect(talked.positions['ines-corvo']).toBe('pc-landward-gate');
+    expect(talked.held).toEqual(['ines-corvo']);
+    expect(dueElsewhere(module, talked, person('ines-corvo'))).toBe("The Governor's court");
+    const lore = contextPlan(module, must(say(module, talked, 't2', 'I keep talking.')).save).messages[1]!.content;
+    expect(lore).toContain("Ines Corvo, the garrison captain, due at the Governor's court by now");
+    // Waiting lets her go.
+    const waited = must(act(module, talked, 't3', { type: 'wait', minutes: 10 }));
+    expect(waited.save.positions['ines-corvo']).toBe('pc-governors-court');
+    expect(waited.save.held).toEqual([]);
+    expect(waited.turn.directive).toMatch(/Meanwhile, Ines Corvo leaves for the Governor's court\.$/);
+    // So does leaving her.
+    const signed = must(act(module, talked, 't3', { type: 'scene', actionId: 'sign-the-covenant' })).save;
+    const left = must(act(module, signed, 't4', { type: 'travel', to: 'pc-outside-walls' })).save;
+    expect(left.positions['ines-corvo']).toBe('pc-governors-court');
+    expect(left.held).toEqual([]);
+  });
+});
+
+describe('followers', () => {
+  it('come along when a rule lets them, travel with you, and keep no schedule', () => {
+    let save = startSave(module);
+    expect(followRuleFor(module, save, 'gate-guard')).toBe(null);
+    expect(bringAlong(module, save, 'gate-guard')).toEqual({ ok: false, reason: 'Nothing makes a garrison guard come with you yet.' });
+    save = must(setState(module, save, 'health', 'gate-guard', 0)).save;
+    expect(followRuleFor(module, save, 'gate-guard')?.id).toBe('captive');
+    save = must(bringAlong(module, save, 'gate-guard')).save;
+    expect(save.following).toEqual({ 'gate-guard': 'captive' });
+    expect(save.ledger.at(-1)).toMatchObject({ kind: 'follow', characterId: 'gate-guard', as: 'captive', source: 'rule' });
+    expect(contextPlan(module, must(say(module, save, 't0', 'I bind his hands.')).save).messages[1]!.content).toContain('A garrison guard, your captive');
+    const went = must(act(module, save, 't1', { type: 'travel', to: 'pc-outside-walls' }));
+    expect(went.save.positions['gate-guard']).toBe('pc-outside-walls');
+    expect(went.turn.directive).toMatch(/^You have just arrived at the outer lanes after [^,]+, with a garrison guard, your captive\./);
+    // Hours pass, and his watch at the gate does not call him back.
+    const later = must(act(module, went.save, 't2', { type: 'wait', minutes: 600 })).save;
+    expect(later.positions['gate-guard']).toBe('pc-outside-walls');
+    // Undo puts him back at the gate, still following.
+    const undone = must(undoLastTurn(went.save)).save;
+    expect(undone.positions['gate-guard']).toBe('pc-landward-gate');
+    expect(undone.following).toEqual({ 'gate-guard': 'captive' });
+  });
+
+  it('stay behind when their reason no longer holds, and can be left or brought by hand', () => {
+    let save = must(setState(module, startSave(module), 'health', 'gate-guard', 0)).save;
+    save = must(bringAlong(module, save, 'gate-guard')).save;
+    save = must(setState(module, save, 'health', 'gate-guard', 2)).save;
+    const went = must(act(module, save, 't1', { type: 'travel', to: 'pc-outside-walls' }));
+    expect(went.save.positions['gate-guard']).toBe('pc-landward-gate');
+    expect(went.save.following).toEqual({});
+    expect(went.turn.directive).toMatch(/ A garrison guard does not come with you\.$/);
+    // A companion once the bond is warm enough: the warmest two tiers by default.
+    let bonded = must(startBond(module, startSave(module), 'b1', 'gate-arbiter', 'bond-acquaintance')).save;
+    const owner = bondBetween(module, bonded, 'traveller', 'gate-arbiter')!.owner;
+    expect(followRuleFor(module, bonded, 'gate-arbiter')).toBe(null);
+    bonded = must(setState(module, bonded, 'bond-acquaintance', owner, 3)).save;
+    expect(followRuleFor(module, bonded, 'gate-arbiter')?.id).toBe('companion');
+    // By hand, whatever the rules say, and recorded as yours.
+    const forced = must(bringAlong(module, startSave(module), 'gate-arbiter', true)).save;
+    expect(forced.following).toEqual({ 'gate-arbiter': 'by-hand' });
+    expect(forced.ledger.at(-1)).toMatchObject({ kind: 'follow', source: 'player' });
+    expect(must(leaveBehind(module, forced, 'gate-arbiter')).save.following).toEqual({});
+  });
+});
+
 describe('relationships', () => {
   it('start with their authored tier and reach the narrator when both people are there', () => {
     const save = startSave(module);
     const rivals = stateDefFor(module, 'bond-rivals', pairKey('ottavio-marrane', 'lucan-abreu'))!;
     expect(read(save.values, rivals, pairKey('lucan-abreu', 'ottavio-marrane'))).toBe(2);
     const moment = momentOf(save);
-    expect(moment).toContain('[ Lore: The gate Arbiter and the garrison guard. They keep the landward gate together every day');
-    expect(moment).toMatch(/\[ Scene: .*The gate Arbiter and the garrison guard: Each has done the other a good turn, and both remember it\./);
+    expect(moment).toContain('[ The gate Arbiter and the garrison guard: They keep the landward gate together every day');
+    expect(moment).toMatch(/\[ The gate Arbiter and the garrison guard: .* Now: Each has done the other a good turn, and both remember it\. \]/);
 
     // At noon the Governor and the High Arbiter are both at court.
     const noon = must(setClock(module, save, at(12, 30))).save;
     const atCourt = must(placeCharacter(module, noon, 'traveller', 'pc-governors-court')).save;
     const courtMoment = momentOf(atCourt);
-    expect(courtMoment).toContain('[ Lore: Ottavio Marrane and Lucan Abreu. The Governor leads the colony');
+    expect(courtMoment).toContain('[ Ottavio Marrane and Lucan Abreu: The Governor leads the colony');
     expect(courtMoment).toContain('Ottavio Marrane wants the commission');
-    expect(courtMoment).toMatch(/\[ Scene: .*Ottavio Marrane and Lucan Abreu: They measure themselves against each other/);
+    expect(courtMoment).toMatch(/\[ Ottavio Marrane and Lucan Abreu: .* Now: They measure themselves against each other/);
   });
 
   it('can be started in play and set by hand, and go when the person does', () => {
@@ -108,7 +182,7 @@ describe('relationships', () => {
     expect(startBond(module, started, 'b2', 'gate-arbiter', 'bond-friends').ok).toBe(false);
     const warmer = must(setState(module, started, 'bond-acquaintance', bond.owner, 3)).save;
     expect(warmer.ledger.at(-1)).toMatchObject({ kind: 'state', owner: pairKey('traveller', 'gate-arbiter'), source: 'player', to: 3 });
-    expect(momentOf(warmer)).toMatch(/\[ Scene: .*The gate Arbiter and you: Each has done the other a good turn, and both remember it\./);
+    expect(momentOf(warmer)).toMatch(/\[ The gate Arbiter and you: .*Now: Each has done the other a good turn, and both remember it\. \]/);
   });
 
   it('move a tier on a Flair triumph or despair against the other person', () => {
@@ -162,8 +236,8 @@ describe('dossiers', () => {
     };
     let save = startSave(crowd);
     for (const character of crowd.characters) save = must(placeCharacter(crowd, save, character.id, 'pc-landward-gate')).save;
-    const crowded = contextPlan(crowd, must(say(crowd, save, 'look', 'I look around.')).save).messages.at(-2)!.content;
-    const looks = crowded.split('\n').filter((entry) => entry.startsWith('[ Lore:') && !entry.startsWith('[ Lore: You are') && entry.includes('Looks:'));
+    const crowded = contextPlan(crowd, must(say(crowd, save, 'look', 'I look around.')).save).messages[1]!.content;
+    const looks = crowded.split('\n').filter((entry) => !entry.startsWith('[ You are') && entry.includes('Looks:'));
     expect(looks.length).toBeGreaterThan(0);
     expect(looks.length).toBeLessThan(crowd.characters.length - 1);
   });

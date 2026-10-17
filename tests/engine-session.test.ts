@@ -36,8 +36,9 @@ describe('a fresh save', () => {
     const guardHealth = stateDefFor(module, 'health', 'gate-guard')!;
     expect(read(save.values, guardHealth, 'gate-guard')).toBe(2);
     expect(band(guardHealth, 2).label).toBe('is unhurt');
-    expect(band(guardHealth, 1).label).toBe('is hurt');
-    expect(band(health, 1).label).toBe('is badly hurt');
+    expect(band(guardHealth, 1).short).toBe('is hurt');
+    expect(band(guardHealth, 1).label).toBe('is hurt: it slows you');
+    expect(band(health, 1).short).toBe('is badly hurt');
   });
 });
 

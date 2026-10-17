@@ -87,40 +87,70 @@ function stopsBetween(calendar: Calendar, character: Character, from: number, to
 
 // Moves everyone whose day has taken them to a new stop between `from` and `to`. Entries are
 // the rules' own; the player can put anyone back by hand.
-export function followSchedules(module: PraxisModule, save: Save, from: number, to: number): ScheduleResult {
+//
+// With `hold`, anyone who is with the player stays put, so nobody walks out of a
+// conversation: they are kept in `held`, and their day is "due elsewhere". The player's own
+// turns hold; travelling, waiting and resting do not. Someone held goes where their day puts
+// them as soon as a call runs without the hold, or the player is no longer with them.
+// Followers keep no schedule at all.
+export function followSchedules(module: PraxisModule, save: Save, from: number, to: number, options: { hold?: boolean } = {}): ScheduleResult {
   const quiet: ScheduleResult = { save, entries: [], left: [], arrived: [], passed: [] };
-  if (to <= from) return quiet;
+  if (to <= from && !save.held.length) return quiet;
   const calendar = calendarOf(module);
   const places = atlasOf(module).places;
   const playerId = module.scenario.playerCharacterId;
   const here = save.positions[playerId];
   const positions: Record<string, string> = { ...save.positions };
+  const held = new Set(save.held);
   const entries: LedgerEntry[] = [];
   const left: ScheduleResult['left'] = [];
   const arrived: Character[] = [];
   const passed: ScheduleResult['passed'] = [];
-  for (const character of module.characters) {
-    if (character.id === playerId || !character.schedule) continue;
-    const before = whereabouts(calendar, character, from);
-    const after = whereabouts(calendar, character, to);
-    if (!before || !after) continue;
-    if (before.from === after.from && before.row.locationId === after.row.locationId) continue;
-    // Someone whose day brought them here and on again while the player stayed.
-    const stops = stopsBetween(calendar, character, from, to);
-    if (here && positions[character.id] !== here && after.row.locationId !== here && stops.slice(0, -1).includes(here)) {
-      passed.push({ character, to: after.row.locationId });
-    }
-    const target = after.row.locationId;
-    if (!places.has(target) || isArea(places.get(target))) continue;
+  const usable = (placeId: string) => places.has(placeId) && !isArea(places.get(placeId));
+  const move = (character: Character, target: string) => {
     const was = positions[character.id] ?? null;
-    if (was === target) continue;
+    if (was === target) return;
     positions[character.id] = target;
     entries.push({ kind: 'move', at: to, characterId: character.id, from: was, to: target, minutes: 0, source: 'rule' });
     if (here && was === here) left.push({ character, to: target });
     if (here && target === here) arrived.push(character);
+  };
+  for (const character of module.characters) {
+    if (character.id === playerId || !character.schedule || save.following[character.id]) continue;
+    const together = Boolean(here) && positions[character.id] === here;
+    const now = whereabouts(calendar, character, to);
+    if (held.has(character.id)) {
+      // Still with the player and still holding: they stay until their day brings them back here.
+      if (options.hold && together) {
+        if (now?.row.locationId === here) held.delete(character.id);
+        continue;
+      }
+      held.delete(character.id);
+      if (now && usable(now.row.locationId)) move(character, now.row.locationId);
+      continue;
+    }
+    if (to <= from) continue;
+    const before = whereabouts(calendar, character, from);
+    const after = now;
+    if (!before || !after) continue;
+    if (before.from === after.from && before.row.locationId === after.row.locationId) continue;
+    const target = after.row.locationId;
+    if (options.hold && together && target !== here) {
+      held.add(character.id);
+      continue;
+    }
+    // Someone whose day brought them here and on again while the player stayed.
+    const stops = stopsBetween(calendar, character, from, to);
+    if (here && positions[character.id] !== here && target !== here && stops.slice(0, -1).includes(here)) {
+      passed.push({ character, to: target });
+    }
+    if (!usable(target)) continue;
+    move(character, target);
   }
-  if (!entries.length) return quiet;
-  return { save: { ...save, positions, ledger: [...save.ledger, ...entries] }, entries, left, arrived, passed };
+  const heldNow = [...held];
+  const heldChanged = heldNow.length !== save.held.length || heldNow.some((characterId) => !save.held.includes(characterId));
+  if (!entries.length && !heldChanged) return quiet;
+  return { save: { ...save, positions, held: heldNow, ledger: [...save.ledger, ...entries] }, entries, left, arrived, passed };
 }
 
 // Where everyone with a schedule is at minute t, for a fresh save.
@@ -134,6 +164,14 @@ export function scheduledPositions(module: PraxisModule, t: number): Record<stri
     if (where && places.has(where.row.locationId) && !isArea(places.get(where.row.locationId))) out[character.id] = where.row.locationId;
   }
   return out;
+}
+
+// Where someone kept with you is due by now, by name, or '' when they are not held.
+export function dueElsewhere(module: PraxisModule, save: Save, character: Character): string {
+  if (!save.held.includes(character.id)) return '';
+  const where = whereabouts(calendarOf(module), character, save.clock);
+  if (!where || save.positions[character.id] === where.row.locationId) return '';
+  return atlasOf(module).places.get(where.row.locationId)?.name ?? '';
 }
 
 // What a person is doing now, when they are where their day puts them. Empty otherwise:

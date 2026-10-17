@@ -32,9 +32,9 @@ function Switch({ id, label, hint, on, onToggle }: { id: string; label: string; 
 const thousands = (value: number) => value.toLocaleString('en-US');
 
 // Who each message is from, in the player's terms. The first system message is the standing
-// instructions and world; a later one is the game's notes for the turn.
+// instructions and world; the second, the story so far and the lore for this scene.
 function sentAs(role: 'system' | 'user' | 'assistant', index: number): string {
-  if (role === 'system') return index === 0 ? 'Instructions and world · system' : 'Game notes · system';
+  if (role === 'system') return index === 0 ? 'Instructions and world · system' : 'Story so far and lore · system';
   return role === 'user' ? 'You · user' : 'Narrator · assistant';
 }
 
@@ -76,7 +76,7 @@ export function SettingsSection({ api }: { api: PlayApi }) {
           <Seg<number> label="The model’s window" value={options.contextTokens} options={[[16000, '16k'], [24000, '24k'], [28000, '28k']]} onPick={(contextTokens) => change({ contextTokens })} />
           <span className="meta" style={{ lineHeight: 1.45 }}>
             {lastPlan
-              ? `Last turn sent about ${thousands(lastPlan.estimate.total)} tokens: rules and world ${thousands(lastPlan.estimate.system)}, journal ${thousands(lastPlan.estimate.journal)}, story ${thousands(lastPlan.estimate.transcript)}, the moment ${thousands(lastPlan.estimate.moment)}. The story gets up to ${thousands(lastPlan.budget.transcriptHigh)}.`
+              ? `Last turn sent about ${thousands(lastPlan.estimate.total)} tokens: rules and world ${thousands(lastPlan.estimate.system)}, journal ${thousands(lastPlan.estimate.journal)}, story ${thousands(lastPlan.estimate.transcript)}, this scene's lore, your words and the reply's opening ${thousands(lastPlan.estimate.moment)}. The story gets up to ${thousands(lastPlan.budget.transcriptHigh)}.`
               : 'The story gets what the window has left after the rules, the world, the journal and the moment.'}
           </span>
         </div>
@@ -153,6 +153,7 @@ export function SettingsSection({ api }: { api: PlayApi }) {
             {lastPlan ? (
               <ol className="sent">
                 {lastPlan.messages.map((message, index) => <li key={index}><span className="label">{sentAs(message.role, index)}</span><pre>{message.content}</pre></li>)}
+                {lastPlan.prefill && <li><span className="label">The reply's opening · prefill</span><pre>{lastPlan.prefill}</pre></li>}
               </ol>
             ) : <p className="meta">Nothing yet this session.</p>}
           </div>

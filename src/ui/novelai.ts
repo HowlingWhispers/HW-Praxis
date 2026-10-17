@@ -98,12 +98,14 @@ export interface NarrateOptions {
   maxTokens?: number;
   temperature?: number;
   signal?: AbortSignal;
+  // The start of the reply; what comes back continues it.
+  prefill?: string;
 }
 
 export function narrate(messages: ChatMessage[], model: string, mode: NarrationMode, options: NarrateOptions = {}): Promise<Narration> {
   return call<Narration>('/api/novelai/chat', {
     method: 'POST',
-    body: JSON.stringify({ model, messages, mode, max_tokens: options.maxTokens ?? 1000, temperature: options.temperature ?? 0.8 }),
+    body: JSON.stringify({ model, messages, mode, max_tokens: options.maxTokens ?? 1000, temperature: options.temperature ?? 0.8, ...(options.prefill ? { prefill: options.prefill } : {}) }),
     signal: options.signal,
   });
 }
