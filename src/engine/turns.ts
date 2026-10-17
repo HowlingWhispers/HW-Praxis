@@ -10,10 +10,10 @@
 import { atlasOf } from './world';
 import { durationWords } from './clock';
 import { stateDefFor, type PraxisModule, type SceneAction } from './module';
-import { read, write, type StateTerminal } from './state';
+import { fact, read, write, type StateTerminal } from './state';
 import { playable } from './records';
 import { windowStartFor } from './context';
-import { midSentence } from './words';
+import { definite, midSentence, pronounsOf } from './words';
 import { restEffects, settleCheck, type CheckChoice, type Target } from './checks';
 import { followSchedules } from './schedule';
 import { followingAs } from './follow';
@@ -66,30 +66,35 @@ function offered(module: PraxisModule, save: Save, action: SceneAction): boolean
   const playerId = playerOf(module);
   const here = save.positions[playerId];
   if (action.placeIds.length && (!here || !action.placeIds.includes(here))) return false;
+  if (action.present.some((personId) => !here || save.positions[personId] !== here)) return false;
   return action.when.every((condition) => {
-    const def = stateDefFor(module, condition.stateId, playerId);
+    const owner = condition.characterId ?? playerId;
+    const def = stateDefFor(module, condition.stateId, owner);
     if (!def) return false;
-    const value = read(save.values, def, playerId);
+    const value = read(save.values, def, owner);
     return (condition.atLeast === undefined || value >= condition.atLeast) && (condition.atMost === undefined || value <= condition.atMost);
   });
 }
 
 export function sceneActionsFor(module: PraxisModule, save: Save): SceneAction[] {
-  return module.ruleset.actions.filter((action) => offered(module, save, action));
+  const world = playable(module, save.local);
+  return world.ruleset.actions.filter((action) => offered(world, save, action));
 }
 
-// Resolves an authored action: its effects are written by the rules, in order.
+// Resolves an authored action: its effects are written by the rules, in order, on the player
+// or on the person each effect names.
 function resolveScene(module: PraxisModule, save: Save, action: SceneAction): ActionResult {
   const playerId = playerOf(module);
   let values = save.values;
   const entries: LedgerEntry[] = [];
   const terminals: StateTerminal[] = [];
   for (const effect of action.effects) {
-    const def = stateDefFor(module, effect.stateId, playerId);
+    const owner = effect.characterId ?? playerId;
+    const def = stateDefFor(module, effect.stateId, owner);
     if (!def) return { ok: false, reason: `"${effect.stateId}" is not a state here.` };
-    const current = read(values, def, playerId);
+    const current = read(values, def, owner);
     const next = effect.set !== undefined ? effect.set : current + (effect.add ?? 0);
-    const result = write(values, def, playerId, next, 'rule');
+    const result = write(values, def, owner, next, 'rule');
     values = result.values;
     if (result.change) entries.push({ kind: 'state', at: save.clock, ...result.change });
     if (result.terminal) terminals.push(result.terminal);
@@ -136,8 +141,18 @@ export function act(module: PraxisModule, save: Save, id: string, action: Action
     if (!offered(world, save, chosen)) return { ok: false, reason: `${chosen.name} is not possible here and now.` };
     result = resolveScene(world, save, chosen);
     if (!result.ok) return result;
-    // A terminal the action reached is part of what the narrator must show.
-    const outcome = [chosen.outcome, ...result.terminals.map((terminal) => terminal.note)].join('\n');
+    // What the action changed, in each condition's own words, and any terminal it reached,
+    // are part of what the narrator must show; they are not repeated as conditions to keep.
+    const playerId = playerOf(world);
+    const changed = result.entries.flatMap((entry) => {
+      if (entry.kind !== 'state') return [];
+      const def = stateDefFor(world, entry.defId, entry.owner);
+      const person = world.characters.find((character) => character.id === entry.owner);
+      if (!def || !person) return [];
+      const said = fact(def, definite(person.name), entry.to, entry.owner === playerId, false, pronounsOf(person.pronouns));
+      return said ? [said] : [];
+    });
+    const outcome = [chosen.outcome, ...changed, ...result.terminals.map((terminal) => terminal.note)].join('\n');
     const timed = passTime(world, save, result.save, result.entries, outcome, true);
     return open(world, save, timed.save, { id, kind: 'action', input: chosen.input, directive: timed.directive }, timed.entries, result.terminals);
   }

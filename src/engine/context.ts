@@ -358,7 +358,7 @@ export const PREFILL_MARK = '[Of course, here you go:]';
 export const REPLY_START = '*';
 
 // "It works." reads "it works" after "Show that"; a name keeps its capital.
-const LEADS = /^(It|The|A|An|You|Your|Something|Time|Even|This|That|Everyone|Nothing|Meanwhile|Whatever|One|There)\b/;
+const LEADS = /^(It|The|A|An|You|Your|Something|Time|Even|This|That|Everyone|Nothing|Meanwhile|Whatever|One|There|He|She|They|His|Her|Their|We|Our)\b/;
 const lowerLead = (text: string) => (LEADS.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : text);
 const ended = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
 
@@ -541,7 +541,11 @@ export function promptChars(messages: readonly ChatMessage[], prefill = ''): num
 // The reply as the player reads it: the opening the prefill gave, then what came back. When
 // the narrator was continuing a reply the player edited, the two join exactly as written.
 export function replyFrom(plan: Pick<ContextPlan, 'replyStart'>, text: string): string {
-  if (plan.replyStart.length > REPLY_START.length) return `${plan.replyStart}${text.replace(/\s+$/, '')}`;
+  if (plan.replyStart.length > REPLY_START.length) {
+    // The edit was sent without trailing space; the continuation brings its own.
+    const body = text.replace(/\s+$/, '');
+    return /^[\s.,;:!?'’)*]/.test(body) || !body ? `${plan.replyStart}${body}` : `${plan.replyStart} ${body}`;
+  }
   const body = text.replace(/^\s+/, '');
   if (!plan.replyStart || body.startsWith(plan.replyStart)) return body;
   return `${plan.replyStart}${body}`;
@@ -566,5 +570,7 @@ export function planAsText(plan: Pick<ContextPlan, 'messages' | 'prefill'>, repl
 // becomes the start of the reply, after the narrator's opening.
 export function continuing(plan: ContextPlan, partial: string): ContextPlan {
   const head = plan.prefill.slice(0, plan.prefill.length - plan.replyStart.length);
-  return { ...plan, prefill: `${head}${partial}`, replyStart: partial };
+  // A prompt that ends in a space reads badly to the model, which writes its own.
+  const start = partial.replace(/\s+$/, '');
+  return { ...plan, prefill: `${head}${start}`, replyStart: start };
 }

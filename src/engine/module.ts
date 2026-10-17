@@ -225,14 +225,21 @@ export const sceneActionSchema = z.object({
   summary: text(400).default(''),
   // Where it is offered. Empty means anywhere.
   placeIds: z.array(id).max(200).default([]),
-  // Conditions on the player's character, all of which must hold.
+  // People who must be here for it to be offered: the broker for a sale, the sellsword for a hire.
+  present: z.array(id).max(8).default([]),
+  // Conditions, all of which must hold: on the player's character, or on someone else's when
+  // `characterId` names them.
   when: z.array(z.object({
     stateId: id,
+    characterId: id.optional(),
     atLeast: z.number().int().optional(),
     atMost: z.number().int().optional(),
   })).max(8).default([]),
+  // What it changes, in order: the player's states, or someone else's when `characterId`
+  // names them. A purchase pays from your Coin and sets the person's contract.
   effects: z.array(z.object({
     stateId: id,
+    characterId: id.optional(),
     set: z.number().int().optional(),
     add: z.number().int().optional(),
   })).min(1).max(8),
@@ -498,11 +505,20 @@ export const moduleSchema = z.object({
     action.placeIds.forEach((placeId, placeIndex) => {
       if (!places.has(placeId)) issue([...path, 'placeIds', placeIndex], `Unknown place "${placeId}".`);
     });
+    // A condition or effect on the player, or on a named person who is not the player.
+    const holds = (stateId: string, characterId: string | undefined) => {
+      if (!characterId) return playerState(states.get(stateId));
+      const state = states.get(stateId);
+      return Boolean(state && characterIds.has(characterId) && characterId !== module.scenario.playerCharacterId && appliesTo(state, 'character', false));
+    };
+    action.present.forEach((personId, personIndex) => {
+      if (!characterIds.has(personId)) issue([...path, 'present', personIndex], `Unknown character "${personId}".`);
+    });
     action.when.forEach((condition, conditionIndex) => {
-      if (!playerState(states.get(condition.stateId))) issue([...path, 'when', conditionIndex, 'stateId'], `"${condition.stateId}" is not a state the player's character holds.`);
+      if (!holds(condition.stateId, condition.characterId)) issue([...path, 'when', conditionIndex, 'stateId'], condition.characterId ? `"${condition.stateId}" is not a state ${condition.characterId} holds.` : `"${condition.stateId}" is not a state the player's character holds.`);
     });
     action.effects.forEach((effect, effectIndex) => {
-      if (!playerState(states.get(effect.stateId))) issue([...path, 'effects', effectIndex, 'stateId'], `"${effect.stateId}" is not a state the player's character holds.`);
+      if (!holds(effect.stateId, effect.characterId)) issue([...path, 'effects', effectIndex, 'stateId'], effect.characterId ? `"${effect.stateId}" is not a state ${effect.characterId} holds.` : `"${effect.stateId}" is not a state the player's character holds.`);
       if ((effect.set === undefined) === (effect.add === undefined)) issue([...path, 'effects', effectIndex], 'An effect either sets a value or adds to it.');
     });
   });

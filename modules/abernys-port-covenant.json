@@ -2,8 +2,8 @@
   "format": "praxis-module/1",
   "id": "abernys-port-covenant",
   "name": "Abernys: Port Covenant",
-  "version": "0.7.0",
-  "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and their Four Approaches tiers (the Arbiter a rival, the guard a minion), and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own. From 0.4.0, also draft: every dossier field (appearance, personality, speech), every schedule, the four bond kinds and their tiers, and the three relationships between the Governor, the High Arbiter, the garrison captain and the gate staff. The leverage between the Governor and the captain (she knows the last ship carried no orders) is from the societies doc. From 0.5.0 the ruleset extends the standard Four Approaches ruleset (four-approaches/1) for Leverage, Prepared, Integrity, Security, the person deed and the tiers; the tiers given to each character and the registry strongroom door are draft. From 0.6.0 the module takes the approach ratings, Health, Strain, Alert, the dice and rest from the standard ruleset instead of repeating them, and its opening and outcomes follow the house format: you, present tense, speech without quotation marks. From 0.7.0 each person carries pronouns, read from their own descriptions, so conditions read as she, he or they. Tiers alone now set Health and Strain, so a minion such as the gate guard falls to one success.",
+  "version": "0.8.0",
+  "notes": "Built from the Abernys docs in the Howling Whispers dev project (region seed, Port Covenant, Fenmire, Cairn Maw). Anything marked canonStatus \"draft\" was invented to make the slice playable: every route distance, the district and building names, the gate staff and their Four Approaches tiers (the Arbiter a rival, the guard a minion), and the player character. Proposed names from the docs (the Governor, the High Arbiter, the garrison captain, Brond) are draft too. The calendar is the default real one until Abernys has its own. From 0.4.0, also draft: every dossier field (appearance, personality, speech), every schedule, the four bond kinds and their tiers, and the three relationships between the Governor, the High Arbiter, the garrison captain and the gate staff. The leverage between the Governor and the captain (she knows the last ship carried no orders) is from the societies doc. From 0.5.0 the ruleset extends the standard Four Approaches ruleset (four-approaches/1) for Leverage, Prepared, Integrity, Security, the person deed and the tiers; the tiers given to each character and the registry strongroom door are draft. From 0.6.0 the module takes the approach ratings, Health, Strain, Alert, the dice and rest from the standard ruleset instead of repeating them, and its opening and outcomes follow the house format: you, present tense, speech without quotation marks. From 0.7.0 each person carries pronouns, read from their own descriptions, so conditions read as she, he or they. Tiers alone now set Health and Strain, so a minion such as the gate guard falls to one success. From 0.8.0, to test schedules, followers and contracts, all draft: the Tarred Rope, an alehouse in the outer lanes, with its keeper Pell and Garrick Hale, a sellsword who can be hired; the Reddles, a fisherman and his harefolk wife with a home, a workplace and a family record; and the contract hall on the harbour, where Odile Fenn brokers indenture and Wren's contract can be bought. Coin, Bound by contract and In your pay are new states, with follow rules for the last two.",
   "source": {
     "kind": "local"
   },
@@ -131,6 +131,30 @@
         "kind": "settlement",
         "parentLocationId": "abernys",
         "description": "The city-state at the mouth of the Afon's estuary, where sea trade and river trade meet. A figurehead ruler sits under the real power of merchants and organised crime."
+      },
+      {
+        "id": "pc-tarred-rope",
+        "name": "The Tarred Rope",
+        "kind": "building",
+        "parentLocationId": "pc-outside-walls",
+        "canonStatus": "draft",
+        "description": "A low alehouse built against the outside of the colony wall, its beams black with pipe smoke and ship's tar. Those who have not signed drink here beside those who have, humans at the long table and beastkin by the fire, and the keeper takes any coin that isn't on paper."
+      },
+      {
+        "id": "pc-reddle-house",
+        "name": "The Reddle house",
+        "kind": "building",
+        "parentLocationId": "pc-outside-walls",
+        "canonStatus": "draft",
+        "description": "A narrow two-room house of salvaged ship's timber in the outer lanes, nets drying on pegs along its wall. A human fisherman and his harefolk wife live here, which is why they live outside the wall."
+      },
+      {
+        "id": "pc-contract-hall",
+        "name": "The contract hall",
+        "kind": "building",
+        "parentLocationId": "pc-harbour",
+        "canonStatus": "draft",
+        "description": "A long, tide-stained hall on the harbour where indenture contracts change hands. The contracts hang on a board by the door with their prices chalked beside them, and the people they bind wait on benches along the back wall. The Pact does not call it a slave market, because every party signed."
       }
     ],
     "routes": [
@@ -308,6 +332,32 @@
           "port-covenant"
         ],
         "description": "Humans driven from the homeland by a disaster that stays unwritten settled the city the Wailing had emptied. How many generations ago is never stated."
+      }
+    ],
+    "families": [
+      {
+        "id": "the-reddles",
+        "name": "The Reddles",
+        "canonStatus": "draft",
+        "description": "A mixed marriage under a tattooed contract: a human fisherman and a harefolk net-mender, living outside the wall because the Pact admits them both and the lanes inside would not.",
+        "people": [
+          {
+            "characterId": "tomas-reddle",
+            "name": "Tomas Reddle"
+          },
+          {
+            "characterId": "hanne-reddle",
+            "name": "Hanne Reddle"
+          }
+        ],
+        "relationships": [
+          {
+            "fromPersonId": "tomas-reddle",
+            "toPersonId": "hanne-reddle",
+            "kind": "partner",
+            "notes": "Married by contract, tattooed on both their wrists."
+          }
+        ]
       }
     ]
   },
@@ -634,6 +684,255 @@
       "speech": "Few words, slow and heavy, in the first peoples' tongue when he can.",
       "draftNote": "Appearance, personality, speech are drafts.",
       "tier": "nemesis"
+    },
+    {
+      "id": "tomas-reddle",
+      "name": "Tomas Reddle",
+      "pronouns": "he/him",
+      "speciesId": "humans",
+      "homeLocationId": "pc-reddle-house",
+      "canonStatus": "draft",
+      "role": "A fisherman",
+      "description": "Fishes out of the harbour on a share of another man's boat, and drinks at the Tarred Rope most evenings. He signed the Covenant to work inside the wall, and lives outside it because his wife is harefolk.",
+      "appearance": "Big, salt-cracked hands, a fisherman's jersey out at the elbows, and a marriage contract tattooed around his left wrist.",
+      "personality": "Easy and talkative over a drink, close-mouthed about his catch. He owes the boat's owner more than he lets on, and does the arithmetic in his head while he laughs.",
+      "speech": "Harbour slang and long stories, and he calls everyone friend until they aren't.",
+      "workplaceLocationIds": [
+        "pc-harbour"
+      ],
+      "schedule": {
+        "plans": [
+          {
+            "id": "day",
+            "name": "A fishing day",
+            "rows": [
+              {
+                "fromHour": 5,
+                "locationId": "pc-harbour",
+                "doing": "working the boats"
+              },
+              {
+                "fromHour": 15,
+                "locationId": "pc-harbour",
+                "doing": "mending nets on the quay"
+              },
+              {
+                "fromHour": 18,
+                "locationId": "pc-tarred-rope",
+                "doing": "drinking at the long table"
+              },
+              {
+                "fromHour": 23,
+                "locationId": "pc-reddle-house",
+                "doing": "asleep"
+              }
+            ]
+          }
+        ]
+      },
+      "draftNote": "Everything about this person is a draft, added to test schedules, followers and contracts.",
+      "tier": "minion"
+    },
+    {
+      "id": "hanne-reddle",
+      "name": "Hanne Reddle",
+      "pronouns": "she/her",
+      "speciesId": "harefolk",
+      "homeLocationId": "pc-reddle-house",
+      "canonStatus": "draft",
+      "role": "A net-mender",
+      "description": "Mends nets and sells Tomas's share of the catch on the harbour, where traders who would not sit at a table with her still buy her fish.",
+      "appearance": "A grey-brown harefolk woman with long ears notched by old frostbite, net twine wound around her fingers, and the same contract tattooed around her wrist as her husband's.",
+      "personality": "Watchful and dry. She keeps the household's accounts, knows exactly what Tomas owes, and has not decided what to do about it.",
+      "speech": "Short, wry sentences. She lets silences do her arguing.",
+      "workplaceLocationIds": [
+        "pc-reddle-house",
+        "pc-harbour"
+      ],
+      "schedule": {
+        "plans": [
+          {
+            "id": "day",
+            "name": "A mending day",
+            "rows": [
+              {
+                "fromHour": 6,
+                "locationId": "pc-reddle-house",
+                "doing": "mending nets"
+              },
+              {
+                "fromHour": 9,
+                "locationId": "pc-harbour",
+                "doing": "selling the morning catch"
+              },
+              {
+                "fromHour": 12,
+                "locationId": "pc-reddle-house",
+                "doing": "mending nets by the door"
+              },
+              {
+                "fromHour": 21,
+                "locationId": "pc-reddle-house",
+                "doing": "asleep"
+              }
+            ]
+          }
+        ]
+      },
+      "draftNote": "Everything about this person is a draft, added to test schedules, followers and contracts.",
+      "tier": "minion"
+    },
+    {
+      "id": "garrick-hale",
+      "name": "Garrick Hale",
+      "pronouns": "he/him",
+      "speciesId": "humans",
+      "homeLocationId": "pc-tarred-rope",
+      "canonStatus": "draft",
+      "role": "A sellsword between contracts",
+      "description": "Came over on a Caerwyn ship and never signed the Covenant, so he sells his sword outside the wall to anyone with coin and no questions.",
+      "appearance": "Lean and weathered, with a broken nose set crooked, a long knife at each hip and a leather coat scarred by other people's blades.",
+      "personality": "Cheerfully mercenary. He stays loyal exactly as long as the pay lasts, and is honest about it, which he counts as a virtue.",
+      "speech": "Dry and unhurried, and he prices everything: that's extra.",
+      "workplaceLocationIds": [
+        "pc-tarred-rope"
+      ],
+      "schedule": {
+        "plans": [
+          {
+            "id": "day",
+            "name": "Between contracts",
+            "rows": [
+              {
+                "fromHour": 2,
+                "locationId": "pc-tarred-rope",
+                "doing": "asleep in a room upstairs"
+              },
+              {
+                "fromHour": 10,
+                "locationId": "pc-tarred-rope",
+                "doing": "nursing a drink by the door, watching who comes in"
+              }
+            ]
+          }
+        ]
+      },
+      "draftNote": "Everything about this person is a draft, added to test schedules, followers and contracts.",
+      "tier": "rival"
+    },
+    {
+      "id": "pell",
+      "name": "Pell",
+      "pronouns": "he/him",
+      "speciesId": "otters",
+      "homeLocationId": "pc-tarred-rope",
+      "canonStatus": "draft",
+      "role": "The keeper of the Tarred Rope",
+      "description": "Keeps the Tarred Rope and keeps out of the Pact's paper. He takes coin, barter or favours, and remembers which.",
+      "appearance": "A grizzled otter in a stained apron, his whiskers singed short on one side from the fire.",
+      "personality": "Genial, nosy and neutral by trade. He hears everything and sells only some of it.",
+      "speech": "Warm and rambling, and every second sentence is a question.",
+      "workplaceLocationIds": [
+        "pc-tarred-rope"
+      ],
+      "schedule": {
+        "plans": [
+          {
+            "id": "day",
+            "name": "Keeping the bar",
+            "rows": [
+              {
+                "fromHour": 1,
+                "locationId": "pc-tarred-rope",
+                "doing": "asleep behind the bar"
+              },
+              {
+                "fromHour": 8,
+                "locationId": "pc-tarred-rope",
+                "doing": "serving drink and stew"
+              }
+            ]
+          }
+        ]
+      },
+      "draftNote": "Everything about this person is a draft, added to test schedules, followers and contracts.",
+      "tier": "minion"
+    },
+    {
+      "id": "odile-fenn",
+      "name": "Odile Fenn",
+      "pronouns": "she/her",
+      "speciesId": "humans",
+      "homeLocationId": "pc-contract-hall",
+      "canonStatus": "draft",
+      "role": "A contract broker",
+      "description": "Brokers indenture contracts at the contract hall and takes a tenth of every sale, witnessed and signed.",
+      "appearance": "A narrow woman in good grey wool with an Arbiter-trained hand, chalk dust on her cuffs from the price board.",
+      "personality": "Courteous, exact and entirely unsentimental. She believes the contracts are the only honest thing in the colony.",
+      "speech": "Polite and precise. She quotes prices and terms, never feelings.",
+      "workplaceLocationIds": [
+        "pc-contract-hall"
+      ],
+      "schedule": {
+        "plans": [
+          {
+            "id": "day",
+            "name": "Brokering",
+            "rows": [
+              {
+                "fromHour": 7,
+                "locationId": "pc-contract-hall",
+                "doing": "brokering contracts"
+              },
+              {
+                "fromHour": 21,
+                "locationId": "pc-contract-hall",
+                "doing": "asleep in her rooms above the hall"
+              }
+            ]
+          }
+        ]
+      },
+      "draftNote": "Everything about this person is a draft, added to test schedules, followers and contracts.",
+      "tier": "rival"
+    },
+    {
+      "id": "wren",
+      "name": "Wren",
+      "pronouns": "she/her",
+      "speciesId": "humans",
+      "homeLocationId": "pc-contract-hall",
+      "canonStatus": "draft",
+      "role": "An indentured woman",
+      "description": "A woman of about twenty-five, bound by a punitive indenture for a contract her father broke. Her contract hangs on the hall's board, priced to sell, and she has outlasted two buyers who returned it.",
+      "appearance": "Tall and rawboned, with dark hair cropped short and her indenture tattooed in black lines from her right wrist to the elbow.",
+      "personality": "Proud, watchful and patient, like someone who has decided to outlast everything. She gives exactly what a contract demands and not a word more, and notices every lie told in front of her.",
+      "speech": "Clipped and formal with buyers. Dry and quick with anyone who treats her as a person.",
+      "workplaceLocationIds": [
+        "pc-contract-hall"
+      ],
+      "schedule": {
+        "plans": [
+          {
+            "id": "day",
+            "name": "Waiting to be sold",
+            "rows": [
+              {
+                "fromHour": 7,
+                "locationId": "pc-contract-hall",
+                "doing": "waiting on the benches along the back wall"
+              },
+              {
+                "fromHour": 21,
+                "locationId": "pc-contract-hall",
+                "doing": "asleep in the hall’s back room"
+              }
+            ]
+          }
+        ]
+      },
+      "draftNote": "Everything about this person is a draft, added to test schedules, followers and contracts.",
+      "tier": "rival"
     }
   ],
   "relationships": [
@@ -682,6 +981,42 @@
       "together": "They talk over a traveller's head as if the traveller were weather.",
       "states": {
         "bond-acquaintance": 3
+      }
+    },
+    {
+      "id": "tomas-and-hanne",
+      "personIds": [
+        "tomas-reddle",
+        "hanne-reddle"
+      ],
+      "bondStateId": "bond-friends",
+      "canonStatus": "draft",
+      "shape": "Married six years by a contract tattooed on both their wrists. Hanne keeps the accounts and Tomas keeps the peace, and neither tells the other everything.",
+      "together": "He talks, she corrects his numbers, and both of them watch the door when a garrison patrol goes by.",
+      "wants": {
+        "tomas-reddle": "her to stop counting what he owes",
+        "hanne-reddle": "the boat's debt paid before it passes to her"
+      },
+      "states": {
+        "bond-friends": 2
+      }
+    },
+    {
+      "id": "odile-and-wren",
+      "personIds": [
+        "odile-fenn",
+        "wren"
+      ],
+      "bondStateId": "bond-uneasy-allies",
+      "canonStatus": "draft",
+      "shape": "Odile holds Wren's contract until it sells, and has sold it twice before. Each buyer returned it, and Odile kept the fee both times.",
+      "together": "Odile speaks about Wren in the third person while Wren stands beside her, and Wren lets her.",
+      "wants": {
+        "odile-fenn": "Wren's contract sold and kept sold",
+        "wren": "a buyer she can outlast"
+      },
+      "states": {
+        "bond-uneasy-allies": 0
       }
     }
   ],
@@ -874,6 +1209,60 @@
           "owner": "flair",
           "secondary": []
         }
+      },
+      {
+        "id": "coin",
+        "name": "Coin",
+        "scope": "protagonist",
+        "min": 0,
+        "max": 10000,
+        "start": 40,
+        "category": "Purse",
+        "canonStatus": "draft"
+      },
+      {
+        "id": "bound",
+        "name": "Bound by contract",
+        "scope": "npc",
+        "min": 0,
+        "max": 1,
+        "start": 0,
+        "category": "Ownership",
+        "display": "band",
+        "bands": [
+          {
+            "at": 0,
+            "label": "is free"
+          },
+          {
+            "at": 1,
+            "label": "is bound to you by contract. |They| must go where you go and do the work you set, whether |they| will it or not"
+          }
+        ],
+        "restBand": 0,
+        "canonStatus": "draft"
+      },
+      {
+        "id": "hired",
+        "name": "In your pay",
+        "scope": "npc",
+        "min": 0,
+        "max": 1,
+        "start": 0,
+        "category": "Ownership",
+        "display": "band",
+        "bands": [
+          {
+            "at": 0,
+            "label": "is free"
+          },
+          {
+            "at": 1,
+            "label": "is in your pay. |They| will travel with you and do the work you hired |them| for, while the pay lasts"
+          }
+        ],
+        "restBand": 0,
+        "canonStatus": "draft"
       }
     ],
     "actions": [
@@ -899,6 +1288,103 @@
         "input": "I sign the Covenant.",
         "outcome": "You sign the Covenant in the Arbiter’s ledger. It binds you from this moment, and the landward gate is open to you.",
         "canonStatus": "draft"
+      },
+      {
+        "id": "hire-garrick",
+        "name": "Hire Garrick",
+        "summary": "Pay Garrick Hale ten coin to travel with you and fight for you.",
+        "placeIds": [
+          "pc-tarred-rope"
+        ],
+        "present": [
+          "garrick-hale"
+        ],
+        "when": [
+          {
+            "stateId": "coin",
+            "atLeast": 10
+          },
+          {
+            "stateId": "hired",
+            "characterId": "garrick-hale",
+            "atMost": 0
+          }
+        ],
+        "effects": [
+          {
+            "stateId": "coin",
+            "add": -10
+          },
+          {
+            "stateId": "hired",
+            "characterId": "garrick-hale",
+            "set": 1
+          }
+        ],
+        "input": "I hire Garrick Hale.",
+        "outcome": "You pay Garrick Hale ten coin, and he pockets it without counting.",
+        "canonStatus": "draft"
+      },
+      {
+        "id": "buy-wrens-contract",
+        "name": "Buy Wren's contract",
+        "summary": "Pay twenty-five coin for Wren's indenture. Her contract becomes yours, and so does she.",
+        "placeIds": [
+          "pc-contract-hall"
+        ],
+        "present": [
+          "wren",
+          "odile-fenn"
+        ],
+        "when": [
+          {
+            "stateId": "coin",
+            "atLeast": 25
+          },
+          {
+            "stateId": "bound",
+            "characterId": "wren",
+            "atMost": 0
+          }
+        ],
+        "effects": [
+          {
+            "stateId": "coin",
+            "add": -25
+          },
+          {
+            "stateId": "bound",
+            "characterId": "wren",
+            "set": 1
+          }
+        ],
+        "input": "I buy Wren's contract.",
+        "outcome": "You pay Odile Fenn twenty-five coin, and Wren's contract is signed over to you before a witness.",
+        "canonStatus": "draft"
+      }
+    ],
+    "follow": [
+      {
+        "id": "bound",
+        "label": "Take them with you",
+        "as": "bound to you by contract",
+        "anyOf": [
+          {
+            "stateId": "bound",
+            "atLeast": 1
+          }
+        ]
+      },
+      {
+        "id": "hired",
+        "label": "Have them come with you",
+        "as": "in your pay",
+        "anyOf": [
+          {
+            "stateId": "hired",
+            "atLeast": 1
+          }
+        ]
       }
     ]
   },
