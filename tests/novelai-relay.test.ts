@@ -43,6 +43,11 @@ describe('the NovelAI relay', () => {
       .toBe('[gMASK]<sop><|assistant|>\n<think></think>\nFog.<|user|>\nGo./nothink<|assistant|>\n<think></think>\n');
   });
 
+  it('puts the prefill where the reply begins, so the model continues it', () => {
+    expect(glmPrompt([{ role: 'user', content: 'Go.' }], 'Understood.\n[Of course, here you go:]\n*'))
+      .toBe('[gMASK]<sop><|user|>\nGo./nothink<|assistant|>\n<think></think>\nUnderstood.\n[Of course, here you go:]\n*');
+  });
+
   it('takes the reply from parsedContent when that is where NovelAI puts it', async () => {
     const upstream = fakeNovelAI({ body: { choices: [{ text: '', parsedContent: '*Rain.*', finish_reason: 'stop' }] } });
     expect(await relayChat(upstream.fetchImpl, token, request)).toMatchObject({ status: 200, body: { text: '*Rain.*' } });

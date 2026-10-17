@@ -16,3 +16,4 @@ export * from './checks';
 export * from './schedule';
 export * from './relationships';
 export * from './mentions';
+export * from './follow';

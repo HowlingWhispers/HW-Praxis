@@ -18,7 +18,7 @@
 
 import { playable } from './records';
 import { DIFFICULTY_NAMES, stateDefFor, type Approach, type Cost, type Deed, type PraxisModule } from './module';
-import { band, fact, read, write, type StateDef, type StateTerminal, type StateValues } from './state';
+import { band, fact, labelFor, read, shortLabel, write, type StateDef, type StateTerminal, type StateValues } from './state';
 import { definite, midSentence, toYou } from './words';
 import { buildPool, oddsOf, rollPool, type Odds, type Pool } from './dice';
 import { playerOf, thingsAt, type CheckRecord, type LedgerEntry, type Save } from './session';
@@ -138,7 +138,7 @@ export function actsOn(module: PraxisModule, save: Save, subject: Subject): Appr
       const claim = claimOf(def, approach.id);
       if (claim === 'none') continue;
       const value = read(save.values, def, subject.id);
-      states.push({ kind: 'state', def, claim, value, word: band(def, value).label });
+      states.push({ kind: 'state', def, claim, value, word: shortLabel(def, labelFor(def, value, false)) });
     }
     states.sort((a, b) => (a.kind === 'state' && b.kind === 'state' ? (a.claim === b.claim ? 0 : a.claim === 'owner' ? -1 : 1) : 0));
     const deeds: Act[] = world.ruleset.deeds.filter((deed) => deed.kind === subject.kind && deed.approach === approach.id).map((deed) => ({ kind: 'deed', deed }));
@@ -171,7 +171,7 @@ export function targetsHere(module: PraxisModule, save: Save): (TargetInfo & { d
     .map((base) => {
       const def = stateDefFor(world, base.id, subject.id) ?? base;
       const value = read(save.values, def, subject.id);
-      return { owner: subject.id, ownerName: subject.name, kind: subject.kind, def, defId: def.id, deed: null, value, word: band(def, value).label };
+      return { owner: subject.id, ownerName: subject.name, kind: subject.kind, def, defId: def.id, deed: null, value, word: shortLabel(def, labelFor(def, value, false)) };
     }));
 }
 
@@ -248,7 +248,7 @@ export function planCheck(module: PraxisModule, save: Save, target: Target, choi
     claim = claimOf(def, approach.id);
     if (claim === 'none') return { ok: false, reason: `${approach.name} cannot move ${def.name}.` };
     const value = read(save.values, def, subject.id);
-    info = { owner: subject.id, ownerName: subject.name, kind: subject.kind, def, deed: null, value, word: band(def, value).label };
+    info = { owner: subject.id, ownerName: subject.name, kind: subject.kind, def, deed: null, value, word: shortLabel(def, labelFor(def, value, false)) };
   } else {
     const deed = world.ruleset.deeds.find((entry) => entry.kind === subject.kind && entry.approach === approach.id);
     if (!deed) return { ok: false, reason: `${approach.name} has nothing to do to ${inSentence(subject.name)} on its own.` };
@@ -472,37 +472,44 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
     }
   }
 
-  // The outcome: what happened, in the story's own terms, and what the narrator does with
-  // it. "You" is the player's character throughout, as in the scene note.
+  // The outcome, as facts in the story's own terms. The narrator is told to show it; each
+  // condition says what it means, including when more is needed before it is over.
   const named = (owner: string) => (owner === playerId ? 'You' : definite(ownerName(world, owner)));
   const mid = (owner: string) => midSentence(named(owner));
   const isPerson = (owner: string) => owner !== playerId && world.characters.some((character) => character.id === owner);
-  // What shows about one state now, with what reaching its end means, if it just did.
+  // What shows about one state now. When it has just reached an end: for someone else with
+  // words of their own (npcLabels), those words say it all; otherwise the terminal's note
+  // follows, turned to "you" for the player.
   const shows = (stateDef: StateDef, owner: string, evenAtRest = false): string => {
     const forPlayer = owner === playerId;
     const said = fact(stateDef, named(owner), read(values, stateDef, owner), forPlayer, evenAtRest);
     const reached = terminals.find((entry) => entry.owner === owner && entry.defId === stateDef.id)?.terminal;
-    const means = !reached ? '' : forPlayer ? reached.playerNote ?? toYou(reached.note) : reached.note;
+    const means = !reached ? '' : forPlayer ? reached.playerNote ?? toYou(reached.note) : stateDef.npcLabels ? '' : reached.note;
     return [said, means].filter(Boolean).join(' ');
   };
   const them = mid(target.owner);
-  const person = isPerson(target.owner);
-  const parts: string[] = [
-    `${plan.approach.name} ${reading.succeeded ? `succeeds${reading.triumph ? ', better than hoped' : ''}` : `fails${reading.despair ? ', and it goes badly wrong' : ''}`}.`,
-  ];
+  const reachedEnd = Boolean(def && terminals.some((entry) => entry.owner === target.owner && entry.defId === def.id));
+  const parts: string[] = [];
   if (reading.succeeded) {
-    if (!def) parts.push(`What you just tried works on ${them}.`);
-    else if (def.grows) parts.push(`You learn something useful about ${them}.`, shows(def, target.owner));
-    else parts.push(`What you just tried works on ${them}.`, shows(def, target.owner) || (person ? `It gets to ${them}, though it does not show yet.` : shows(def, target.owner, true)));
+    const better = reading.triumph ? ', better than hoped' : '';
+    if (!def) parts.push(`It works${better}.`);
+    else if (def.grows) parts.push(`It works${better}: you notice something useful about ${them}.`, shows(def, target.owner));
+    else if (reachedEnd) parts.push(`It works${better}.`, shows(def, target.owner));
+    else {
+      const now = shows(def, target.owner);
+      if (now) parts.push(`It gains ground${better}, but it is not over yet.`, now);
+      else parts.push(isPerson(target.owner) ? `It lands, but only just: ${them} shows no sign of it yet.` : `It lands, but only just.`, isPerson(target.owner) ? '' : shows(def, target.owner, true));
+    }
   } else {
-    parts.push(def?.grows ? `You learn nothing useful about ${them}.` : `What you just tried does not work on ${them}.`);
+    const worse = reading.despair ? ', and it goes badly wrong' : '';
+    parts.push(def?.grows ? `It fails${worse}: you learn nothing useful about ${them}.` : def ? `It fails${worse}: it makes no headway against ${them}.` : `It fails${worse}.`);
   }
   if (reading.succeeded && reading.despair) parts.push('Something else goes badly wrong.');
   if (!reading.succeeded && reading.triumph) parts.push('Even so, something goes very well for you.');
   if (reading.netAdvantage === 1) parts.push('Something small also goes your way.');
   else if (reading.netAdvantage >= 2) parts.push('Something else goes your way too: an opening you can use.');
   else if (reading.netAdvantage === -1) parts.push('Something small also goes against you.');
-  else if (reading.netAdvantage <= -2) parts.push('Something else goes wrong for you too: real trouble.');
+  else if (reading.netAdvantage <= -2) parts.push('Something else goes wrong for you too.');
   // What else it changed: the price of failing, a bond that moved.
   for (const { owner, def: changedDef } of changed.values()) {
     if (owner === target.owner && changedDef.id === target.defId) continue;
@@ -512,10 +519,6 @@ export function settleCheck(module: PraxisModule, save: Save, target: Target, ch
     if (said) parts.push(said);
   }
   if (clock !== save.clock && !reading.succeeded) parts.push('It takes time.');
-  // How it carries forward.
-  if (reading.succeeded && def?.grows) parts.push('Show what you notice in this reply.');
-  else if (reading.succeeded) parts.push(person ? `Show it in this reply, and let it change what ${them} does from here on.` : 'Show it in this reply, and let it change what happens next.');
-  else parts.push(person ? `Show it in this reply, and let ${them} react to it.` : 'Show it in this reply, and let it change what happens next.');
 
   const record: CheckRecord = {
     approach: plan.approach.id,

@@ -21,6 +21,9 @@ const worldState = {
   values: stateValues,
   // Added in 0.9.
   spent: z.record(z.string(), z.record(z.string(), z.array(z.number().int()).max(12))).default({}),
+  // Added in 0.14.
+  held: z.array(id).max(500).default([]),
+  following: z.record(z.string(), z.string().min(1).max(200)).default({}),
 };
 
 const checkSchema = z.object({
@@ -46,6 +49,7 @@ const ledgerEntrySchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('state'), at: z.number(), defId: id, owner: id, from: z.number(), to: z.number(), source }),
   z.object({ kind: z.literal('clock'), at: z.number(), from: z.number(), to: z.number(), source, reason: z.string().max(200) }),
   z.object({ kind: z.literal('move'), at: z.number(), characterId: id, from: id.nullable(), to: id.nullable(), minutes: z.number(), source }),
+  z.object({ kind: z.literal('follow'), at: z.number(), characterId: id, as: z.string().min(1).max(200).nullable(), source }),
 ]);
 
 const turnSchema = z.object({
@@ -97,6 +101,9 @@ export function checkSave(module: PraxisModule, save: Save): string[] {
     else if (isArea(place)) errors.push(`The save puts someone in the area "${place.name}".`);
   }
   if (!save.positions[playerOf(module)]) errors.push('The player character is not anywhere in this save.');
+  for (const characterId of [...save.held, ...Object.keys(save.following)]) {
+    if (!characters.has(characterId)) errors.push(`The save keeps "${characterId}" with you, who is not in the module.`);
+  }
   return errors;
 }
 

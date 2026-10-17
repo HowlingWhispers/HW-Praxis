@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  act, cleanReply, compileContext, exportSave, lastTurn, parseSave, readSaveFile, roughDuration, say, sceneOf, setReply,
+  act, cleanReply, compileContext, contextPlan, replyFrom, exportSave, lastTurn, parseSave, readSaveFile, roughDuration, say, sceneOf, setReply,
   setOptions, setState, startSave, undoLastTurn, type Save,
 } from '../src/engine';
 import { abernys } from './abernys';
@@ -75,39 +75,54 @@ describe('reroll and undo', () => {
 });
 
 describe('the narrator\'s context', () => {
-  it('puts the stable parts first, the game\'s notes next, and the player\'s words last', () => {
+  it('puts what never changes first, the scene\'s lore next, your words last, and the reply\'s opening after', () => {
     let save = must(say(module, startSave(module), 't1', 'I hold out my hand for the pen.')).save;
     save = must(setReply(save, 't1', '*She hands it over.*')).save;
     save = must(say(module, save, 't2', 'I sign.')).save;
-    const messages = compileContext(module, save);
-    expect(messages.map((message) => message.role)).toEqual(['system', 'assistant', 'user', 'assistant', 'system', 'user']);
-    expect(messages[0]!.content).toMatch(/^You narrate a text adventure\. The player plays the traveller/);
+    const plan = contextPlan(module, save);
+    const messages = plan.messages;
+    expect(messages.map((message) => message.role)).toEqual(['system', 'system', 'assistant', 'user', 'assistant', 'user']);
+    expect(messages[0]!.content).toMatch(/^You narrate a text adventure\. The player is the traveller/);
     expect(messages[0]!.content).toMatch(/Established facts:/);
     expect(messages[0]!.content).toMatch(/Speech is plain text, with no quotation marks\. Thoughts go in \(parentheses\)/);
-    expect(messages[2]!.content).toBe('I hold out my hand for the pen.');
-    const notes = messages[4]!.content;
-    // Slowest first: lore, then the scene. Every note is one bracketed line.
-    expect(notes.split('\n').every((entry) => /^\[ (Lore|Scene|Outcome): .* \]$/.test(entry))).toBe(true);
-    expect(notes.indexOf('[ Lore:')).toBeLessThan(notes.indexOf('[ Scene:'));
-    expect(notes).toMatch(/\[ Scene: The landward gate, Nospier Point, Abernys, early morning\. /);
-    expect(notes).toContain('The gate Arbiter is here, keeping the ledger at the landward gate.');
-    expect(notes).toContain('The way to Port Covenant is closed to you. No one enters the port without signing the Covenant.');
-    // The player's turn holds only what the player wrote.
+    // The format, shown by example from another story.
+    expect(messages[0]!.content).toContain('An example of the format, from another story:');
+    const lore = messages[1]!.content;
+    // Every lore entry is one bracketed line: you, where you are, who is present.
+    expect(lore.split('\n').every((entry) => /^\[ .* \]$/.test(entry))).toBe(true);
+    expect(lore).toMatch(/^\[ You are the traveller: /);
+    expect(lore).toContain('[ The landward gate, Nospier Point, Abernys: Where the headland road meets the colony wall.');
+    expect(lore).toContain('The way to Port Covenant is closed to you. No one enters the port without signing the Covenant.');
+    expect(lore).toMatch(/\[ Present at the landward gate, early morning: The gate Arbiter, keeping the ledger at the landward gate\. /);
+    expect(messages[3]!.content).toBe('I hold out my hand for the pen.');
+    // Your turn holds only what you wrote.
     expect(messages[5]!.content).toBe('I sign.');
+    expect(plan.prefill).toMatch(/^Understood\. I will:\n/);
+    expect(plan.prefill).toContain('- Show how the world answers what you just did, and leave the outcome of anything uncertain open');
+    expect(plan.prefill.endsWith('- Stop where you can act again\n[Of course, here you go:]\n*')).toBe(true);
+    expect(replyFrom(plan, 'She pushes the ledger across.* Sign there.')).toBe('*She pushes the ledger across.* Sign there.');
+    expect(replyFrom(plan, '*She pushes the ledger across.*')).toBe('*She pushes the ledger across.*');
   });
 
-  it('carries standing facts only off their resting band, and the outcome once', () => {
+  it('keeps conditions true in the reply\'s opening, and an outcome once, then in the transcript', () => {
     let save = must(setState(module, signed(), 'health', 'gate-guard', 1)).save;
     save = must(say(module, save, 't1', 'I look at the guard.')).save;
-    const notes = compileContext(module, save).at(-2)!.content;
-    expect(notes).toMatch(/\[ Scene: .* The garrison guard is hurt\./);
-    expect(notes).toMatch(/\[ Scene: .* You have signed the Covenant\./);
-    expect(notes).not.toMatch(/is unhurt/);
-    expect(notes).not.toMatch(/Outcome/);
+    const plan = contextPlan(module, save);
+    expect(plan.prefill).toMatch(/\n- Keep true: .*You have signed the Covenant\./);
+    expect(plan.prefill).toContain('The garrison guard is hurt: bleeding and slowed, but still fighting.');
+    expect(plan.prefill).not.toMatch(/is unhurt/);
+    expect(plan.prefill).not.toContain('Show what the rules decided');
+    save = must(setReply(save, 't1', '*He leans on his pike.*')).save;
     save = must(act(module, save, 't2', { type: 'travel', to: 'pc-outside-walls' })).save;
-    const next = compileContext(module, save);
-    expect(next.at(-2)!.content).toMatch(/\n\[ Outcome: You have just arrived at the outer lanes after .*\. Show the arrival and what you find\. \]$/);
-    expect(next.filter((message) => message.content.includes('Outcome:'))).toHaveLength(1);
+    const next = contextPlan(module, save);
+    expect(next.prefill).toMatch(/\n- Show what the rules decided: You have just arrived at the outer lanes after [^\n]*\.\n/);
+    expect(next.messages.some((message) => message.content.includes('Outcome: You have just arrived'))).toBe(false);
+    save = must(setReply(save, 't2', '*Mud and washing lines.*')).save;
+    save = must(say(module, save, 't3', 'I look around.')).save;
+    const later = contextPlan(module, save);
+    // Once it is past, what the rules decided stays with your words in the transcript.
+    expect(later.messages.filter((message) => message.content.includes('[ Outcome: You have just arrived at the outer lanes'))).toHaveLength(1);
+    expect(later.messages.find((message) => message.content.includes('[ Outcome: You have just arrived'))!.content).toMatch(/^I head for the outer lanes\.\n\n\[ Outcome: /);
   });
 
   it('never names the clock\'s numbers', () => {

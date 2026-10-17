@@ -15,13 +15,16 @@ import { DEFAULT_OPTIONS, calibrate, optionsSchema, type Options } from './optio
 import { emptyJournal, type Journal } from './journal';
 import { playable, type LocalRecord } from './records';
 import { followSchedules, scheduledPositions } from './schedule';
+import { carryFollowers } from './follow';
 
 export const SAVE_FORMAT = 'praxis-save/1';
 
 export type LedgerEntry =
   | { kind: 'state'; at: number; defId: string; owner: string; from: number; to: number; source: ChangeSource }
   | { kind: 'clock'; at: number; from: number; to: number; source: ChangeSource; reason: string }
-  | { kind: 'move'; at: number; characterId: string; from: string | null; to: string | null; minutes: number; source: ChangeSource };
+  | { kind: 'move'; at: number; characterId: string; from: string | null; to: string | null; minutes: number; source: ChangeSource }
+  // Someone starts or stops coming with you. `as` is the follow rule, 'by-hand', or null for stopping.
+  | { kind: 'follow'; at: number; characterId: string; as: string | null; source: ChangeSource };
 
 // The mutable world, without the transcript or the ledger. A turn keeps the one from before
 // it so undo can put it back exactly.
@@ -32,6 +35,12 @@ export interface WorldState {
   // Charges spent, by character and approach. They come back when every charge on that
   // approach is spent, or on a full rest.
   spent: Readonly<Record<string, Readonly<Record<string, readonly number[]>>>>;
+  // People kept here past their schedule because you are with them. They go where their day
+  // puts them once you part, or when you wait or rest. See schedule.ts.
+  held: readonly string[];
+  // People travelling with you, by the follow rule that lets them, or 'by-hand'. They go
+  // where you go and keep no schedule. See follow.ts.
+  following: Readonly<Record<string, string>>;
 }
 
 // What a check was, kept on its turn so the transcript can show the dice.
@@ -147,6 +156,8 @@ export function startSave(module: PraxisModule, seed = 0): Save {
     positions,
     values,
     spent: {},
+    held: [],
+    following: {},
     ledger: [],
     turns: [],
     journal: emptyJournal(),
@@ -225,7 +236,8 @@ export function travel(module: PraxisModule, save: Save, toPlaceId: string): Act
     { kind: 'move', at: to, characterId: playerId, from, to: toPlaceId, minutes: path.minutes, source: 'rule' },
   ];
   if (path.minutes > 0) entries.unshift({ kind: 'clock', at: save.clock, from: save.clock, to, source: 'rule', reason: 'travel' });
-  return commit(save, { clock: to, positions: { ...save.positions, [playerId]: toPlaceId } }, entries);
+  const party = carryFollowers(world, save, from, toPlaceId, to);
+  return commit(save, { clock: to, positions: { ...party.positions, [playerId]: toPlaceId }, following: party.following }, [...entries, ...party.entries]);
 }
 
 // Time passes where the player is.

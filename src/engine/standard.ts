@@ -16,16 +16,30 @@ export const STANDARD_RULESET = {
     })),
     {
       id: 'health', name: 'Health', scope: 'char', min: 0, max: 8, start: 8, category: 'Condition', display: 'band', bandBasis: 'share',
-      bands: share([[0, 'is down'], [1, 'is badly hurt'], [34, 'is hurt'], [60, 'is bruised'], [85, 'is unhurt']]), restBand: 4,
-      npcLabels: ['is down, too hurt to go on', 'is near death', 'is hurt', 'is bruised', 'is unhurt'],
+      // "Words: what they mean". The screen shows the words; the narrator reads both, so a
+      // wound that is not yet the end says so. Any loss leaves the resting band, so a
+      // success always shows.
+      bands: share([[0, 'is down'], [1, 'is badly hurt: every move costs you'], [34, 'is hurt: it slows you'], [60, 'is bruised'], [100, 'is unhurt']]), restBand: 4,
+      npcLabels: [
+        'is down: out of the fight and unable to act',
+        'is near death: barely standing, and one more good blow could drop them',
+        'is hurt: bleeding and slowed, but still fighting',
+        'is bruised: shaken, but still fighting',
+        'is unhurt',
+      ],
       terminals: [{ at: 'min', note: 'They take no further part in this scene.', playerNote: 'You can do nothing more in this scene.' }],
       approach: { owner: 'force', secondary: [] }, verb: 'Hurt or overpower',
     },
     {
       id: 'strain', name: 'Strain', scope: 'char', min: 0, max: 6, start: 6, category: 'Condition', display: 'band', bandBasis: 'share',
-      bands: share([[0, 'is spent'], [1, 'is badly strained'], [34, 'is strained'], [75, 'is steady']]), restBand: 3,
+      bands: share([[0, 'is spent'], [1, 'is badly strained: your composure is fraying'], [34, 'is strained'], [100, 'is steady']]), restBand: 3,
       // Against someone else, Strain is their will to hold out against you.
-      npcLabels: ['has given way to you: they believe you, back down or do as you ask', 'is close to giving way', 'is wavering', 'is steady'],
+      npcLabels: [
+        'has given way: they believe you, back down or do as you ask, until something new changes their mind',
+        'is close to giving way: still holding out, but not for much longer',
+        'is wavering: unsure now, but still holding out',
+        'is steady',
+      ],
       terminals: [{ at: 'min', note: 'They stay that way unless something new changes their mind.', playerNote: 'You can push yourself no further until you rest.' }],
       approach: { owner: 'flair', secondary: ['force'] }, verb: 'Persuade, charm, bluff or intimidate',
     },
@@ -34,7 +48,7 @@ export const STANDARD_RULESET = {
     { id: 'momentum', name: 'Momentum', scope: 'protagonist', min: -3, max: 3, start: 0, category: 'Momentum', display: 'hidden' },
     {
       id: 'alert', name: 'Alert', scope: 'place', min: 0, max: 3, start: 0, category: 'Scene', display: 'band',
-      bands: share([[0, 'is quiet'], [1, 'is uneasy'], [2, 'is watching closely'], [3, 'is roused']]), restBand: 0,
+      bands: share([[0, 'is quiet'], [1, 'is uneasy: they keep an eye on you'], [2, 'is watching closely: one more slip and they act'], [3, 'is roused: they act against you']]), restBand: 0,
       line: '[Everyone at |nameMid| |bandLabel|.]',
       terminals: [{ at: 'max', note: 'Nothing passes unchallenged now.' }],
       approach: { owner: 'finesse', secondary: [] }, verb: 'Lie low, cover your tracks',
@@ -59,13 +73,13 @@ export const STANDARD_RULESET = {
     // Obstacles: any thing in a scene can be broken or worked open.
     {
       id: 'integrity', name: 'Integrity', scope: 'item', min: 0, max: 2, start: 2, category: 'Obstacle', display: 'band',
-      bands: share([[0, 'is broken'], [1, 'is damaged'], [100, 'is sound']]), restBand: 2, bandBasis: 'share',
+      bands: share([[0, 'is broken'], [1, 'is damaged: still holding, but it will not take much more'], [100, 'is sound']]), restBand: 2, bandBasis: 'share',
       terminals: [{ at: 'min', note: 'It gives way, and whatever it held shut is open now.' }],
       approach: { owner: 'force', secondary: [] }, verb: 'Break it or force it',
     },
     {
       id: 'security', name: 'Security', scope: 'item', min: 0, max: 2, start: 2, category: 'Obstacle', display: 'band',
-      bands: share([[0, 'is open'], [1, 'is giving'], [100, 'is secure']]), restBand: 2, bandBasis: 'share',
+      bands: share([[0, 'is open'], [1, 'is giving: nearly open'], [100, 'is secure']]), restBand: 2, bandBasis: 'share',
       terminals: [{ at: 'min', note: 'Whatever it kept shut or held fast is yours to take.' }],
       approach: { owner: 'finesse', secondary: [] }, verb: 'Pick it, work it loose, take it',
     },
@@ -79,6 +93,12 @@ export const STANDARD_RULESET = {
   // Acts with no state to wear down: they simply work or fail, and fail at the approach's cost.
   deeds: [
     { kind: 'person', approach: 'finesse', label: 'Lift, slip past or plant something' },
+  ],
+  // Who comes with you when you travel. The first that holds is the one used.
+  follow: [
+    { id: 'companion', label: 'Bring along', as: 'travelling with you', anyOf: [{ bond: 'follows' }] },
+    { id: 'captive', label: 'Take as your captive', as: 'your captive', anyOf: [{ stateId: 'health', atMost: 0 }] },
+    { id: 'won-over', label: 'Have them come with you', as: 'going along with you', anyOf: [{ stateId: 'strain', atMost: 0 }] },
   ],
   dice: {
     difficulty: 2, edge: 'edge', storyPoints: 'story-points', momentum: 'momentum',
@@ -120,6 +140,7 @@ export function withStandard(raw: unknown): unknown {
     states: mergeBy(STANDARD_RULESET.states as Keyed[], ruleset.states, (entry) => entry.id ?? ''),
     approaches: mergeBy(STANDARD_RULESET.approaches as Keyed[], ruleset.approaches, (entry) => entry.id ?? ''),
     deeds: mergeBy(STANDARD_RULESET.deeds as Keyed[], ruleset.deeds, (entry) => `${entry.kind}:${entry.approach}`),
+    follow: mergeBy(STANDARD_RULESET.follow as Keyed[], ruleset.follow, (entry) => entry.id ?? ''),
     dice: ruleset.dice ?? STANDARD_RULESET.dice,
     rest: ruleset.rest ?? STANDARD_RULESET.rest,
     tiers: ruleset.tiers ?? STANDARD_RULESET.tiers,

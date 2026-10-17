@@ -44,7 +44,7 @@ export function YouSection({ api }: { api: PlayApi }) {
                 <summary className="row" style={{ minHeight: 56 }}>
                   <span style={{ width: 64, flex: 'none', fontSize: 15, fontWeight: 600 }}>{def.name}</span>
                   <StateBar def={def} value={value(def)} />
-                  <span style={{ width: 96, flex: 'none', fontSize: 14 }}>{band(def, value(def)).banded ? band(def, value(def)).label.replace(/^is /, '') : value(def)}</span>
+                  <span style={{ width: 96, flex: 'none', fontSize: 14 }}>{band(def, value(def)).banded ? band(def, value(def)).short.replace(/^is /, '') : value(def)}</span>
                   <ChevronRight />
                 </summary>
                 <div className="row-body">
@@ -104,7 +104,7 @@ export function YouSection({ api }: { api: PlayApi }) {
             {standing.map((def) => (
               <details key={def.id}>
                 <summary className="row" style={{ minHeight: 56 }}>
-                  <span className="prose-strong" style={{ flex: 1 }}>{band(def, value(def)).banded ? `You ${bandForYou(band(def, value(def)).label)}.` : `${def.name}: ${value(def)}`}</span>
+                  <span className="prose-strong" style={{ flex: 1 }}>{band(def, value(def)).banded ? `You ${bandForYou(band(def, value(def)).short)}.` : `${def.name}: ${value(def)}`}</span>
                   <ChevronRight />
                 </summary>
                 <div className="row-body"><ValueEditor def={def} value={value(def)} onSet={(next) => api.setValue(def.id, playerId, next)} /></div>

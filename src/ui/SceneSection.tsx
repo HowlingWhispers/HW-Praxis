@@ -1,7 +1,7 @@
 // Scene: where you are, the time, who and what is here, and what you can do.
 import { useState } from 'react';
 import {
-  band, bondBetween, calendarOf, datePhrase, definite, doingNow, durationWords, fact, labelFor, line, pairName, playerOf, read, sceneActionsFor, sceneOf, stateDefFor,
+  band, bondBetween, calendarOf, datePhrase, bringAlong, definite, doingNow, dueElsewhere, durationWords, fact, followRuleFor, followingAs, leaveBehind, labelFor, line, shortLabel, pairName, playerOf, read, sceneActionsFor, sceneOf, stateDefFor,
   timeOfDay, weekdayOf, whereabouts, type Character, type Item, type StateDef,
 } from '../engine';
 import { BondWithYou } from './Bonds';
@@ -43,7 +43,7 @@ export function SceneSection({ api }: { api: PlayApi }) {
             return (
               <div key={def.id} className="fact">
                 <p className="label">{def.name}</p>
-                <p className="big word">{reading.banded ? reading.label : value}</p>
+                <p className="big word">{reading.banded ? reading.short : value}</p>
                 {prefs.showNumbers && <p className="meta">{value} of {Math.max(def.min, def.max)}</p>}
               </div>
             );
@@ -144,12 +144,24 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
     .map((entry) => ({ ...entry, reading: band(entry.def, entry.value) }))
     .filter((entry) => entry.reading.banded && !entry.reading.atRest);
   // In other people's words, as the narrator reads them: "is wavering", not "is strained".
-  const theirs = (def: StateDef, value: number) => labelFor(def, value, false);
+  const theirs = (def: StateDef, value: number) => shortLabel(def, labelFor(def, value, false));
   const knows = defs.map((def) => fact(stateDefFor(world, def.id, person.id) ?? def, definite(person.name), read(save.values, def, person.id))).filter(Boolean);
   const meta = [roleOf(person), speciesOf(world, person), ...groupsOf(world, person)].filter(Boolean).join(' · ');
   const local = person.origin === 'local';
   const doing = doingNow(world, save, person);
   const day = doing ? whereabouts(calendarOf(world), person, save.clock) : null;
+  const due = dueElsewhere(world, save, person);
+  const as = followingAs(world, save, person.id);
+  const rule = as ? null : followRuleFor(world, save, person.id);
+  const name = person.name.replace(/^(The|A|An) /, (word) => word.toLowerCase());
+  const follow = (byHand: boolean) => {
+    const result = bringAlong(api.module, save, person.id, byHand);
+    if (result.ok) api.commit(result.save, `${person.name} will come with you when you travel.`); else api.notify(result.reason);
+  };
+  const stay = () => {
+    const result = leaveBehind(api.module, save, person.id);
+    if (result.ok) api.commit(result.save, `${person.name} will stay here when you go.`); else api.notify(result.reason);
+  };
   const dossier = ([['Looks', person.appearance], ['Manner', person.personality], ['Speech', person.speech]] as [string, string | undefined][])
     .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim() !== '');
   // Their ties to the others here, and the bond with you, as the narrator reads them.
@@ -170,8 +182,9 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
           {meta && <span className="meta">{meta}</span>}
         </span>
         {offRest.slice(0, 2).map(({ def, value }) => (
-          <span key={def.id} className="pill"><span className="dot" style={{ background: stateColor(def) }} /><span className="pill-text">{theirs(def, value).split(':')[0]!.replace(/^(is|has) /, '').replace(/ to you$/, '')}</span></span>
+          <span key={def.id} className="pill"><span className="dot" style={{ background: stateColor(def) }} /><span className="pill-text">{theirs(def, value).replace(/^(is|has) /, '')}</span></span>
         ))}
+        {as && <span className="tag yours">With you</span>}
         <DraftTag record={person} show={prefs.showDrafts} />
         <ChevronRight />
       </summary>
@@ -181,6 +194,18 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
           <p className="meta" style={{ lineHeight: 1.45, color: 'var(--text-2)' }}>
             Now {doing}{day ? `, until ${timeOfDay(day.until)}` : ''}.
           </p>
+        )}
+        {due && (
+          <p className="meta" style={{ lineHeight: 1.45, color: 'var(--text-2)' }}>
+            Staying while you are here. Due at {due.replace(/^The /, 'the ')} by now.
+          </p>
+        )}
+        {as && (
+          <div className="knows">
+            <p className="label">With you</p>
+            <p className="prose-strong" style={{ marginTop: 6, fontSize: 15 }}>{as.charAt(0).toUpperCase()}{as.slice(1)}. Comes wherever you go and keeps no schedule.</p>
+            <button type="button" className="btn" style={{ marginTop: 10 }} onClick={stay}>Leave {name} here</button>
+          </div>
         )}
         {dossier.length > 0 && (
           <dl className="dossier">
@@ -210,7 +235,7 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
         )}
         <div className="knows">
           <p className="label">The narrator knows</p>
-          <p className="facts">{[...knows, bondFact, doing ? `Now: ${doing}.` : ''].filter(Boolean).join(' ') || 'Only their description: nothing about them is out of the ordinary.'}</p>
+          <p className="facts">{[...knows, bondFact, as ? `With you: ${as}.` : due ? `Due at ${due.replace(/^The /, 'the ')} by now.` : doing ? `Now: ${doing}.` : ''].filter(Boolean).join(' ') || 'Only their description: nothing about them is out of the ordinary.'}</p>
         </div>
         <BondWithYou api={api} person={person} />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -218,6 +243,7 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
           {world.ruleset.approaches.length > 0 && (
             <button type="button" className="btn" style={{ flex: 1 }} onClick={() => api.openCheck(person.id)}>Make a check</button>
           )}
+          {rule && <button type="button" className="btn" style={{ flex: 1 }} onClick={() => follow(false)}>{rule.label}</button>}
           <button type="button" className="btn quiet" onClick={() => api.lookUp(person.name)}>Look up</button>
           {local && <button type="button" className="btn quiet" onClick={() => api.editRecord({ mode: 'edit', id: person.id })}>Edit</button>}
         </div>
@@ -226,6 +252,7 @@ function PersonRow({ api, person, open }: { api: PlayApi; person: Character; ope
             <summary className="meta" style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>Set their values by hand</summary>
             <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {defs.map((def) => <ValueEditor key={def.id} def={def} value={read(save.values, def, person.id)} onSet={(value) => api.setValue(def.id, person.id, value)} />)}
+              {!as && !rule && <button type="button" className="btn" onClick={() => follow(true)}>Bring {name} along anyway</button>}
             </div>
           </details>
         )}
@@ -249,7 +276,7 @@ function ThingRow({ api, thing }: { api: PlayApi; thing: Item }) {
         <span className="av place" aria-hidden="true">{initials(thing.name)}</span>
         <span className="row-text"><span className="name">{thing.name}</span>{typeof thing.summary === 'string' && thing.summary && <span className="meta">{thing.summary}</span>}</span>
         {offRest.slice(0, 2).map(({ def, reading }) => (
-          <span key={def.id} className="pill"><span className="dot" style={{ background: stateColor(def) }} />{reading.label.replace(/^is /, '')}</span>
+          <span key={def.id} className="pill"><span className="dot" style={{ background: stateColor(def) }} />{reading.short.replace(/^is /, '')}</span>
         ))}
         <YoursTag record={thing} />
         <ChevronRight />
@@ -262,7 +289,7 @@ function ThingRow({ api, thing }: { api: PlayApi; thing: Item }) {
               <div key={def.id} className="state-line">
                 <span className="what">{def.name}</span>
                 <StateBar def={def} value={value} />
-                <span className="word">{reading.label}{prefs.showNumbers ? ` · ${value}` : ''}</span>
+                <span className="word">{reading.short}{prefs.showNumbers ? ` · ${value}` : ''}</span>
               </div>
             ))}
           </div>

@@ -16,6 +16,7 @@ import { windowStartFor } from './context';
 import { midSentence } from './words';
 import { restEffects, settleCheck, type CheckChoice, type Target } from './checks';
 import { followSchedules } from './schedule';
+import { followingAs } from './follow';
 import { playerOf, travel, wait, type ActionResult, type CheckRecord, type LedgerEntry, type Save, type Turn, type WorldState } from './session';
 
 export type TurnResult =
@@ -23,7 +24,7 @@ export type TurnResult =
   | { ok: false; reason: string };
 
 function worldOf(save: Save): WorldState {
-  return { clock: save.clock, positions: save.positions, values: save.values, spent: save.spent };
+  return { clock: save.clock, positions: save.positions, values: save.values, spent: save.spent, held: save.held, following: save.following };
 }
 
 function open(module: PraxisModule, before: Save, after: Save, turn: Omit<Turn, 'before' | 'ledgerStart' | 'reply' | 'windowStart' | 'check'> & { check?: CheckRecord }, entries: LedgerEntry[], terminals: StateTerminal[] = []): TurnResult {
@@ -98,9 +99,9 @@ function resolveScene(module: PraxisModule, save: Save, action: SceneAction): Ac
 
 // After the rules have moved the clock: everyone whose day takes them elsewhere goes, and
 // the narrator hears who left or came, when the player stayed where they were.
-function passTime(world: PraxisModule, before: Save, after: Save, entries: LedgerEntry[], directive: string): { save: Save; entries: LedgerEntry[]; directive: string } {
-  const followed = followSchedules(world, after, before.clock, after.clock);
-  if (!followed.entries.length) return { save: after, entries, directive };
+function passTime(world: PraxisModule, before: Save, after: Save, entries: LedgerEntry[], directive: string, hold: boolean): { save: Save; entries: LedgerEntry[]; directive: string } {
+  const followed = followSchedules(world, after, before.clock, after.clock, { hold });
+  if (!followed.entries.length) return { save: followed.save, entries, directive };
   const playerId = playerOf(world);
   const stayed = before.positions[playerId] === after.positions[playerId];
   const places = atlasOf(world).places;
@@ -126,7 +127,7 @@ export function act(module: PraxisModule, save: Save, id: string, action: Action
     if (!settled.ok) return settled;
     const { outcome } = settled;
     const input = action.input.trim() || `I try ${outcome.record.approachName.toLowerCase()} on ${inSentence(outcome.record.target.label.split(' · ')[0] ?? 'it')}.`;
-    const timed = passTime(world, save, outcome.save, outcome.entries, outcome.directive);
+    const timed = passTime(world, save, outcome.save, outcome.entries, outcome.directive, true);
     return open(world, save, timed.save, { id, kind: 'action', input, directive: timed.directive, check: outcome.record }, timed.entries, outcome.terminals);
   }
   if (action.type === 'scene') {
@@ -137,32 +138,39 @@ export function act(module: PraxisModule, save: Save, id: string, action: Action
     if (!result.ok) return result;
     // A terminal the action reached is part of what the narrator must show.
     const outcome = [chosen.outcome, ...result.terminals.map((terminal) => terminal.note)].join(' ');
-    const timed = passTime(world, save, result.save, result.entries, outcome);
+    const timed = passTime(world, save, result.save, result.entries, outcome, true);
     return open(world, save, timed.save, { id, kind: 'action', input: chosen.input, directive: timed.directive }, timed.entries, result.terminals);
   }
   if (action.type === 'travel') {
     const place = atlasOf(world).places.get(action.to);
     result = travel(world, save, action.to);
     if (!result.ok) return result;
-    const move = result.entries.find((entry): entry is Extract<LedgerEntry, { kind: 'move' }> => entry.kind === 'move');
+    const moved = result.save;
+    const move = result.entries.find((entry): entry is Extract<LedgerEntry, { kind: 'move' }> => entry.kind === 'move' && entry.characterId === playerOf(world));
     const minutes = move?.minutes ?? 0;
     const name = inSentence(place?.name ?? action.to);
     input = `I head for ${name}.`;
-    directive = `You have just arrived at ${name} after ${roughDuration(minutes)}. Show the arrival and what you find.`;
+    // Who came with you, and who stopped following.
+    const came = result.entries.filter((entry): entry is Extract<LedgerEntry, { kind: 'move' }> => entry.kind === 'move' && entry.characterId !== playerOf(world));
+    const stayed = result.entries.filter((entry): entry is Extract<LedgerEntry, { kind: 'follow' }> => entry.kind === 'follow' && entry.as === null && save.positions[entry.characterId] === save.positions[playerOf(world)]);
+    const nameOf = (characterId: string) => world.characters.find((character) => character.id === characterId)?.name ?? characterId;
+    const party = came.map((entry) => `${midSentence(nameOf(entry.characterId))}, ${followingAs(world, moved, entry.characterId)}`);
+    directive = `You have just arrived at ${name} after ${roughDuration(minutes)}${party.length ? `, with ${party.join(' and ')}` : ''}.`;
+    for (const entry of stayed) directive += ` ${nameOf(entry.characterId)} does not come with you.`;
   } else {
     result = wait(save, action.minutes);
     if (!result.ok) return result;
     input = `I wait for ${durationWords(action.minutes)}.`;
-    directive = `Time passes where you are: ${roughDuration(action.minutes).replace('a short walk', 'a little while')}. Show what changes, if anything.`;
+    directive = `Time passes where you are: ${roughDuration(action.minutes).replace('a short walk', 'a little while')}.`;
     const rest = world.ruleset.rest;
     if (rest && action.minutes >= rest.minutes) {
       const rested = restEffects(world, result.save);
       result = { ...result, save: rested.save, entries: [...result.entries, ...rested.entries] };
       input = `I rest for ${durationWords(action.minutes)}.`;
-      directive = `You rest for ${roughDuration(action.minutes)} and wake refreshed. Show what changes, if anything.`;
+      directive = `You rest for ${roughDuration(action.minutes)} and wake refreshed.`;
     }
   }
-  const timed = passTime(world, save, result.save, result.entries, directive);
+  const timed = passTime(world, save, result.save, result.entries, directive, false);
   return open(world, save, timed.save, { id, kind: 'action', input, directive: timed.directive }, timed.entries, result.terminals);
 }
 
@@ -195,9 +203,13 @@ export function cleanReply(reply: string, input: string): string {
   let text = reply.replace(/\r\n/g, '\n');
   // A reasoning model may leave its thinking in the reply.
   text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/^[\s\S]*?<\/think>/i, '').trim();
+  // A model that wrote its own "Understood. I will: …" before the story: keep only the story.
+  const mark = text.lastIndexOf('[Of course, here you go:]');
+  if (mark >= 0) text = text.slice(mark + '[Of course, here you go:]'.length).trim();
+  else if (/^Understood\. I will:/.test(text)) text = text.replace(/^Understood\. I will:\n(?:- .*\n?)*/, '').trim();
   text = text.replace(/^(?:narrator|assistant|gm)\s*:\s*/i, '');
   // A note the model copied from what it was sent: a whole line of [ Lore ], [ Scene ] or [ Outcome ].
-  text = text.replace(/^[ \t]*\[\s*(?:lore|scene|outcome)\s*:[^\n]*\][ \t]*$/gim, '').trim();
+  text = text.replace(/^[ \t]*\[\s*(?:lore|scene|outcome|present)\b[^\n]*\][ \t]*$/gim, '').trim();
   const echo = input.trim();
   if (echo && text.startsWith(echo)) text = text.slice(echo.length).trim();
   return text.replace(/\n{3,}/g, '\n\n');

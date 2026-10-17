@@ -23,18 +23,22 @@ export const chatRequestSchema = z.object({
   // 'chat' sends the messages to NovelAI's chat endpoint. 'prompt' formats them into one
   // prompt in GLM's own chat format and sends that to the completions endpoint.
   mode: z.enum(['chat', 'prompt']).default('prompt'),
+  // The start of the reply. In 'prompt' mode it follows the empty think block and the model
+  // continues it, as NovelAI's own prefill does. Chat endpoints cannot continue a reply, so
+  // there it is sent as a last system message instead.
+  prefill: z.string().max(20_000).optional(),
 }).strict();
 
 // GLM-4.x's chat format, with thinking turned off: '/nothink' on the user turns and an
-// empty think block where the reply begins.
-export function glmPrompt(messages: { role: string; content: string }[]): string {
+// empty think block where the reply begins, followed by the prefill if there is one.
+export function glmPrompt(messages: { role: string; content: string }[], prefill = ''): string {
   let prompt = '[gMASK]<sop>';
   for (const message of messages) {
     if (message.role === 'system') prompt += `<|system|>\n${message.content}`;
     else if (message.role === 'user') prompt += `<|user|>\n${message.content}${message.content.trimEnd().endsWith('/nothink') ? '' : '/nothink'}`;
     else prompt += `<|assistant|>\n<think></think>\n${message.content}`;
   }
-  return `${prompt}<|assistant|>\n<think></think>\n`;
+  return `${prompt}<|assistant|>\n<think></think>\n${prefill}`;
 }
 
 export const GLM_STOPS = ['<|user|>', '<|observation|>', '<|system|>', '<|endoftext|>'];
@@ -110,12 +114,13 @@ export async function relayChat(fetchImpl: Fetch, rawToken: string | undefined, 
   if (!token) return missingToken;
   const parsed = chatRequestSchema.safeParse(raw);
   if (!parsed.success) return { status: 400, body: { error: `Invalid narration request: ${parsed.error.issues[0]?.message ?? 'unknown problem'}.` } };
-  const { mode, messages, ...settings } = parsed.data;
+  const { mode, messages: sent, prefill, ...settings } = parsed.data;
+  const messages = mode === 'chat' && prefill ? [...sent, { role: 'system' as const, content: prefill }] : sent;
 
   const endpoint = mode === 'chat' ? '/oa/v1/chat/completions' : '/oa/v1/completions';
   const upstreamBody = mode === 'chat'
     ? { ...settings, messages, stream: false }
-    : { ...settings, prompt: glmPrompt(messages), stop: GLM_STOPS, stream: false };
+    : { ...settings, prompt: glmPrompt(messages, prefill), stop: GLM_STOPS, stream: false };
 
   // How long NovelAI took, measured here so the browser's own distance to this server does
   // not count. The generation test compares these.
